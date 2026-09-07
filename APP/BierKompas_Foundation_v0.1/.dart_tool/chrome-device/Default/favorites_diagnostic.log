@@ -1,0 +1,126 @@
+2026-08-28 07:13:40.225: [INFO] CurrentProfilePath: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.9af0cdab\flutter_tools_chrome_device.55a930e8\Default
+2026-08-28 07:13:40.225: [INFO] Profiles total count: 1
+2026-08-28 07:13:40.225: [INFO] Profile: name=Profiel 1 path=C:\Users\Kirub\AppData\Local\Temp\flutter_tools.9af0cdab\flutter_tools_chrome_device.55a930e8\Default lastActive=null
+2026-08-28 07:13:40.225: [INFO] LastUsedProfileDir: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.9af0cdab\flutter_tools_chrome_device.55a930e8\Default
+2026-08-28 07:13:40.225: [INFO] VisibilityChanged: 0
+2026-08-28 07:13:40.287: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.289: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.290: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.291: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.292: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.293: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.294: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.296: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.297: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.298: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:40.314: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:40.314: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:40.314: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:40.314: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:40.314: [INFO] OnDoneLoading sync enabled: 0
+2026-08-28 07:13:40.314: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-28 07:13:40.314: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-28 07:13:40.314: [INFO] BookmarksSnapshot Startup total=4 bar=4 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-28 07:13:40.374: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:41.798: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-08-28 07:13:41.810: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-08-28 07:13:41.822: [INFO] Primary account changed.
+2026-08-28 07:13:41.822: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-08-28 07:13:41.832: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-08-28 07:13:41.869: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-08-28 07:13:47.376: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.376: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.376: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.376: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.377: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.377: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.378: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.378: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.379: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.379: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.380: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.380: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.381: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.381: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.381: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.382: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.382: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.382: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.382: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.382: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.382: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.383: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.383: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.383: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.384: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.384: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.384: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.384: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.385: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.385: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:47.385: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-28 07:13:49.308: [INFO] Sync initialization duration: 7271ms
+2026-08-30 14:19:23.966: [INFO] BookmarksSnapshot Shutdown total=35 bar=35 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-31 07:08:32.871: [INFO] CurrentProfilePath: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fca4f105\flutter_tools_chrome_device.fe504ce8\Default
+2026-08-31 07:08:32.871: [INFO] Profiles total count: 1
+2026-08-31 07:08:32.871: [INFO] Profile: name=Profiel 1 path=C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fca4f105\flutter_tools_chrome_device.fe504ce8\Default lastActive=null
+2026-08-31 07:08:32.871: [INFO] LastUsedProfileDir: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fca4f105\flutter_tools_chrome_device.fe504ce8\Default
+2026-08-31 07:08:32.871: [INFO] VisibilityChanged: 0
+2026-08-31 07:08:32.924: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:08:32.924: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:08:32.924: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:08:32.924: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:08:32.924: [INFO] OnDoneLoading sync enabled: 1
+2026-08-31 07:08:32.924: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-31 07:08:32.924: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-31 07:08:32.924: [INFO] BookmarksSnapshot Startup total=39 bar=39 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-31 07:08:45.566: [INFO] Sync initialization duration: 2141ms
+2026-08-31 07:51:29.429: [INFO] BookmarksSnapshot Shutdown total=39 bar=39 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-31 07:53:29.475: [INFO] CurrentProfilePath: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fc03d5c4\flutter_tools_chrome_device.973491e2\Default
+2026-08-31 07:53:29.475: [INFO] Profiles total count: 1
+2026-08-31 07:53:29.475: [INFO] Profile: name=Profiel 1 path=C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fc03d5c4\flutter_tools_chrome_device.973491e2\Default lastActive=null
+2026-08-31 07:53:29.475: [INFO] LastUsedProfileDir: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fc03d5c4\flutter_tools_chrome_device.973491e2\Default
+2026-08-31 07:53:29.475: [INFO] VisibilityChanged: 0
+2026-08-31 07:53:29.530: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:53:29.530: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:53:29.530: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:53:29.530: [INFO] BookmarkNodeAdded, ABU: 0
+2026-08-31 07:53:29.530: [INFO] OnDoneLoading sync enabled: 0
+2026-08-31 07:53:29.530: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-31 07:53:29.530: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-31 07:53:29.530: [INFO] BookmarksSnapshot Startup total=43 bar=43 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-31 07:53:31.607: [INFO] Primary account changed.
+2026-08-31 07:53:31.607: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-08-31 07:53:38.714: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.715: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
+2026-08-31 07:53:46.357: [INFO] Sync initialization duration: 16825ms
+2026-09-03 10:54:50.002: [INFO] BookmarksSnapshot Shutdown total=43 bar=43 other=0 mobile=0 showBar=0 showBarNTP=1
