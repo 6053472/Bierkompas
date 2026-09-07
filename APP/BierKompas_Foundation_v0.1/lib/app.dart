@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'features/home/home_page.dart';
+import 'features/auth/login_page.dart';
 
 class BierKompasApp extends StatelessWidget {
   const BierKompasApp({super.key});
@@ -11,7 +11,7 @@ class BierKompasApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'BierKompas',
       theme: AppTheme.light(),
-      home: HomePage(),
+      home: const LoginPage(),
     );
   }
 }
