@@ -1,11 +1,20 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppUser {
   final String id;
   final String name;
   final String email;
+  final String? avatarUrl;
 
-  const AppUser({required this.id, required this.name, required this.email});
+  const AppUser({required this.id, required this.name, required this.email, this.avatarUrl});
+
+  AppUser copyWith({String? name, String? avatarUrl}) => AppUser(
+        id: id,
+        name: name ?? this.name,
+        email: email,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+      );
 }
 
 class AuthException implements Exception {
@@ -95,14 +104,48 @@ class AuthService {
   Future<AppUser> _appUserFromAuth(User user) async {
     final profile = await _client
         .from('profiles')
-        .select('name, email')
+        .select('name, email, avatar_url')
         .eq('id', user.id)
         .maybeSingle();
     return AppUser(
       id: user.id,
       name: profile?['name'] as String? ?? '',
       email: profile?['email'] as String? ?? user.email ?? '',
+      avatarUrl: profile?['avatar_url'] as String?,
     );
+  }
+
+  Future<void> updateProfile({required String userId, required String name}) async {
+    try {
+      await _client.from('profiles').update({'name': name}).eq('id', userId);
+    } on PostgrestException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  /// Upload een profielfoto naar Supabase Storage en slaat de publieke URL op
+  /// in de profiles-tabel. Geeft de nieuwe URL terug.
+  Future<String> uploadAvatar({
+    required String userId,
+    required Uint8List bytes,
+    required String fileExt,
+  }) async {
+    try {
+      final path = '$userId/avatar.$fileExt';
+      await _client.storage.from('avatars').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: true, contentType: 'image/$fileExt'),
+          );
+      final url = _client.storage.from('avatars').getPublicUrl(path);
+      final bustedUrl = '$url?t=${DateTime.now().millisecondsSinceEpoch}';
+      await _client.from('profiles').update({'avatar_url': bustedUrl}).eq('id', userId);
+      return bustedUrl;
+    } on StorageException catch (e) {
+      throw AuthException(e.message);
+    } on PostgrestException catch (e) {
+      throw AuthException(e.message);
+    }
   }
 
   String _translateAuthError(AuthApiException e) {

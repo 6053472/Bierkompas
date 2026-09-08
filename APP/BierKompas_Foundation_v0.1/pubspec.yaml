@@ -9,6 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.2.1
+  image_picker: ^1.1.2
   shared_preferences: ^2.3.2
   supabase_flutter: ^2.8.0
 

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'edit_profile_page.dart';
 import 'settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (authUser == null) return;
     final profile = await Supabase.instance.client
         .from('profiles')
-        .select('name, email')
+        .select('name, email, avatar_url')
         .eq('id', authUser.id)
         .maybeSingle();
     if (!mounted) return;
@@ -35,6 +36,7 @@ class _ProfilePageState extends State<ProfilePage> {
           id: authUser.id,
           name: profile?['name'] as String? ?? '',
           email: profile?['email'] as String? ?? authUser.email ?? '',
+          avatarUrl: profile?['avatar_url'] as String?,
         ));
   }
 
@@ -109,10 +111,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                   color: const Color(0xFFD4B28C).withOpacity(0.5),
                                   width: 2,
                                 ),
+                                image: _user?.avatarUrl != null
+                                    ? DecorationImage(
+                                        image: NetworkImage(_user!.avatarUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                               ),
-                              child: const Center(
-                                child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 50),
-                              ),
+                              child: _user?.avatarUrl == null
+                                  ? const Center(
+                                      child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 50),
+                                    )
+                                  : null,
                             ),
                             Positioned(
                               bottom: 0,
@@ -170,7 +180,18 @@ class _ProfilePageState extends State<ProfilePage> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: _user == null
+                                ? null
+                                : () async {
+                                    final updated = await Navigator.of(context).push<AppUser>(
+                                      MaterialPageRoute(
+                                        builder: (_) => EditProfilePage(user: _user!),
+                                      ),
+                                    );
+                                    if (updated != null && mounted) {
+                                      setState(() => _user = updated);
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD4B28C),
                               foregroundColor: const Color(0xFF1E1712),

@@ -68,6 +68,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "cross_file",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/cross_file-0.3.5+5",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
       "name": "crypto",
       "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/crypto-3.0.7",
       "packageUri": "lib/",
@@ -92,10 +98,40 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "file_selector_linux",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.4+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "file_selector_macos",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.5+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "file_selector_platform_interface",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_selector_platform_interface-2.7.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "file_selector_windows",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_selector_windows-0.9.3+6",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
       "name": "flutter",
       "rootUri": "file:///workspaces/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.11"
+    },
+    {
+      "name": "flutter_plugin_android_lifecycle",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.35",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
     },
     {
       "name": "flutter_web_plugins",
@@ -144,6 +180,54 @@
       "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/http_parser-4.1.2",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "image_picker",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker-1.2.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "image_picker_android",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+22",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "image_picker_for_web",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_for_web-3.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "image_picker_ios",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_ios-0.8.13+7",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "image_picker_linux",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_linux-0.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "image_picker_macos",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_macos-0.2.2+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "image_picker_platform_interface",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_platform_interface-2.11.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "image_picker_windows",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/image_picker_windows-0.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
     },
     {
       "name": "jni",
