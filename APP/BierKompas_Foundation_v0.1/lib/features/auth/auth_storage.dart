@@ -6,6 +6,7 @@ import 'auth_service.dart';
 /// niet elke keer opnieuw hoeft in te loggen.
 class AuthStorage {
   static const _key = 'bierkompas_user';
+  static const _consentKey = 'bierkompas_consent_version';
 
   static Future<void> saveUser(AppUser user) async {
     final prefs = await SharedPreferences.getInstance();
@@ -24,6 +25,19 @@ class AuthStorage {
 
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    await Future.wait([
+      prefs.remove(_key),
+      prefs.remove(_consentKey),
+    ]);
+  }
+
+  static Future<bool> hasCurrentConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_consentKey) == '$termsVersion:$privacyVersion';
+  }
+
+  static Future<void> saveConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_consentKey, '$termsVersion:$privacyVersion');
   }
 }

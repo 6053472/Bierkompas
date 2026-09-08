@@ -28,6 +28,8 @@ class AuthException implements Exception {
 /// Zet ApiConfig.baseUrl om automatisch op de echte backend over te schakelen.
 const String _testEmail = 'test@bierkompas.nl';
 const String _testPassword = 'test1234';
+const String termsVersion = '1.0';
+const String privacyVersion = '1.0';
 
 class AuthService {
   Future<AppUser> login({required String email, required String password}) async {
@@ -74,5 +76,30 @@ class AuthService {
       throw AuthException(body['error'] as String? ?? 'Registreren mislukt.');
     }
     return AppUser.fromJson(body['user'] as Map<String, dynamic>);
+  }
+
+  Future<void> saveConsent({required int userId}) async {
+    if (!ApiConfig.isConfigured) return;
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/consent.php'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'terms_version': termsVersion,
+        'privacy_version': privacyVersion,
+        'age_confirmed': true,
+        'lawful_alcohol_use': true,
+        'accurate_account_data': true,
+        'personal_account': true,
+        'credentials_secure': true,
+        'no_impersonation': true,
+      }),
+    );
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode != 200 || body['success'] != true) {
+      throw AuthException(body['error'] as String? ?? 'Akkoord opslaan mislukt.');
+    }
   }
 }

@@ -16,6 +16,7 @@ Simpele PHP + MySQL backend voor registratie/login. Werkt op elke gedeelde hosti
 
 - `POST register.php` — body: `{"name": "...", "email": "...", "password": "..."}`
 - `POST login.php` — body: `{"email": "...", "password": "..."}`
+- `POST consent.php` — registreert de hoofdgoedkeuring, leeftijdsbevestiging en accountveiligheidsbevestigingen
 - `GET favorites_list.php?user_id=1`
 - `POST favorites_add.php` — body: `{"user_id": 1, "item_type": "beer", "item_id": 5}`
 - `POST favorites_remove.php` — body: `{"user_id": 1, "item_type": "beer", "item_id": 5}`

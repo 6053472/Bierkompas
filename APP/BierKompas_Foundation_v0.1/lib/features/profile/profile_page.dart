@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -177,7 +178,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => SettingsPage(user: _user)),
+                              );
+                            },
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Color(0xFFD4B28C)),
                               padding: const EdgeInsets.symmetric(vertical: 12),

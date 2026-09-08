@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../home/home_page.dart';
 import 'auth_storage.dart';
+import 'consent_page.dart';
 import 'login_page.dart';
 
 /// Beslist bij het opstarten of de gebruiker al is ingelogd (onthouden
@@ -11,7 +12,7 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: AuthStorage.loadUser(),
+      future: _loadDestination(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
@@ -21,8 +22,15 @@ class AuthGate extends StatelessWidget {
             ),
           );
         }
-        return snapshot.data != null ? const HomePage() : const LoginPage();
+        return snapshot.data ?? const LoginPage();
       },
     );
+  }
+
+  Future<Widget?> _loadDestination() async {
+    final user = await AuthStorage.loadUser();
+    if (user == null) return null;
+    if (!await AuthStorage.hasCurrentConsent()) return ConsentPage(user: user);
+    return const HomePage();
   }
 }

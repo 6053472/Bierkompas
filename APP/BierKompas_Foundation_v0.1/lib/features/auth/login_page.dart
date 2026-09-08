@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/config/api_config.dart';
-import '../home/home_page.dart';
 import 'auth_service.dart';
 import 'auth_storage.dart';
+import 'consent_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -44,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
       await AuthStorage.saveUser(user);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => ConsentPage(user: user)),
         (route) => false,
       );
     } on AuthException catch (e) {
