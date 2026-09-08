@@ -16,6 +16,13 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
+class RegisterResult {
+  final AppUser user;
+  final bool needsEmailConfirmation;
+
+  const RegisterResult({required this.user, required this.needsEmailConfirmation});
+}
+
 const String termsVersion = '1.0';
 const String privacyVersion = '1.0';
 
@@ -36,7 +43,7 @@ class AuthService {
     }
   }
 
-  Future<AppUser> register({
+  Future<RegisterResult> register({
     required String name,
     required String email,
     required String password,
@@ -49,7 +56,18 @@ class AuthService {
       );
       final user = response.user;
       if (user == null) throw AuthException('Registreren mislukt.');
-      return AppUser(id: user.id, name: name, email: email);
+      return RegisterResult(
+        user: AppUser(id: user.id, name: name, email: email),
+        needsEmailConfirmation: response.session == null,
+      );
+    } on AuthApiException catch (e) {
+      throw AuthException(_translateAuthError(e));
+    }
+  }
+
+  Future<void> resendConfirmationEmail(String email) async {
+    try {
+      await _client.auth.resend(type: OtpType.signup, email: email);
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
     }
@@ -91,6 +109,8 @@ class AuthService {
     switch (e.code) {
       case 'invalid_credentials':
         return 'E-mailadres of wachtwoord is onjuist.';
+      case 'email_not_confirmed':
+        return 'Bevestig eerst je e-mailadres via de link die we je gestuurd hebben.';
       case 'user_already_exists':
         return 'Er bestaat al een account met dit e-mailadres.';
       case 'weak_password':

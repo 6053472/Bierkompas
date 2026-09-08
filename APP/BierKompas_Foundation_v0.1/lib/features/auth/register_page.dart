@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'auth_service.dart';
+import 'check_email_page.dart';
 import 'consent_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -38,16 +39,23 @@ class _RegisterPageState extends State<RegisterPage> {
       _error = null;
     });
     try {
-      final user = await _authService.register(
+      final result = await _authService.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => ConsentPage(user: user)),
-        (route) => false,
-      );
+      if (result.needsEmailConfirmation) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => CheckEmailPage(email: result.user.email)),
+          (route) => false,
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => ConsentPage(user: result.user)),
+          (route) => false,
+        );
+      }
     } on AuthException catch (e) {
       setState(() => _error = e.message);
     } finally {
