@@ -16,10 +16,19 @@ Simpele PHP + MySQL backend voor registratie/login. Werkt op elke gedeelde hosti
 
 - `POST register.php` — body: `{"name": "...", "email": "...", "password": "..."}`
 - `POST login.php` — body: `{"email": "...", "password": "..."}`
+- `GET favorites_list.php?user_id=1`
+- `POST favorites_add.php` — body: `{"user_id": 1, "item_type": "beer", "item_id": 5}`
+- `POST favorites_remove.php` — body: `{"user_id": 1, "item_type": "beer", "item_id": 5}`
 
-Beide geven JSON terug: `{"success": true, "user": {...}}` of `{"success": false, "error": "..."}`.
+Alle endpoints geven JSON terug: `{"success": true, ...}` of `{"success": false, "error": "..."}`.
+De favorites-endpoints zijn er alvast klaar voor, maar nog niet gekoppeld aan een scherm in de app — dat gebeurt zodra de bar/bier-data er is.
 
 ## In de Flutter-app
 
 Zet in `lib/core/config/api_config.dart` de `baseUrl` op je domein, bv. `https://jouwdomein.nl/api`.
 Zolang die leeg is, gebruikt de app een lokaal testaccount (zie `auth_service.dart`) zodat je de app al kunt testen zonder hosting.
+
+Zodra je de echte `baseUrl` invult:
+- Inloggen/registreren praat automatisch met `login.php`/`register.php`.
+- Na inloggen/registreren wordt het account lokaal onthouden (`auth_storage.dart`), dus de gebruiker hoeft niet elke keer opnieuw in te loggen.
+- De profielpagina toont automatisch de echte naam/e-mail en heeft een uitlogknop.

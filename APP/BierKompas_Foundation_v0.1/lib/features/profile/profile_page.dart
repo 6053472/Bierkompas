@@ -1,8 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../auth/auth_gate.dart';
+import '../auth/auth_service.dart';
+import '../auth/auth_storage.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  AppUser? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    AuthStorage.loadUser().then((user) {
+      if (mounted) setState(() => _user = user);
+    });
+  }
+
+  Future<void> _logout() async {
+    await AuthStorage.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthGate()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +118,7 @@ class ProfilePage extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Marcus',
+                          _user?.name ?? 'Gast',
                           style: GoogleFonts.playfairDisplay(
                             color: const Color(0xFFEFE6DD),
                             fontSize: 22,
@@ -102,10 +129,10 @@ class ProfilePage extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.location_on, color: Color(0xFF9E8A7D), size: 14),
+                            const Icon(Icons.mail_outline, color: Color(0xFF9E8A7D), size: 14),
                             const SizedBox(width: 4),
                             Text(
-                              'Amsterdam',
+                              _user?.email ?? '-',
                               style: GoogleFonts.inter(
                                 color: const Color(0xFF9E8A7D),
                                 fontSize: 13,
@@ -164,6 +191,22 @@ class ProfilePage extends StatelessWidget {
                                 color: const Color(0xFFD4B28C),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton.icon(
+                            onPressed: _logout,
+                            icon: const Icon(Icons.logout, color: Color(0xFF9E8A7D), size: 18),
+                            label: Text(
+                              'Uitloggen',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF9E8A7D),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
                               ),
                             ),
                           ),

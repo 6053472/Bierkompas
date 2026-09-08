@@ -4,28 +4,31 @@ import '../../core/config/api_config.dart';
 import '../home/home_page.dart';
 import 'auth_service.dart';
 import 'auth_storage.dart';
-import 'register_page.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _error;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
@@ -37,7 +40,8 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
-      final user = await _authService.login(
+      final user = await _authService.register(
+        name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -54,11 +58,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _fillTestAccount() {
-    _emailController.text = 'test@bierkompas.nl';
-    _passwordController.text = 'test1234';
-  }
-
   @override
   Widget build(BuildContext context) {
     const gold = Color(0xFFD4B28C);
@@ -69,47 +68,36 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF1E1712),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: cream),
+      ),
       body: SafeArea(
+        top: false,
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      color: card,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: gold.withOpacity(0.18),
-                          blurRadius: 16,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.sports_bar, color: gold, size: 34),
-                  ),
-                  const SizedBox(height: 16),
                   Text(
-                    'Bierkompas',
+                    'Account aanmaken',
                     style: GoogleFonts.playfairDisplay(
                       color: cream,
-                      fontSize: 30,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Welkom terug. Log in om verder te ontdekken.',
+                    'Word lid van Bierkompas en ontdek ambachtelijk bier.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(color: muted, fontSize: 13),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -128,9 +116,75 @@ class _LoginPageState extends State<LoginPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildEmailField(field, cream, muted),
+                          _buildTextField(
+                            controller: _nameController,
+                            label: 'Naam',
+                            icon: Icons.person_outline,
+                            field: field,
+                            cream: cream,
+                            muted: muted,
+                            validator: (v) =>
+                                (v == null || v.trim().isEmpty) ? 'Vul je naam in.' : null,
+                          ),
                           const SizedBox(height: 14),
-                          _buildPasswordField(field, cream, muted),
+                          _buildTextField(
+                            controller: _emailController,
+                            label: 'E-mail',
+                            icon: Icons.mail_outline,
+                            field: field,
+                            cream: cream,
+                            muted: muted,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (v) =>
+                                (v == null || v.trim().isEmpty) ? 'Vul je e-mailadres in.' : null,
+                          ),
+                          const SizedBox(height: 14),
+                          _buildTextField(
+                            controller: _passwordController,
+                            label: 'Wachtwoord',
+                            icon: Icons.lock_outline,
+                            field: field,
+                            cream: cream,
+                            muted: muted,
+                            obscure: _obscurePassword,
+                            toggleObscure: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Vul een wachtwoord in.';
+                              if (v.length < 8) return 'Minimaal 8 tekens.';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          _buildTextField(
+                            controller: _confirmController,
+                            label: 'Bevestig wachtwoord',
+                            icon: Icons.lock_outline,
+                            field: field,
+                            cream: cream,
+                            muted: muted,
+                            obscure: _obscurePassword,
+                            validator: (v) {
+                              if (v != _passwordController.text) return 'Wachtwoorden komen niet overeen.';
+                              return null;
+                            },
+                          ),
+                          if (!ApiConfig.isConfigured) ...[
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: gold.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: gold.withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                'Registreren werkt pas zodra de backend gekoppeld is (ApiConfig.baseUrl).',
+                                style: GoogleFonts.inter(color: cream, fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
                           if (_error != null) ...[
                             const SizedBox(height: 14),
                             Container(
@@ -170,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     )
                                   : Text(
-                                      'Inloggen',
+                                      'Registreren',
                                       style: GoogleFonts.inter(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
@@ -182,46 +236,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const RegisterPage()),
-                      );
-                    },
-                    child: Text(
-                      'Nog geen account? Registreren',
-                      style: GoogleFonts.inter(color: gold, fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                  ),
-                  if (!ApiConfig.isConfigured) ...[
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: _fillTestAccount,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: gold.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: gold.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline, color: gold, size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Nog geen backend gekoppeld. Tik hier om het testaccount in te vullen.',
-                                style: GoogleFonts.inter(color: cream, fontSize: 12),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -231,53 +245,37 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildEmailField(Color field, Color cream, Color muted) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required Color field,
+    required Color cream,
+    required Color muted,
+    TextInputType? keyboardType,
+    bool obscure = false,
+    VoidCallback? toggleObscure,
+    String? Function(String?)? validator,
+  }) {
     return TextFormField(
-      controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscure,
       style: GoogleFonts.inter(color: cream),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) return 'Vul je e-mailadres in.';
-        return null;
-      },
+      validator: validator,
       decoration: InputDecoration(
-        labelText: 'E-mail',
-        prefixIcon: Icon(Icons.mail_outline, color: muted, size: 20),
-        labelStyle: GoogleFonts.inter(color: muted),
-        filled: true,
-        fillColor: field,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        errorStyle: GoogleFonts.inter(color: Colors.redAccent, fontSize: 11),
-      ),
-    );
-  }
-
-  Widget _buildPasswordField(Color field, Color cream, Color muted) {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: _obscurePassword,
-      textInputAction: TextInputAction.done,
-      onFieldSubmitted: (_) => _submit(),
-      style: GoogleFonts.inter(color: cream),
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Vul je wachtwoord in.';
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: 'Wachtwoord',
-        prefixIcon: Icon(Icons.lock_outline, color: muted, size: 20),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-            color: muted,
-            size: 20,
-          ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-        ),
+        labelText: label,
+        prefixIcon: Icon(icon, color: muted, size: 20),
+        suffixIcon: toggleObscure == null
+            ? null
+            : IconButton(
+                icon: Icon(
+                  obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  color: muted,
+                  size: 20,
+                ),
+                onPressed: toggleObscure,
+              ),
         labelStyle: GoogleFonts.inter(color: muted),
         filled: true,
         fillColor: field,
