@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../home/home_page.dart';
 import 'auth_service.dart';
-import 'auth_storage.dart';
 
 class ConsentPage extends StatefulWidget {
   final AppUser user;
@@ -46,7 +45,6 @@ class _ConsentPageState extends State<ConsentPage> {
     });
     try {
       await _authService.saveConsent(userId: widget.user.id);
-      await AuthStorage.saveConsent();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomePage()),

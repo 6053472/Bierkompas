@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/config/api_config.dart';
 import 'auth_service.dart';
-import 'auth_storage.dart';
 import 'consent_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -45,7 +43,6 @@ class _RegisterPageState extends State<RegisterPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      await AuthStorage.saveUser(user);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => ConsentPage(user: user)),
@@ -169,22 +166,6 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
-                          if (!ApiConfig.isConfigured) ...[
-                            const SizedBox(height: 14),
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: gold.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: gold.withOpacity(0.3)),
-                              ),
-                              child: Text(
-                                'Registreren werkt pas zodra de backend gekoppeld is (ApiConfig.baseUrl).',
-                                style: GoogleFonts.inter(color: cream, fontSize: 12),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
                           if (_error != null) ...[
                             const SizedBox(height: 14),
                             Container(

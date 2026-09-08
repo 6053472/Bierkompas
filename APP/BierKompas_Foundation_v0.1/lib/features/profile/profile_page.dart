@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
@@ -18,9 +19,23 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    AuthStorage.loadUser().then((user) {
-      if (mounted) setState(() => _user = user);
-    });
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+    final profile = await Supabase.instance.client
+        .from('profiles')
+        .select('name, email')
+        .eq('id', authUser.id)
+        .maybeSingle();
+    if (!mounted) return;
+    setState(() => _user = AppUser(
+          id: authUser.id,
+          name: profile?['name'] as String? ?? '',
+          email: profile?['email'] as String? ?? authUser.email ?? '',
+        ));
   }
 
   Future<void> _logout() async {

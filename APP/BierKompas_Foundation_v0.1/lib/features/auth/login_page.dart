@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/config/api_config.dart';
 import 'auth_service.dart';
-import 'auth_storage.dart';
 import 'consent_page.dart';
 import 'register_page.dart';
 
@@ -41,7 +39,6 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      await AuthStorage.saveUser(user);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => ConsentPage(user: user)),
@@ -52,11 +49,6 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _fillTestAccount() {
-    _emailController.text = 'test@bierkompas.nl';
-    _passwordController.text = 'test1234';
   }
 
   @override
@@ -194,34 +186,6 @@ class _LoginPageState extends State<LoginPage> {
                       style: GoogleFonts.inter(color: gold, fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                   ),
-                  if (!ApiConfig.isConfigured) ...[
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: _fillTestAccount,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: gold.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: gold.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline, color: gold, size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Nog geen backend gekoppeld. Tik hier om het testaccount in te vullen.',
-                                style: GoogleFonts.inter(color: cream, fontSize: 12),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
