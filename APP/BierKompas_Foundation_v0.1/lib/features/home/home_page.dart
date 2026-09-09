@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../favorites/favorites_page.dart';
 import '../map/map_page.dart';
 import '../profile/profile_page.dart';
+import '../profile/stats_service.dart';
 import '../events/events_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -13,14 +15,31 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final _statsService = StatsService();
   int _currentIndex = 0;
+  int _currentStreak = 0;
 
-    final List<Widget> _pages = [
-    const DiscoveryContentPage(), // Index 0: Ontdek
+  @override
+  void initState() {
+    super.initState();
+    _recordActivity();
+  }
+
+  Future<void> _recordActivity() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    await _statsService.recordDailyActivity(userId);
+    final stats = await _statsService.fetchStats(userId);
+    if (!mounted) return;
+    setState(() => _currentStreak = stats.currentStreak);
+  }
+
+  List<Widget> get _pages => [
+    DiscoveryContentPage(streak: _currentStreak), // Index 0: Ontdek
     const EventPage(),            // Index 1: Agenda
-    const FavoritesPage(),       
-    const MapPage(),              
-    const ProfilePage(),         
+    const FavoritesPage(),
+    const MapPage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -77,7 +96,9 @@ class _HomePageState extends State<HomePage> {
 }
 
 class DiscoveryContentPage extends StatelessWidget {
-  const DiscoveryContentPage({super.key});
+  final int streak;
+
+  const DiscoveryContentPage({super.key, this.streak = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +131,30 @@ class DiscoveryContentPage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Icon(Icons.search, color: Color(0xFFEFE6DD)),
+                      Row(
+                        children: [
+                          if (streak > 0) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD4B28C).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
+                              ),
+                              child: Text(
+                                '🔥 $streak',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFFD4B28C),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          const Icon(Icons.search, color: Color(0xFFEFE6DD)),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),

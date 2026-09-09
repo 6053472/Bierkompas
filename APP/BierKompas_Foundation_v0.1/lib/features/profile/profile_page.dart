@@ -6,6 +6,7 @@ import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
 import 'edit_profile_page.dart';
 import 'settings_page.dart';
+import 'stats_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,12 +16,15 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final _statsService = StatsService();
   AppUser? _user;
+  ProfileStats? _stats;
 
   @override
   void initState() {
     super.initState();
     _loadUser();
+    _loadStats();
   }
 
   Future<void> _loadUser() async {
@@ -38,6 +42,14 @@ class _ProfilePageState extends State<ProfilePage> {
           email: profile?['email'] as String? ?? authUser.email ?? '',
           avatarUrl: profile?['avatar_url'] as String?,
         ));
+  }
+
+  Future<void> _loadStats() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+    final stats = await _statsService.fetchStats(authUser.id);
+    if (!mounted) return;
+    setState(() => _stats = stats);
   }
 
   Future<void> _logout() async {
@@ -168,7 +180,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '🏆 Master Taster - Level 4',
+                          (_stats?.currentStreak ?? 0) > 0
+                              ? '🔥 ${_stats!.currentStreak} dagen op rij'
+                              : '🔥 Begin vandaag je streak',
                           style: GoogleFonts.inter(
                             color: const Color(0xFFD4B28C),
                             fontSize: 13,
@@ -259,11 +273,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   Row(
                     children: [
-                      _buildStatCard('124', 'GEPROEFD'),
+                      _buildStatCard('${_stats?.beersTasted ?? 0}', 'GEPROEFD'),
                       const SizedBox(width: 10),
-                      _buildStatCard('18', 'BROUWERIJEN'),
+                      _buildStatCard('${_stats?.breweriesExplored ?? 0}', 'BROUWERIJEN'),
                       const SizedBox(width: 10),
-                      _buildStatCard('12', 'BADGES'),
+                      _buildStatCard('${_stats?.earnedBadgeCount ?? 0}', 'BADGES'),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -292,21 +306,26 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Paspoort Grid (2x2)
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.3,
-                    children: [
-                      _buildPassportCard('Brewery Explorer', Icons.shield),
-                      _buildPassportCard('Weizen Lover', Icons.local_florist),
-                      _buildPassportCard('Local Regular', Icons.sports_bar),
-                      _buildPassportCard('Heritage Keeper', Icons.bookmark),
-                    ],
-                  ),
+                  // Paspoort Grid: badges op basis van de Streak-status.
+                  if (_stats == null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
+                      ),
+                    )
+                  else
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.3,
+                      children: _stats!.badges
+                          .map((badge) => _buildPassportCard(badge.title, badge.icon, badge.earned))
+                          .toList(),
+                    ),
                   const SizedBox(height: 24),
 
                   Align(
@@ -378,8 +397,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Hulpwidget voor paspoort items
-  Widget _buildPassportCard(String title, IconData icon) {
+  // Hulpwidget voor paspoort items. Vergrendelde badges tonen gedimd.
+  Widget _buildPassportCard(String title, IconData icon, bool earned) {
+    final accent = earned ? const Color(0xFFD4B28C) : const Color(0xFF6B5D50);
+    final textColor = earned ? const Color(0xFFEFE6DD) : const Color(0xFF9E8A7D);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -395,14 +416,14 @@ class _ProfilePageState extends State<ProfilePage> {
               color: Color(0xFF3C3028),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: const Color(0xFFD4B28C), size: 22),
+            child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
           ),
           const SizedBox(height: 10),
           Text(
             title,
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              color: const Color(0xFFEFE6DD),
+              color: textColor,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
