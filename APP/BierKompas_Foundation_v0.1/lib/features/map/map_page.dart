@@ -19,14 +19,6 @@ class MapPage extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(24.0),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFD4B28C).withOpacity(0.12),
-                    blurRadius: 12,
-                    spreadRadius: 6,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
               child: Column(
                 children: [
@@ -162,9 +154,8 @@ class MapPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD4B28C).withOpacity(0.12),
+            color: const Color(0xFFD4B28C).withOpacity(0.08),
             blurRadius: 12,
-            spreadRadius: 2,
             offset: const Offset(0, 4),
           ),
         ],

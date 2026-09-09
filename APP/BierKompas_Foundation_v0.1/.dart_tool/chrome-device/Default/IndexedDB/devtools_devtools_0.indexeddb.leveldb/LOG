@@ -1,3 +1,7 @@
-2026/08/31-09:54:05.980 b9a8 Reusing MANIFEST C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fc03d5c4\flutter_tools_chrome_device.973491e2\Default\IndexedDB\devtools_devtools_0.indexeddb.leveldb/MANIFEST-000001
-2026/08/31-09:54:05.980 b9a8 Recovering log #3
-2026/08/31-09:54:05.981 b9a8 Reusing old log C:\Users\Kirub\AppData\Local\Temp\flutter_tools.fc03d5c4\flutter_tools_chrome_device.973491e2\Default\IndexedDB\devtools_devtools_0.indexeddb.leveldb/000003.log 
+2026/09/09-12:11:53.233 5a20 Reusing MANIFEST C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default\IndexedDB\devtools_devtools_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/09-12:11:53.234 5a20 Recovering log #3
+2026/09/09-12:11:53.236 5a20 Reusing old log C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default\IndexedDB\devtools_devtools_0.indexeddb.leveldb/000003.log 
+2026/09/09-13:15:42.712 e498 Level-0 table #5: started
+2026/09/09-13:15:42.715 e498 Level-0 table #5: 1044 bytes OK
+2026/09/09-13:15:42.717 e498 Delete type=0 #3
+2026/09/09-13:15:42.718 e498 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

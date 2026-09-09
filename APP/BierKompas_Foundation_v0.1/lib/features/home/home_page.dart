@@ -19,27 +19,12 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   int _currentStreak = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _recordActivity();
-  }
-
-  Future<void> _recordActivity() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    await _statsService.recordDailyActivity(userId);
-    final stats = await _statsService.fetchStats(userId);
-    if (!mounted) return;
-    setState(() => _currentStreak = stats.currentStreak);
-  }
-
-  List<Widget> get _pages => [
-    DiscoveryContentPage(streak: _currentStreak), // Index 0: Ontdek
-    const EventPage(),            // Index 1: Agenda
-    const FavoritesPage(),
-    const MapPage(),
-    const ProfilePage(),
+    final List<Widget> _pages = [
+    const DiscoveryContentPage(), // Index 0: Ontdek
+    const EventsPage(), // Index 1: Agenda
+    const FavoritesPage(),       
+    const MapPage(),              
+    const ProfilePage(),         
   ];
 
   @override
@@ -268,10 +253,9 @@ class DiscoveryContentPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD4B28C).withOpacity(0.12),
+            color: const Color(0xFFD4B28C).withOpacity(0.08),
             blurRadius: 12,
-            spreadRadius: 6,
-            offset: const Offset(0, 6),
+            offset: const Offset(0, 4),
           ),
         ],
       ),

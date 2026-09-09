@@ -124,3 +124,66 @@
 2026-08-31 07:53:38.716: [INFO] BookmarkNodeMoved
 2026-08-31 07:53:46.357: [INFO] Sync initialization duration: 16825ms
 2026-09-03 10:54:50.002: [INFO] BookmarksSnapshot Shutdown total=43 bar=43 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-09 07:06:20.991: [INFO] CurrentProfilePath: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.ab559bbd\flutter_tools_chrome_device.48b77d2a\Default
+2026-09-09 07:06:20.991: [INFO] Profiles total count: 1
+2026-09-09 07:06:20.991: [INFO] Profile: name=Profiel 1 path=C:\Users\Kirub\AppData\Local\Temp\flutter_tools.ab559bbd\flutter_tools_chrome_device.48b77d2a\Default lastActive=null
+2026-09-09 07:06:20.991: [INFO] LastUsedProfileDir: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.ab559bbd\flutter_tools_chrome_device.48b77d2a\Default
+2026-09-09 07:06:20.991: [INFO] VisibilityChanged: 0
+2026-09-09 07:06:21.143: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 07:06:21.143: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 07:06:21.144: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 07:06:21.145: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 07:06:21.145: [INFO] OnDoneLoading sync enabled: 1
+2026-09-09 07:06:21.145: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-09 07:06:21.145: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-09 07:06:21.145: [INFO] BookmarksSnapshot Startup total=47 bar=47 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-09 07:06:33.337: [INFO] Sync initialization duration: 2385ms
+2026-09-09 09:58:17.533: [INFO] BookmarksSnapshot Shutdown total=47 bar=47 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-09 09:59:45.595: [INFO] CurrentProfilePath: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default
+2026-09-09 09:59:45.595: [INFO] Profiles total count: 1
+2026-09-09 09:59:45.595: [INFO] Profile: name=Profiel 1 path=C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default lastActive=null
+2026-09-09 09:59:45.595: [INFO] LastUsedProfileDir: C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default
+2026-09-09 09:59:45.595: [INFO] VisibilityChanged: 0
+2026-09-09 09:59:45.651: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 09:59:45.652: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 09:59:45.652: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 09:59:45.652: [INFO] BookmarkNodeAdded, ABU: 0
+2026-09-09 09:59:45.652: [INFO] OnDoneLoading sync enabled: 0
+2026-09-09 09:59:45.652: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-09 09:59:45.652: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-09 09:59:45.652: [INFO] BookmarksSnapshot Startup total=51 bar=51 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-09 09:59:48.871: [INFO] Primary account changed.
+2026-09-09 09:59:48.871: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-09-09 09:59:56.351: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.351: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.352: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 09:59:56.353: [INFO] BookmarkNodeMoved
+2026-09-09 10:00:06.251: [INFO] Sync initialization duration: 20597ms
+2026-09-09 11:19:24.841: [INFO] BookmarksSnapshot Shutdown total=51 bar=51 other=0 mobile=0 showBar=0 showBarNTP=1
