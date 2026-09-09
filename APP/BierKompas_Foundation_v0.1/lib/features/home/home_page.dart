@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
 
     final List<Widget> _pages = [
     const DiscoveryContentPage(), // Index 0: Ontdek
-    const EventPage(),            // Index 1: Agenda
+    const EventsPage(), // Index 1: Agenda
     const FavoritesPage(),       
     const MapPage(),              
     const ProfilePage(),         
@@ -224,10 +224,9 @@ class DiscoveryContentPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD4B28C).withOpacity(0.12),
+            color: const Color(0xFFD4B28C).withOpacity(0.08),
             blurRadius: 12,
-            spreadRadius: 6,
-            offset: const Offset(0, 6),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
