@@ -83,7 +83,8 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.menu, color: Color(0xFFEFE6DD)),
+                  // Even breed als het agenda-icoon rechts, zodat de titel gecentreerd blijft.
+                  const SizedBox(width: 24),
                   Text(
                     'Craft Discoveries',
                     style: GoogleFonts.playfairDisplay(

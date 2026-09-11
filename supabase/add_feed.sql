@@ -1,7 +1,11 @@
 -- BierKompas: Infinite Scroll Feed voor de Ontdek-pagina.
 -- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit bestand -> Run.
+-- Kan veilig opnieuw worden uitgevoerd.
 --
--- - feed_items: losse feed-content (mini-reviews, biertips en weetjes).
+-- - feed_items: losse feed-content (mini-reviews, biertips, weetjes en brouwerij-posts).
+--   beer_id / brewery_id verwijzen naar de vaste bieren en brouwerijen in de app
+--   (lib/features/favorites/beers.dart en lib/features/map/breweries.dart). Liken van zo'n
+--   post slaat het bier of de brouwerij op als favoriet; andere posts worden zelf bewaard.
 -- - feed (view): voegt feed_items samen met de bestaande tabel events, zodat
 --   evenementen uit de Agenda automatisch ook in de feed verschijnen.
 -- De app leest alleen de view, in batches van 15 via range (limit/offset),
@@ -9,14 +13,23 @@
 
 create table if not exists public.feed_items (
     id bigint generated always as identity primary key,
-    item_type text not null check (item_type in ('review', 'tip', 'weetje')),
+    item_type text not null,
     title text not null,
     body text not null,
     image_url text,
     author text,
     rating numeric(2,1) check (rating between 0 and 5),
+    beer_id bigint,
+    brewery_id bigint,
     created_at timestamptz not null default now()
 );
+
+-- Voor het geval de tabel al bestond zonder deze kolommen of met een oudere controle.
+alter table public.feed_items add column if not exists beer_id bigint;
+alter table public.feed_items add column if not exists brewery_id bigint;
+alter table public.feed_items drop constraint if exists feed_items_item_type_check;
+alter table public.feed_items add constraint feed_items_item_type_check
+    check (item_type in ('review', 'tip', 'weetje', 'brouwerij'));
 
 create index if not exists feed_items_created_at_idx on public.feed_items (created_at desc);
 
@@ -31,7 +44,8 @@ grant select on public.feed_items to anon, authenticated;
 -- Eén gemengde stroom. feed_key is uniek over beide tabellen en dient als
 -- tiebreaker, zodat paginering met offset geen items overslaat of dubbel toont.
 -- security_invoker zorgt dat de RLS-regels van de onderliggende tabellen gelden.
-create or replace view public.feed
+drop view if exists public.feed;
+create view public.feed
 with (security_invoker = on) as
 select
     'item-' || id as feed_key,
@@ -41,6 +55,8 @@ select
     image_url,
     author,
     rating,
+    beer_id,
+    brewery_id,
     null::timestamptz as event_start,
     null::text as event_location,
     created_at
@@ -54,6 +70,8 @@ select
     null,
     null,
     null,
+    null,
+    null,
     start_date,
     location_name || ', ' || city,
     created_at
@@ -62,7 +80,8 @@ from public.events;
 grant select on public.feed to anon, authenticated;
 
 -- Voorbeeldcontent (fictieve bieren), zodat de feed meerdere batches heeft.
--- Wordt alleen toegevoegd als feed_items nog leeg is.
+-- Wordt alleen toegevoegd als feed_items nog leeg is; de volgorde bepaalt de id's
+-- en komt overeen met lib/features/feed/feed_samples.dart.
 insert into public.feed_items (item_type, title, body, image_url, author, rating, created_at)
 select v.item_type, v.title, v.body, v.image_url, v.author, v.rating, v.created_at
 from (values
@@ -98,5 +117,33 @@ from (values
     ('weetje', 'De kraag doet ertoe', 'De schuimkraag houdt aroma''s vast, zodat je neus meeproeft. Zonder kraag verliest bier sneller zijn geur.', null, null, null, now() - interval '30 hours')
 ) as v(item_type, title, body, image_url, author, rating, created_at)
 where not exists (select 1 from public.feed_items);
+
+-- Reviews gaan over een bier uit beers.dart (zelfde naam).
+update public.feed_items f
+set beer_id = v.beer_id
+from (values
+    ('Koperen Nacht Tripel', 5),
+    ('Amber Kompas IPA', 6),
+    ('Donkere Molen Stout', 7),
+    ('Zomerhaven Witbier', 8),
+    ('Oude Sluis Dubbel', 9),
+    ('Veldkers Saison', 10),
+    ('Koperen Nacht Blond', 11),
+    ('Winterlicht Bock', 12),
+    ('Havenmeester Pale Ale', 13),
+    ('Kelderzuur Kriek', 14)
+) as v(title, beer_id)
+where f.item_type = 'review' and f.title = v.title;
+
+-- Posts over een brouwerij uit breweries.dart.
+insert into public.feed_items (item_type, title, body, author, brewery_id, created_at)
+select v.item_type, v.title, v.body, v.author, v.brewery_id, v.created_at
+from (values
+    ('brouwerij', 'Op bezoek bij De Molen', 'In Bodegraven begon Brouwerij De Molen in de historische korenmolen De Arkduif. Inmiddels is het een van de bekendste craftbrouwerijen van Nederland.', 'BierKompas', 3, now() - interval '150 minutes'),
+    ('brouwerij', 'Trappisten van Sint-Sixtus', 'In de Sint-Sixtusabdij in Westvleteren brouwen monniken sinds 1838 bier. Het is vrijwel alleen bij de abdij zelf te koop.', 'BierKompas', 2, now() - interval '510 minutes'),
+    ('brouwerij', 'Proeflokaal Brouwerij Hoop', 'Zin in een vers getapte IPA? Bij Brouwerij Hoop proef je de bieren direct in het eigen proeflokaal.', 'BierKompas', 1, now() - interval '870 minutes'),
+    ('brouwerij', 'Grutte Pier: bier & spijs', 'Het proeflokaal van Grutte Pier combineert Friese bieren met eten. Probeer het Dubbel stoofvlees.', 'BierKompas', 4, now() - interval '1230 minutes')
+) as v(item_type, title, body, author, brewery_id, created_at)
+where not exists (select 1 from public.feed_items f where f.title = v.title);
 
 NOTIFY pgrst, 'reload schema';

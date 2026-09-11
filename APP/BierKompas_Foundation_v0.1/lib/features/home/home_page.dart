@@ -2,8 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../auth/auth_gate.dart';
-import '../auth/auth_storage.dart';
+import '../favorites/beers.dart';
 import '../favorites/favorites_page.dart';
 import '../favorites/favorites_service.dart';
 import '../feed/feed_card.dart';
@@ -11,7 +10,6 @@ import '../feed/feed_service.dart';
 import '../map/breweries.dart';
 import '../map/map_page.dart';
 import '../profile/profile_page.dart';
-import '../profile/settings_page.dart';
 import '../profile/stats_service.dart';
 import '../events/events_page.dart';
 import '../../shared/profile_avatar_button.dart';
@@ -121,8 +119,6 @@ class _HomePageState extends State<HomePage> {
 const _background = Color(0xFF1C110A);
 const _primary = Color(0xFFFBB97B);
 const _onPrimary = Color(0xFF4B2800);
-const _primaryContainer = Color(0xFFD4975C);
-const _onPrimaryContainer = Color(0xFF583000);
 const _secondary = Color(0xFFE3BFB2);
 const _onSecondary = Color(0xFF422B22);
 const _secondaryContainer = Color(0xFF5D4339);
@@ -138,9 +134,6 @@ const _popularImage =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuANIbUEodWyxyWEqbHFoWd_APYDtoiXgTOVbAJ5TIOp9PKG4baeF5XYwf34634GW-PHvDpk4FhxpB1XlsZEFAl3BsWVxT8Gq-KlOZ01ggozbCfeF3fRoufrH8N5tDetdyMY9uKUxDAadw9wON36RlMvSHNjV30Ol5XjZ06tnPRARXfPUGTEFIa5xw_1m7rvTyggDsC2HvYxMuo3GNidOYo-3ypVQq14WiAoZWsApQQMn_T-2VSeoFN7';
 const _partnerImage =
     'https://lh3.googleusercontent.com/aida/AP1WRLvi8Zj598SlngHlPQofwL5eYRc3MWYFpw3q0uSxb7KHaatHvGFYih0mFHKiXgYpGD89u_tyS1o_Z-D8liFFV3vILgmLQ2B-62H7Kw3W71EdDCPKNBIdxCPSF2XAzQe0l51bqlHGvMUWnC96SsViQwlrVrdGlB93UeNGY657gJrtotMDVSkxt3ffWswZIsI3OM0wKkfthjWOFv1o1b-zqfn3YAaJ5uRGzluZ0svUF-FP31saG_v6yWa0kTQ';
-const _avatarImage =
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCaOSCJ0mEWtW6_caNgki6zyfvVSrPqtkTpUrPppdu2rofpmmEcReN07EJPVlPTYjmOrr5NstInEm4jgiQSklqnEXHQluDL7LF0u10cC7t7OzlE_i44wmNPD0C2rv0102xkvOzrW5-KkHpgAKnJQwrLCHaxg4SmIMjsZ6m8NCBLH6dbp8p-hp38o_88n0NygSuPoepqZoN-DmOq-YrFdsK2tdqn_AE_-lOCRLbcu9HM1dXqMg0xRh8b';
-
 class DiscoveryContentPage extends StatefulWidget {
   final int streak;
   final String? avatarUrl;
@@ -155,13 +148,13 @@ class DiscoveryContentPage extends StatefulWidget {
 }
 
 class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _favoritesService = FavoritesService();
-  bool _partnerIsFavorite = false;
+
+  /// Alles wat de gebruiker heeft geliked, als `type:id` (zie [FeedItem.favoriteKeyOf]).
+  final Set<String> _likedKeys = {};
 
   final _feedService = FeedService();
   final List<FeedItem> _feedItems = [];
-  final Set<String> _likedFeedKeys = {};
   bool _feedLoading = false;
   bool _feedHasMore = true;
   String? _feedError;
@@ -184,37 +177,46 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       final favorites = await _favoritesService.list(user.id);
       if (!mounted) return;
       setState(() {
-        _partnerIsFavorite = favorites.any(
-          (f) => f.itemType == breweryItemType && f.itemId == grutePierProeflokaal.id,
-        );
-        _likedFeedKeys
+        _likedKeys
           ..clear()
-          ..addAll(favorites
-              .map((f) => FeedItem.keyForFavorite(f.itemType, f.itemId))
-              .whereType<String>());
+          ..addAll(favorites.map((f) => FeedItem.favoriteKeyOf(f.itemType, f.itemId)));
       });
     } on FavoritesException catch (e) {
       debugPrint('Fout bij ophalen favorieten: $e');
     }
   }
 
-  // Zelfde gedrag als het hartje op de Kaart: meteen wisselen, terugzetten als opslaan mislukt.
-  Future<void> _togglePartnerFavorite() async {
+  bool _isLiked(String itemType, int itemId) =>
+      _likedKeys.contains(FeedItem.favoriteKeyOf(itemType, itemId));
+
+  // Voor alle hartjes op Ontdek: meteen wisselen, terugzetten als opslaan mislukt.
+  Future<void> _toggleLike(String itemType, int itemId) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-    final wasFavorite = _partnerIsFavorite;
-    setState(() => _partnerIsFavorite = !wasFavorite);
-    try {
-      if (wasFavorite) {
-        await _favoritesService.remove(
-            userId: user.id, itemType: breweryItemType, itemId: grutePierProeflokaal.id);
+    final key = FeedItem.favoriteKeyOf(itemType, itemId);
+    final wasLiked = _likedKeys.contains(key);
+    setState(() {
+      if (wasLiked) {
+        _likedKeys.remove(key);
       } else {
-        await _favoritesService.add(
-            userId: user.id, itemType: breweryItemType, itemId: grutePierProeflokaal.id);
+        _likedKeys.add(key);
+      }
+    });
+    try {
+      if (wasLiked) {
+        await _favoritesService.remove(userId: user.id, itemType: itemType, itemId: itemId);
+      } else {
+        await _favoritesService.add(userId: user.id, itemType: itemType, itemId: itemId);
       }
     } on FavoritesException catch (e) {
       if (!mounted) return;
-      setState(() => _partnerIsFavorite = wasFavorite);
+      setState(() {
+        if (wasLiked) {
+          _likedKeys.add(key);
+        } else {
+          _likedKeys.remove(key);
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
       );
@@ -275,9 +277,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           padding: const EdgeInsets.only(bottom: 16),
           child: FeedCard(
             item: item,
-            onTap: item.type == FeedItemType.evenement ? () => _goTo(_tabAgenda) : null,
-            isFavorite: _likedFeedKeys.contains(item.key),
-            onFavoriteTap: () => _toggleFeedFavorite(item),
+            onTap: switch (item.type) {
+              FeedItemType.evenement => () => _goTo(_tabAgenda),
+              FeedItemType.brouwerij => () => _goTo(_tabMap),
+              _ => null,
+            },
+            isFavorite: _isLiked(item.favoriteType, item.favoriteId),
+            onFavoriteTap: () => _toggleLike(item.favoriteType, item.favoriteId),
           ),
         );
       },
@@ -319,39 +325,6 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
-  // Zelfde gedrag als de andere hartjes: meteen wisselen, terugzetten als opslaan mislukt.
-  Future<void> _toggleFeedFavorite(FeedItem item) async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    final wasFavorite = _likedFeedKeys.contains(item.key);
-    setState(() {
-      if (wasFavorite) {
-        _likedFeedKeys.remove(item.key);
-      } else {
-        _likedFeedKeys.add(item.key);
-      }
-    });
-    try {
-      if (wasFavorite) {
-        await _favoritesService.remove(userId: user.id, itemType: item.favoriteType, itemId: item.favoriteId);
-      } else {
-        await _favoritesService.add(userId: user.id, itemType: item.favoriteType, itemId: item.favoriteId);
-      }
-    } on FavoritesException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        if (wasFavorite) {
-          _likedFeedKeys.add(item.key);
-        } else {
-          _likedFeedKeys.remove(item.key);
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
-      );
-    }
-  }
-
   void _goTo(int tab) => widget.onNavigate?.call(tab);
 
   void _showComingSoon() {
@@ -360,21 +333,10 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
-  Future<void> _logout() async {
-    await AuthStorage.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AuthGate()),
-      (route) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey,
       backgroundColor: _background,
-      drawer: _buildDrawer(),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -393,9 +355,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                     badge: 'Vandaag Getapt',
                     badgeColor: _primary,
                     badgeTextColor: _onPrimary,
-                    title: 'Koperen Nacht Tripel',
+                    title: koperenNachtTripel.name,
                     subtitle: 'Intens, kruidig met tonen van karamel.',
                     onTap: () => _goTo(_tabFavorites),
+                    topRight: _heartButton(
+                      _isLiked(beerItemType, koperenNachtTripel.id),
+                      () => _toggleLike(beerItemType, koperenNachtTripel.id),
+                    ),
                   ),
                   const SizedBox(height: 48),
                   _sectionLabel('Partner in de Kijker'),
@@ -407,20 +373,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                     title: grutePierProeflokaal.title,
                     subtitle: 'Bier & Spijs specialiteiten: Probeer ons Dubbel stoofvlees.',
                     onTap: () => _goTo(_tabMap),
-                    topRight: GestureDetector(
-                      onTap: _togglePartnerFavorite,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _partnerIsFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: _partnerIsFavorite ? _primary : Colors.white,
-                          size: 18,
-                        ),
-                      ),
+                    topRight: _heartButton(
+                      _isLiked(breweryItemType, grutePierProeflokaal.id),
+                      () => _toggleLike(breweryItemType, grutePierProeflokaal.id),
                     ),
                   ),
                   const SizedBox(height: 48),
@@ -439,16 +394,32 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
+  Widget _heartButton(bool liked, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          liked ? Icons.favorite : Icons.favorite_border,
+          color: liked ? _primary : Colors.white,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Container(
       color: _background,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            icon: const Icon(Icons.menu, color: _primary),
-          ),
+          // Zelfde breedte als de profielknop rechts, zodat het logo in het midden blijft.
+          const SizedBox(width: 36),
           Expanded(
             child: Center(
               child: SizedBox(
@@ -773,123 +744,6 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 child: Text(label, style: GoogleFonts.openSans(color: _onSurface, fontSize: 16)),
               ),
               const Icon(Icons.chevron_right, color: _onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      width: 320,
-      backgroundColor: _surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(12)),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _primary, width: 2),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: _networkImage(
-                        _avatarImage,
-                        fallback: const Icon(Icons.person, color: _onSurfaceVariant, size: 32),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Meester Proever',
-                          style: GoogleFonts.playfairDisplay(
-                            color: _primary,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'Goud Niveau',
-                          style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    _drawerItem(Icons.person_outline, 'Mijn Profiel', () => _goTo(_tabProfile),
-                        highlighted: true),
-                    const SizedBox(height: 8),
-                    _drawerItem(Icons.bookmarks_outlined, 'Favoriete Bieren', () => _goTo(_tabFavorites)),
-                    const SizedBox(height: 8),
-                    _drawerItem(Icons.local_drink_outlined, 'Brouwerij Bezoeken', () => _goTo(_tabMap)),
-                    const SizedBox(height: 8),
-                    _drawerItem(
-                      Icons.settings_outlined,
-                      'Instellingen',
-                      () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SettingsPage()),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _drawerItem(Icons.logout, 'Uitloggen', _logout),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Menu-item in de drawer: sluit eerst de drawer en voert daarna [action] uit.
-  Widget _drawerItem(IconData icon, String label, VoidCallback action, {bool highlighted = false}) {
-    final color = highlighted ? _onPrimaryContainer : _onSurfaceVariant;
-    return Material(
-      color: highlighted ? _primaryContainer : Colors.transparent,
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: () {
-          Navigator.of(context).pop();
-          action();
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Icon(icon, color: color),
-              const SizedBox(width: 16),
-              Text(
-                label,
-                style: GoogleFonts.openSans(
-                  color: color,
-                  fontSize: 16,
-                  fontWeight: highlighted ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
             ],
           ),
         ),

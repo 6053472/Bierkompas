@@ -36,6 +36,7 @@ class FeedCard extends StatelessWidget {
       FeedItemType.review => ('MINI-REVIEW', Icons.rate_review_outlined),
       FeedItemType.tip => ('BIERTIP', Icons.lightbulb_outline),
       FeedItemType.weetje => ('WEETJE', Icons.auto_stories_outlined),
+      FeedItemType.brouwerij => ('BROUWERIJ', Icons.factory_outlined),
       FeedItemType.evenement => ('EVENEMENT', Icons.event_outlined),
     };
     final imageUrl = item.imageUrl;
@@ -179,6 +180,7 @@ class FeedCard extends StatelessWidget {
         );
       case FeedItemType.tip:
       case FeedItemType.weetje:
+      case FeedItemType.brouwerij:
         final author = item.author;
         return author == null ? null : Text(author, style: metaStyle);
     }

@@ -1,3 +1,4 @@
+import '../favorites/beers.dart';
 import 'feed_service.dart';
 
 const _tripelImage =
@@ -48,8 +49,18 @@ List<FeedItem> _buildSamples() {
     (FeedItemType.weetje, 'De kraag doet ertoe', "De schuimkraag houdt aroma's vast, zodat je neus meeproeft. Zonder kraag verliest bier sneller zijn geur.", null, null, null),
   ];
 
+  // Posts over een brouwerij uit breweries.dart: (titel, tekst, brouwerij-id, uren geleden).
+  const breweryPosts = <(String, String, int, double)>[
+    ('Op bezoek bij De Molen', 'In Bodegraven begon Brouwerij De Molen in de historische korenmolen De Arkduif. Inmiddels is het een van de bekendste craftbrouwerijen van Nederland.', 3, 2.5),
+    ('Trappisten van Sint-Sixtus', 'In de Sint-Sixtusabdij in Westvleteren brouwen monniken sinds 1838 bier. Het is vrijwel alleen bij de abdij zelf te koop.', 2, 8.5),
+    ('Proeflokaal Brouwerij Hoop', 'Zin in een vers getapte IPA? Bij Brouwerij Hoop proef je de bieren direct in het eigen proeflokaal.', 1, 14.5),
+    ('Grutte Pier: bier & spijs', 'Het proeflokaal van Grutte Pier combineert Friese bieren met eten. Probeer het Dubbel stoofvlees.', 4, 20.5),
+  ];
+
+  // Reviews gaan over een bier uit beers.dart met dezelfde naam.
+  final beerIdByName = {for (final beer in beers) beer.name: beer.id};
   final now = DateTime.now();
-  return [
+  final items = [
     for (var i = 0; i < rows.length; i++)
       FeedItem(
         key: 'item-${i + 1}',
@@ -59,7 +70,20 @@ List<FeedItem> _buildSamples() {
         imageUrl: rows[i].$4,
         author: rows[i].$5,
         rating: rows[i].$6,
+        beerId: rows[i].$1 == FeedItemType.review ? beerIdByName[rows[i].$2] : null,
         createdAt: now.subtract(Duration(hours: i + 1)),
       ),
+    for (var i = 0; i < breweryPosts.length; i++)
+      FeedItem(
+        key: 'item-${rows.length + i + 1}',
+        type: FeedItemType.brouwerij,
+        title: breweryPosts[i].$1,
+        body: breweryPosts[i].$2,
+        author: 'BierKompas',
+        breweryId: breweryPosts[i].$3,
+        createdAt: now.subtract(Duration(minutes: (breweryPosts[i].$4 * 60).round())),
+      ),
   ];
+  items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return items;
 }

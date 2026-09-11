@@ -1,8 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../favorites/beers.dart' show beerItemType;
+import '../map/breweries.dart' show breweryItemType;
 import 'feed_samples.dart';
 
 /// Soort content in de feed; komt uit de kolom `item_type` van de view `feed`.
-enum FeedItemType { review, tip, weetje, evenement }
+enum FeedItemType { review, tip, weetje, brouwerij, evenement }
 
 class FeedItem {
   /// Uniek over alle bronnen van de feed, bijv. `item-12` of `event-3`.
@@ -17,6 +19,12 @@ class FeedItem {
   final String? eventLocation;
   final DateTime createdAt;
 
+  /// Het bier waar deze post over gaat (id uit beers.dart), of null.
+  final int? beerId;
+
+  /// De brouwerij waar deze post over gaat (id uit breweries.dart), of null.
+  final int? breweryId;
+
   const FeedItem({
     required this.key,
     required this.type,
@@ -28,6 +36,8 @@ class FeedItem {
     this.rating,
     this.eventStart,
     this.eventLocation,
+    this.beerId,
+    this.breweryId,
   });
 
   factory FeedItem.fromJson(Map<String, dynamic> json) => FeedItem(
@@ -43,14 +53,26 @@ class FeedItem {
         rating: (json['rating'] as num?)?.toDouble(),
         eventStart: json['event_start'] == null ? null : DateTime.parse(json['event_start'] as String),
         eventLocation: json['event_location'] as String?,
+        beerId: (json['beer_id'] as num?)?.toInt(),
+        breweryId: (json['brewery_id'] as num?)?.toInt(),
         createdAt: DateTime.parse(json['created_at'] as String),
       );
 
-  /// Hoe dit item in de tabel `favorites` wordt opgeslagen (`item_type` en `item_id`).
-  String get favoriteType => type == FeedItemType.evenement ? 'event' : 'feed_item';
-  int get favoriteId => int.parse(key.substring(key.indexOf('-') + 1));
+  /// Hoe een like op deze post in de tabel `favorites` wordt opgeslagen. Een post over
+  /// een bier of brouwerij liket dat bier of die brouwerij; anders wordt de post zelf bewaard.
+  String get favoriteType {
+    if (beerId != null) return beerItemType;
+    if (breweryId != null) return breweryItemType;
+    return type == FeedItemType.evenement ? 'event' : 'feed_item';
+  }
 
-  /// De feed_key die bij een favoriet hoort, of null als die favoriet geen feed-item is.
+  int get favoriteId => beerId ?? breweryId ?? int.parse(key.substring(key.indexOf('-') + 1));
+
+  /// Sleutel voor een set met likes, bijv. `beer:5` of `feed_item:12`.
+  static String favoriteKeyOf(String itemType, int itemId) => '$itemType:$itemId';
+
+  /// De feed_key die bij een gelikete post hoort, of null als de favoriet geen post is
+  /// (maar bijvoorbeeld een bier of brouwerij).
   static String? keyForFavorite(String itemType, int itemId) => switch (itemType) {
         'feed_item' => 'item-$itemId',
         'event' => 'event-$itemId',
@@ -88,7 +110,7 @@ class FeedService {
     }
   }
 
-  /// Haalt specifieke items op, bijvoorbeeld je gelikete feed-berichten; nieuwste eerst.
+  /// Haalt specifieke items op, bijvoorbeeld je gelikete posts; nieuwste eerst.
   Future<List<FeedItem>> fetchByKeys(List<String> keys) async {
     try {
       final rows = await _client
