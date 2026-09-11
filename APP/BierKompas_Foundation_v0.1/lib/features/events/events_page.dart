@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'event_create.dart';
+import '../../shared/profile_avatar_button.dart';
 
 class EventsPage extends StatefulWidget {
-  const EventsPage({super.key});
+  const EventsPage({super.key, this.avatarUrl, this.onProfileTap});
+
+  final String? avatarUrl;
+  final VoidCallback? onProfileTap;
 
   @override
   State<EventsPage> createState() => _EventsPageState();
@@ -59,14 +63,21 @@ class _EventsPageState extends State<EventsPage> {
                     children: [
                       const Icon(Icons.sports_bar, color: beigeColor, size: 30),
                       const SizedBox(width: 7),
-                      Text(
-                        'Evenementen',
-                        style: GoogleFonts.playfairDisplay(
-                          color: textColor,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          'Evenementen',
+                          style: GoogleFonts.playfairDisplay(
+                            color: textColor,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
+                      if (widget.onProfileTap != null)
+                        ProfileAvatarButton(
+                          onTap: widget.onProfileTap!,
+                          avatarUrl: widget.avatarUrl,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 15),

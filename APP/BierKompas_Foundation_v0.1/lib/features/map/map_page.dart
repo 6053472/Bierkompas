@@ -5,9 +5,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../favorites/favorites_service.dart';
 import 'breweries.dart';
+import '../../shared/profile_avatar_button.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  const MapPage({super.key, this.avatarUrl, this.onProfileTap});
+
+  final String? avatarUrl;
+  final VoidCallback? onProfileTap;
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -128,14 +132,21 @@ class _MapPageState extends State<MapPage> {
                         children: [
                           const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30),
                           const SizedBox(width: 8),
-                          Text(
-                            'Kaart',
-                            style: GoogleFonts.playfairDisplay(
-                              color: const Color(0xFFEFE6DD),
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              'Kaart',
+                              style: GoogleFonts.playfairDisplay(
+                                color: const Color(0xFFEFE6DD),
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
+                          if (widget.onProfileTap != null)
+                            ProfileAvatarButton(
+                              onTap: widget.onProfileTap!,
+                              avatarUrl: widget.avatarUrl,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 15),

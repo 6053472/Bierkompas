@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../map/breweries.dart';
 import 'favorites_service.dart';
+import '../../shared/profile_avatar_button.dart';
 
 // Kleuren uit het "Artisanal Draught" design system (DESIGN.md).
 const _background = Color(0xFF1C110A);
@@ -60,7 +61,10 @@ const _events = [
 ];
 
 class FavoritesPage extends StatelessWidget {
-  const FavoritesPage({super.key});
+  const FavoritesPage({super.key, this.avatarUrl, this.onProfileTap});
+
+  final String? avatarUrl;
+  final VoidCallback? onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +143,10 @@ class FavoritesPage extends StatelessWidget {
             ),
           ),
           const Icon(Icons.search, color: _onSurfaceVariant),
+          if (onProfileTap != null) ...[
+            const SizedBox(width: 12),
+            ProfileAvatarButton(onTap: onProfileTap!, avatarUrl: avatarUrl, size: 32),
+          ],
         ],
       ),
     );
