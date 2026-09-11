@@ -108,6 +108,7 @@ class DiscoveryContentPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      
                       Text(
                         'Brouwerij Restaurants',
                         style: GoogleFonts.playfairDisplay(
