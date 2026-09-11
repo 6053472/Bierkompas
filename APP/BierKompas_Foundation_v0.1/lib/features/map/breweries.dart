@@ -19,6 +19,15 @@ class Brewery {
   });
 }
 
+/// Partner op de Ontdek-pagina; te liken via het hartje daar en op de Kaart.
+const grutePierProeflokaal = Brewery(
+  id: 4,
+  title: 'Grutte Pier Proeflokaal',
+  distance: '2.4 km bij jou vandaan',
+  rating: '4.8',
+  tags: ['BIER & SPIJS', 'PARTNER'],
+);
+
 const breweries = [
   Brewery(
     id: 1,
@@ -41,4 +50,5 @@ const breweries = [
     rating: '4.7',
     tags: ['STOUTS', 'BARREL'],
   ),
+  grutePierProeflokaal,
 ];
