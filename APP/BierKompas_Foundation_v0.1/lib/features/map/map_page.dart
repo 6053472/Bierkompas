@@ -1,55 +1,116 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
-class MapPage extends StatelessWidget {
+class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
+  @override
+  State<MapPage> createState() => _MapPageState();
+}
+
+class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1E1712),
-      body: SafeArea(
-        child: Column(
-          children: [
-
-            Container(
-              padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 16.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C221C),
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(24.0),
-                ),
+      body: Stack(
+        children: [
+          // 1. OpenStreetMap achtergrond
+          FlutterMap(
+            options: const MapOptions(
+              initialCenter: LatLng(52.0907, 5.1214),
+              initialZoom: 14.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.bierkompas',
               ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ],
+          ),
+
+          // 2. UI-elementen erbovenop
+          SafeArea(
+            child: Column(
+              children: [
+                // Header met dezelfde stijl als EventsPage
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C221C),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD4B28C).withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.sports_bar, color: Color(0xFFD4B28C)),
+                          const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30),
                           const SizedBox(width: 8),
                           Text(
-                            'Bierkompas',
+                            'Kaart',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFEFE6DD),
-                              fontSize: 20,
+                              fontSize: 28,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const Icon(Icons.search, color: Color(0xFFEFE6DD)),
+                      const SizedBox(height: 15),
+                      Text(
+                        'De Moderne Kaart',
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFD4B28C),
+                          fontSize: 26,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Ontdek unieke brouwerijen en proeflokalen bij jou in de buurt, zorgvuldig geselecteerd op erfgoed en kwaliteit.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF9E8A7D),
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                ),
 
-                  Container(
+                // Zoekbalk onder de header
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    height: 40,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2E241E),
+                      color: const Color(0xFF2C221C),
                       borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0xFF3E312A)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -68,75 +129,52 @@ class MapPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+                ),
 
-            // Sectie titel
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Brouwerijen in de buurt',
-                    style: GoogleFonts.playfairDisplay(
-                      color: const Color(0xFFEFE6DD),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                // Gecentreerde kaarten carrousel
+                Expanded(
+                  child: Center(
+                    child: SizedBox(
+                      height: 380,
+                      child: PageView(
+                        controller: PageController(viewportFraction: 0.86),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+                            child: _buildBreweryCard(
+                              title: 'Brouwerij Hoop',
+                              distance: '0.8 km bij jou vandaan',
+                              rating: '4.8',
+                              tags: ['IPA', 'PROEFLOKAAL'],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+                            child: _buildBreweryCard(
+                              title: 'Saint Sixtus',
+                              distance: '1.2 km bij jou vandaan',
+                              rating: '4.9',
+                              tags: ['TRAPPIST', 'BEPERKT'],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+                            child: _buildBreweryCard(
+                              title: 'De Molen',
+                              distance: '3.5 km bij jou vandaan',
+                              rating: '4.7',
+                              tags: ['STOUTS', 'BARREL'],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Alles bekijken →',
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFFD4B28C),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            Expanded(
-              child: Center(
-                child: SizedBox(
-                  height: 400, 
-                  child: ListView(
-                    shrinkWrap: true,
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    children: [
-                      _buildBreweryCard(
-                        title: 'Brouwerij Hoop',
-                        distance: '0.8 km bij jou vandaan',
-                        rating: '4.8',
-                        tags: ['IPA', 'PROEFLOKAAL'],
-                      ),
-                      const SizedBox(width: 16),
-                      _buildBreweryCard(
-                        title: 'Saint Sixtus',
-                        distance: '1.2 km bij jou vandaan',
-                        rating: '4.9',
-                        tags: ['TRAPPIST', 'BEPERKT'],
-                      ),
-                      const SizedBox(width: 16),
-                      _buildBreweryCard(
-                        title: 'De Molen',
-                        distance: '3.5 km bij jou vandaan',
-                        rating: '4.7',
-                        tags: ['STOUTS', 'BARREL'],
-                      ),
-                    ],
                   ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -148,14 +186,14 @@ class MapPage extends StatelessWidget {
     required List<String> tags,
   }) {
     return Container(
-      width: 300, // Vergrote breedte van de kaart
       decoration: BoxDecoration(
         color: const Color(0xFF2C221C),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF3E312A), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD4B28C).withOpacity(0.08),
-            blurRadius: 12,
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
@@ -163,18 +201,38 @@ class MapPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 165, // Vergrote hoogte van de afbeelding/placeholder
-            decoration: const BoxDecoration(
-              color: Color(0xFF4A3B32),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: const Center(
-              child: Icon(Icons.image, color: Color(0xFF8C7365), size: 48),
-            ),
+          Stack(
+            children: [
+              Container(
+                height: 210,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3E312A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: const Center(
+                  child: Icon(Icons.image, color: Color(0xFF7A6355), size: 48),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.favorite_border,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
           Padding(
-            padding: const EdgeInsets.all(14.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -187,20 +245,20 @@ class MapPage extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.playfairDisplay(
                           color: Colors.white,
-                          fontSize: 18, // Iets groter lettertype voor de titel
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
                         const SizedBox(width: 4),
                         Text(
                           rating,
                           style: GoogleFonts.inter(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -208,10 +266,10 @@ class MapPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.navigation, color: Color(0xFF9E8A7D), size: 14),
+                    const Icon(Icons.navigation, color: Color(0xFF9E8A7D), size: 12),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -219,7 +277,7 @@ class MapPage extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           color: const Color(0xFF9E8A7D),
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -234,7 +292,8 @@ class MapPage extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFF1E1712),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFF3E312A)),
                             ),
                             child: Text(
                               tag,

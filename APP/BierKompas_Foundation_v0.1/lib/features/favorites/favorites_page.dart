@@ -30,13 +30,13 @@ class FavoritesPage extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.sports_bar, color: Color(0xFFD4B28C)),
+                          const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30, ),
                           const SizedBox(width: 8),
                           Text(
                             'De Moderne Speakeasy',
                             style: GoogleFonts.playfairDisplay(
                               color: const Color(0xFFEFE6DD),
-                              fontSize: 18,
+                              fontSize: 25,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -60,7 +60,7 @@ class FavoritesPage extends StatelessWidget {
                     style: GoogleFonts.inter(
                       color: const Color(0xFF9E8A7D),
                       fontSize: 13,
-                      height: 1.4,
+                     
                     ),
                   ),
                 ],

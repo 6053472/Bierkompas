@@ -1,4 +1,16 @@
-2026/09/09-11:59:44.549 c0b8 Reusing MANIFEST C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default\Sync Data\LevelDB/MANIFEST-000001
-2026/09/09-11:59:44.551 c0b8 Recovering log #13
-2026/09/09-11:59:44.552 c0b8 Reusing old log C:\Users\Kirub\AppData\Local\Temp\flutter_tools.733a5bb9\flutter_tools_chrome_device.8bb09f49\Default\Sync Data\LevelDB/000013.log 
-2026/09/09-11:59:44.553 c0b8 Delete type=0 #6
+2026/09/10-10:41:10.372 2414 Reusing MANIFEST C:\Users\Kirub\AppData\Local\Temp\flutter_tools.26542ab0\flutter_tools_chrome_device.ad8571eb\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/09/10-10:41:10.376 2414 Recovering log #13
+2026/09/10-10:41:10.378 2414 Reusing old log C:\Users\Kirub\AppData\Local\Temp\flutter_tools.26542ab0\flutter_tools_chrome_device.ad8571eb\Default\Sync Data\LevelDB/000013.log 
+2026/09/10-10:41:10.379 2414 Delete type=0 #3
+2026/09/10-10:41:22.974 a3dc Level-0 table #17: started
+2026/09/10-10:41:22.981 a3dc Level-0 table #17: 122542 bytes OK
+2026/09/10-10:41:22.983 a3dc Delete type=0 #13
+2026/09/10-10:41:22.984 a3dc Compacting 4@0 + 1@1 files
+2026/09/10-10:41:22.990 a3dc Generated table #18@0: 313 keys, 43598 bytes
+2026/09/10-10:41:22.990 a3dc Compacted 4@0 + 1@1 files => 43598 bytes
+2026/09/10-10:41:22.991 a3dc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/09/10-10:41:22.991 a3dc Delete type=2 #7
+2026/09/10-10:41:22.991 a3dc Delete type=2 #10
+2026/09/10-10:41:22.991 a3dc Delete type=2 #12
+2026/09/10-10:41:22.991 a3dc Delete type=2 #14
+2026/09/10-10:41:22.991 a3dc Delete type=2 #17
