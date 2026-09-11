@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,6 +6,8 @@ import '../auth/auth_gate.dart';
 import '../auth/auth_storage.dart';
 import '../favorites/favorites_page.dart';
 import '../favorites/favorites_service.dart';
+import '../feed/feed_card.dart';
+import '../feed/feed_service.dart';
 import '../map/breweries.dart';
 import '../map/map_page.dart';
 import '../profile/profile_page.dart';
@@ -134,13 +137,25 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   final _favoritesService = FavoritesService();
   bool _partnerIsFavorite = false;
 
+  final _feedService = FeedService();
+  final List<FeedItem> _feedItems = [];
+  final Set<String> _likedFeedKeys = {};
+  bool _feedLoading = false;
+  bool _feedHasMore = true;
+  String? _feedError;
+
+  // Zoveel items voor het einde van de geladen lijst start de volgende batch
+  // (bij batches van 15 dus zodra de gebruiker bij item 10 is).
+  static const _feedPrefetchDistance = 5;
+
   @override
   void initState() {
     super.initState();
-    _loadPartnerFavorite();
+    _loadFavorites();
+    _scheduleNextFeedPage();
   }
 
-  Future<void> _loadPartnerFavorite() async {
+  Future<void> _loadFavorites() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
     try {
@@ -150,6 +165,11 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         _partnerIsFavorite = favorites.any(
           (f) => f.itemType == breweryItemType && f.itemId == grutePierProeflokaal.id,
         );
+        _likedFeedKeys
+          ..clear()
+          ..addAll(favorites
+              .map((f) => FeedItem.keyForFavorite(f.itemType, f.itemId))
+              .whereType<String>());
       });
     } on FavoritesException catch (e) {
       debugPrint('Fout bij ophalen favorieten: $e');
@@ -173,6 +193,137 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     } on FavoritesException catch (e) {
       if (!mounted) return;
       setState(() => _partnerIsFavorite = wasFavorite);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
+      );
+    }
+  }
+
+  Future<void> _loadNextFeedPage() async {
+    if (_feedLoading || !_feedHasMore) return;
+    setState(() {
+      _feedLoading = true;
+      _feedError = null;
+    });
+    try {
+      final page = await _feedService.fetchPage(_feedItems.length);
+      if (!mounted) return;
+      // Afbeeldingen van de nieuwe batch alvast op de achtergrond in de cache laden,
+      // zodat ze klaarstaan voordat de kaart in beeld scrolt.
+      for (final item in page) {
+        final url = item.imageUrl;
+        if (url != null) {
+          precacheImage(CachedNetworkImageProvider(url), context, onError: (_, __) {});
+        }
+      }
+      setState(() {
+        _feedItems.addAll(page);
+        _feedHasMore = page.length == FeedService.pageSize;
+        _feedLoading = false;
+      });
+    } on FeedException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _feedError = e.message;
+        _feedLoading = false;
+      });
+    }
+  }
+
+  // Wordt tijdens het bouwen van de lijst aangeroepen; setState mag daar niet, dus na het frame.
+  void _scheduleNextFeedPage() {
+    if (_feedLoading || !_feedHasMore || _feedError != null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadNextFeedPage();
+    });
+  }
+
+  /// De Ontdek-pagina als één lijst: eerst de vaste secties, daarna de eindeloze feed.
+  Widget _buildFeedList({required List<Widget> header}) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      itemCount: header.length + _feedItems.length + 1,
+      itemBuilder: (context, index) {
+        if (index < header.length) return header[index];
+        final feedIndex = index - header.length;
+        if (feedIndex == _feedItems.length) return _buildFeedFooter();
+        if (feedIndex >= _feedItems.length - _feedPrefetchDistance) _scheduleNextFeedPage();
+        final item = _feedItems[feedIndex];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: FeedCard(
+            item: item,
+            onTap: item.type == FeedItemType.evenement ? () => _goTo(_tabAgenda) : null,
+            isFavorite: _likedFeedKeys.contains(item.key),
+            onFavoriteTap: () => _toggleFeedFavorite(item),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeedFooter() {
+    final style = GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14);
+    if (_feedError != null) {
+      return Column(
+        children: [
+          Text('Kon de feed niet laden: $_feedError', textAlign: TextAlign.center, style: style),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: _loadNextFeedPage,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _primary),
+            ),
+            child: const Text('Opnieuw proberen'),
+          ),
+        ],
+      );
+    }
+    if (_feedHasMore) {
+      _scheduleNextFeedPage();
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(color: _primary)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        _feedItems.isEmpty ? 'Nog geen berichten in de feed.' : 'Je bent helemaal bij! 🍺',
+        textAlign: TextAlign.center,
+        style: style,
+      ),
+    );
+  }
+
+  // Zelfde gedrag als de andere hartjes: meteen wisselen, terugzetten als opslaan mislukt.
+  Future<void> _toggleFeedFavorite(FeedItem item) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final wasFavorite = _likedFeedKeys.contains(item.key);
+    setState(() {
+      if (wasFavorite) {
+        _likedFeedKeys.remove(item.key);
+      } else {
+        _likedFeedKeys.add(item.key);
+      }
+    });
+    try {
+      if (wasFavorite) {
+        await _favoritesService.remove(userId: user.id, itemType: item.favoriteType, itemId: item.favoriteId);
+      } else {
+        await _favoritesService.add(userId: user.id, itemType: item.favoriteType, itemId: item.favoriteId);
+      }
+    } on FavoritesException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorite) {
+          _likedFeedKeys.add(item.key);
+        } else {
+          _likedFeedKeys.remove(item.key);
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
       );
@@ -208,9 +359,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           children: [
             _buildHeader(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                children: [
+              child: _buildFeedList(
+                header: [
                   _buildWelcome(),
                   const SizedBox(height: 48),
                   _buildActionGrid(),
@@ -256,6 +406,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                   _buildShortcut(Icons.bookmarks_outlined, 'Mijn Favorieten', () => _goTo(_tabFavorites)),
                   const SizedBox(height: 12),
                   _buildShortcut(Icons.restaurant_outlined, 'Tafeltje Reserveren', () => _goTo(_tabFavorites)),
+                  const SizedBox(height: 48),
+                  _sectionLabel('Bierfeed'),
                 ],
               ),
             ),

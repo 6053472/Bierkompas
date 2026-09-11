@@ -6,7 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../feed/feed_card.dart';
+import '../feed/feed_service.dart';
 import '../map/breweries.dart';
+import 'beers.dart';
 import 'favorites_service.dart';
 
 // Kleuren uit het "Artisanal Draught" design system (DESIGN.md).
@@ -22,15 +25,6 @@ const _glass = Color(0xB32C1810); // rgba(44, 24, 16, 0.7)
 const _heroImage =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuDknuVmwDTa5jB4wik1JsFZcg3HGHEguJ8tKYPIGvMOxeMgWo55nIZ92P0i_iTaZK5gCmhHDfSDDGd8HAgulU_Nt_waa4YIg1QNZCDQnGG9J70xbRh0XNaZFjxojqCPad3s7iiMSHzET5kRpj3GQcD9-hE4MuWtaKdUaP4Wkk6S1kxJhurPAITpPBmmuOIAnJ0_rU6wNjOB6JuYsppLKZZ370oFdfVTbvOpttwPVmC3aU02O1rJkSR2';
 
-class _Beer {
-  final String style;
-  final String name;
-  final String abv;
-  final String imageUrl;
-
-  const _Beer(this.style, this.name, this.abv, this.imageUrl);
-}
-
 class _Event {
   final String title;
   final String price;
@@ -41,17 +35,6 @@ class _Event {
   const _Event(this.title, this.price, this.icon, this.date, this.description);
 }
 
-const _beers = [
-  _Beer('Tripel', 'Zatte', '8.0% ABV',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDQSCqvGkWdWMlwfupGl91szQSrCWrALjA9GRwWJXueax7jPuXpUlp25nyvBU6aZQLdZQK5GhMLDXnTASCYfTSpxzSWfs5ZnG1v7yJFqfPBgBMF3byFTXnc6GDzJV0AO0mAzsSX0O1NpZC-ZYV27Q2Jy3XqpGQjtHUjTEkom4_rAo8XiHpVqNlwdiuoHSJ3hgFq1-tXA9QFVF_Z-ZwFSwOnyst4SymKwKdUzushskZBmAVcW34NMIXi'),
-  _Beer('Dubbel', 'Natte', '6.5% ABV',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDgFbx2LA5zvRWdpgP1NJAVi-gWgJuS9Abp2lD1nq9d1jqWL_qD0QFFDrQ3LcgcqLbamUf_TrZuVNOaXEAQTx44PSpeHaMDeINiUJjC8cvtsasKzuX1qM-eO8g0Ppl5QIIS5vJttLYewcC_GmmhzgTsNbS7mBXcBSPwIbnxgHcV7VnrgB6UuIs1a1tWirbuGOeE7XvAbZlVQI9p2450I0jaLRoAyCaWnFNmw9Pj4J4OnHLNfEWPXCtV'),
-  _Beer('Witbier', 'IJwit', '6.5% ABV',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDQhKscA00YiHmLOCdFOnKCDnUdAW9kZbBWb69ou6CZYBeHe2q_KbKtwlHDL0lQkAPAzsuvqmU8pVUmGHnRg0EWpY5Ik6FPaApETd4GFJ8GNjNmCAwJ6UFY300bVAFedalKlJ4kScOIAVCDoLzrV9zFMfi2_qs893DP-Tb2j9J-xeHYZerm49wZU1lpqFBiWmJnNAe65PEpi4vsS5PdJhcm0R7KwgjTuk-DTrYbqCMr6frfIMKx7qQK'),
-  _Beer('Amber Ale', 'Columbus', '9.0% ABV',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDzhnMA6a-cCYnZ4dSjHCbGFUCvVBqXUZ9Mjk381yzhl0FoUiVgLmBWOKSPR3dEAVnnWVP1ViPRMKTviMaubvedPJI8ZXYMKr2bHJp9kjDRoEAO6A3vh371Km-kVjS9517tTWX1sD4_SpqLSWD2-RUMkSVP5qWL233CRvFNvB207EKaTmWkQClVLTqYIyOY1ub3PvqQO7wKkKnn-D4nvwFWeRXl3ZPDG8Oz-xe3t4BW9-cK5h3r3pSO'),
-];
-
 const _events = [
   _Event('Herfst Bock Proeverij', '€22,50', Icons.calendar_today_outlined, '12 November 2024',
       'Ontdek onze nieuwste bockbieren gecombineerd met ambachtelijke hapjes.'),
@@ -59,8 +42,410 @@ const _events = [
       'Een exclusieve kijk achter de schermen gevolgd door een 3-gangen keuzemenu.'),
 ];
 
-class FavoritesPage extends StatelessWidget {
+class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
+
+  @override
+  State<FavoritesPage> createState() => _FavoritesPageState();
+}
+
+class _FavoritesPageState extends State<FavoritesPage> {
+  final _favoritesService = FavoritesService();
+  final _feedService = FeedService();
+  final Set<int> _beerIds = {};
+  final Set<int> _breweryIds = {};
+  List<FeedItem> _feedItems = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    try {
+      final favorites = user == null ? <FavoriteItem>[] : await _favoritesService.list(user.id);
+      final feedKeys = favorites
+          .map((f) => FeedItem.keyForFavorite(f.itemType, f.itemId))
+          .whereType<String>()
+          .toList();
+      final feedItems = feedKeys.isEmpty ? <FeedItem>[] : await _feedService.fetchByKeys(feedKeys);
+      if (!mounted) return;
+      setState(() {
+        _beerIds
+          ..clear()
+          ..addAll(_idsOfType(favorites, beerItemType));
+        _breweryIds
+          ..clear()
+          ..addAll(_idsOfType(favorites, breweryItemType));
+        _feedItems = feedItems;
+        _loading = false;
+      });
+    } on FavoritesException catch (e) {
+      _showLoadError(e.message);
+    } on FeedException catch (e) {
+      _showLoadError(e.message);
+    }
+  }
+
+  static Iterable<int> _idsOfType(List<FavoriteItem> favorites, String itemType) =>
+      favorites.where((f) => f.itemType == itemType).map((f) => f.itemId);
+
+  void _showLoadError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _error = message;
+      _loading = false;
+    });
+  }
+
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    _loadFavorites();
+  }
+
+  // Zelfde gedrag als de andere hartjes: meteen wisselen, terugzetten als opslaan mislukt.
+  Future<void> _toggleFavorite(Set<int> ids, String itemType, int itemId) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final wasFavorite = ids.contains(itemId);
+    setState(() {
+      if (wasFavorite) {
+        ids.remove(itemId);
+      } else {
+        ids.add(itemId);
+      }
+    });
+    try {
+      if (wasFavorite) {
+        await _favoritesService.remove(userId: user.id, itemType: itemType, itemId: itemId);
+      } else {
+        await _favoritesService.add(userId: user.id, itemType: itemType, itemId: itemId);
+      }
+    } on FavoritesException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorite) {
+          ids.add(itemId);
+        } else {
+          ids.remove(itemId);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
+      );
+    }
+  }
+
+  void _toggleBeer(Beer beer) => _toggleFavorite(_beerIds, beerItemType, beer.id);
+
+  void _toggleBrewery(Brewery brewery) => _toggleFavorite(_breweryIds, breweryItemType, brewery.id);
+
+  Future<void> _removeFeedItem(FeedItem item) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final previous = _feedItems;
+    setState(() => _feedItems = _feedItems.where((i) => i.key != item.key).toList());
+    try {
+      await _favoritesService.remove(userId: user.id, itemType: item.favoriteType, itemId: item.favoriteId);
+    } on FavoritesException catch (e) {
+      if (!mounted) return;
+      setState(() => _feedItems = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Favoriet verwijderen mislukt: $e')),
+      );
+    }
+  }
+
+  /// "Mijn Favorieten": een container voor bier en een voor brouwerijen, met per
+  /// favoriet een kaart die openklapt met meer info.
+  Widget _buildFavorites() {
+    final likedBeers = beers.where((b) => _beerIds.contains(b.id)).toList();
+    final likedBreweries = breweries.where((b) => _breweryIds.contains(b.id)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Mijn Favorieten',
+          style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 36, height: 40 / 36),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Je gelikete bieren en brouwerijen. Tik op een favoriet voor meer info.',
+          style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 16, height: 1.5),
+        ),
+        const SizedBox(height: 24),
+        if (_loading)
+          const Center(child: CircularProgressIndicator(color: _primary))
+        else if (_error != null)
+          Column(
+            children: [
+              Text(
+                'Kon favorieten niet laden: $_error',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _retry,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primary,
+                  side: const BorderSide(color: _primary),
+                ),
+                child: const Text('Opnieuw proberen'),
+              ),
+            ],
+          )
+        else ...[
+          _favoriteContainer(
+            icon: Icons.sports_bar_outlined,
+            title: 'Bier',
+            count: likedBeers.length,
+            emptyText: 'Nog geen bier. Tik op het hartje bij een bier in het Assortiment hieronder.',
+            children: [for (final beer in likedBeers) _buildBeerFavorite(beer)],
+          ),
+          const SizedBox(height: 24),
+          _favoriteContainer(
+            icon: Icons.factory_outlined,
+            title: 'Brouwerijen',
+            count: likedBreweries.length,
+            emptyText:
+                'Nog geen brouwerijen. Tik op het hartje bij een brouwerij op de Kaart of bij Grutte Pier op Ontdek.',
+            children: [for (final brewery in likedBreweries) _buildBreweryFavorite(brewery)],
+          ),
+          if (_feedItems.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _favoriteContainer(
+              icon: Icons.bookmark_outline,
+              title: 'Opgeslagen berichten',
+              count: _feedItems.length,
+              emptyText: '',
+              children: [
+                for (final item in _feedItems)
+                  FeedCard(
+                    key: ValueKey(item.key),
+                    item: item,
+                    isFavorite: true,
+                    onFavoriteTap: () => _removeFeedItem(item),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _favoriteContainer({
+    required IconData icon,
+    required String title,
+    required int count,
+    required String emptyText,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C1810),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: _primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 24)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.openSans(color: _primary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (children.isEmpty)
+            Text(emptyText, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5))
+          else
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              children[i],
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBeerFavorite(Beer beer) {
+    return _expandableFavorite(
+      key: ValueKey('beer-${beer.id}'),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(width: 48, height: 48, child: _networkImage(beer.imageUrl)),
+      ),
+      title: beer.name,
+      subtitle: '${beer.style} • ${beer.abv}',
+      onRemove: () => _toggleBeer(beer),
+      details: [
+        _infoBlock('Wat is het', beer.description),
+        _infoBlock('Hoe het gemaakt wordt', beer.howMade),
+        _infoBlock('Soort bier', beer.styleInfo),
+        _infoRow(Icons.factory_outlined, beer.brewery),
+      ],
+    );
+  }
+
+  Widget _buildBreweryFavorite(Brewery brewery) {
+    final founded = brewery.founded;
+    return _expandableFavorite(
+      key: ValueKey('brewery-${brewery.id}'),
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: _primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.factory_outlined, color: _primary),
+      ),
+      title: brewery.title,
+      subtitle: '${brewery.location} • ★ ${brewery.rating}',
+      onRemove: () => _toggleBrewery(brewery),
+      details: [
+        _infoBlock('Over de plek', brewery.about),
+        _infoRow(Icons.location_on_outlined, brewery.location),
+        if (founded != null) _infoRow(Icons.history_edu_outlined, 'Sinds $founded'),
+        const SizedBox(height: 8),
+        _infoLabel('Weetjes'),
+        for (final fact in brewery.facts) _bullet(fact),
+      ],
+    );
+  }
+
+  Widget _expandableFavorite({
+    required Key key,
+    required Widget leading,
+    required String title,
+    required String subtitle,
+    required VoidCallback onRemove,
+    required List<Widget> details,
+  }) {
+    return Container(
+      key: key,
+      decoration: BoxDecoration(
+        color: _background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _outlineVariant.withOpacity(0.3)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        iconColor: _primary,
+        collapsedIconColor: _onSurfaceVariant,
+        leading: leading,
+        title: Text(
+          title,
+          style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(subtitle, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13)),
+        children: [
+          ...details,
+          TextButton.icon(
+            onPressed: onRemove,
+            style: TextButton.styleFrom(foregroundColor: _primary, padding: EdgeInsets.zero),
+            icon: const Icon(Icons.favorite, size: 18),
+            label: Text('Verwijder uit favorieten', style: GoogleFonts.openSans(fontSize: 14)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.openSans(
+          color: _primary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoBlock(String label, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _infoLabel(label),
+          Text(text, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: _primary, size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: GoogleFonts.openSans(color: _onSurface, fontSize: 14))),
+        ],
+      ),
+    );
+  }
+
+  Widget _bullet(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('•', style: GoogleFonts.openSans(color: _primary, fontSize: 14, height: 1.5)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +465,10 @@ class FavoritesPage extends StatelessWidget {
                   return ListView(
                     padding: const EdgeInsets.only(bottom: 24),
                     children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 24, padding, 48),
+                        child: _buildFavorites(),
+                      ),
                       _buildHero(width, padding),
                       // Stats schuiven 32px over de hero heen (-mt-8 in het ontwerp).
                       Transform.translate(
@@ -95,8 +484,6 @@ class FavoritesPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _LikedBreweries(title: _sectionTitle('Jouw favorieten')),
-                            const SizedBox(height: 48),
                             _buildAssortiment(width, contentWidth),
                             const SizedBox(height: 48),
                             _buildEvents(width, contentWidth),
@@ -275,13 +662,14 @@ class FavoritesPage extends StatelessWidget {
           width: contentWidth,
           columns: width >= 1024 ? 4 : (width >= 640 ? 2 : 1),
           spacing: 24,
-          children: [for (final beer in _beers) _buildBeerCard(beer)],
+          children: [for (final beer in beers) _buildBeerCard(beer)],
         ),
       ],
     );
   }
 
-  Widget _buildBeerCard(_Beer beer) {
+  Widget _buildBeerCard(Beer beer) {
+    final isFavorite = _beerIds.contains(beer.id);
     return Container(
       decoration: BoxDecoration(
         color: _surfaceContainerHigh,
@@ -292,7 +680,30 @@ class FavoritesPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(aspectRatio: 3 / 4, child: _networkImage(beer.imageUrl)),
+          Stack(
+            children: [
+              AspectRatio(aspectRatio: 3 / 4, child: _networkImage(beer.imageUrl)),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => _toggleBeer(beer),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? _primary : Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -559,128 +970,6 @@ class FavoritesPage extends StatelessWidget {
         child: Center(
           child: Icon(Icons.image_outlined, color: _onSurfaceVariant.withOpacity(0.4), size: 40),
         ),
-      ),
-    );
-  }
-}
-
-/// Toont de brouwerijen die je op de Kaart met het hartje hebt geliked.
-class _LikedBreweries extends StatefulWidget {
-  final Widget title;
-
-  const _LikedBreweries({required this.title});
-
-  @override
-  State<_LikedBreweries> createState() => _LikedBreweriesState();
-}
-
-class _LikedBreweriesState extends State<_LikedBreweries> {
-  final _favoritesService = FavoritesService();
-  late Future<List<FavoriteItem>> _favorites = _load();
-
-  Future<List<FavoriteItem>> _load() {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return Future.value([]);
-    return _favoritesService.list(user.id);
-  }
-
-  Future<void> _remove(Brewery brewery) async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    try {
-      await _favoritesService.remove(userId: user.id, itemType: breweryItemType, itemId: brewery.id);
-      if (!mounted) return;
-      setState(() {
-        _favorites = _load();
-      });
-    } on FavoritesException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Favoriet verwijderen mislukt: $e')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        widget.title,
-        const SizedBox(height: 24),
-        FutureBuilder<List<FavoriteItem>>(
-          future: _favorites,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: _primary));
-            }
-            if (snapshot.hasError) {
-              return Text(
-                'Kon favorieten niet laden: ${snapshot.error}',
-                style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14),
-              );
-            }
-
-            final ids = (snapshot.data ?? [])
-                .where((f) => f.itemType == breweryItemType)
-                .map((f) => f.itemId)
-                .toSet();
-            final liked = breweries.where((b) => ids.contains(b.id)).toList();
-
-            if (liked.isEmpty) {
-              return Text(
-                'Nog geen favorieten. Tik op het hartje bij een brouwerij op de Kaart.',
-                style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 16),
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final brewery in liked) ...[
-                  _buildCard(brewery),
-                  const SizedBox(height: 16),
-                ],
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCard(Brewery brewery) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
-      decoration: BoxDecoration(
-        color: _surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _outlineVariant.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  brewery.title,
-                  style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 20, height: 1.4),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${brewery.distance} • ★ ${brewery.rating}',
-                  style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () => _remove(brewery),
-            icon: const Icon(Icons.favorite, color: _primary),
-            tooltip: 'Verwijder uit favorieten',
-          ),
-        ],
       ),
     );
   }

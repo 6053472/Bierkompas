@@ -38,6 +38,24 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "cached_network_image",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/cached_network_image-4.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "cached_network_image_platform_interface",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/cached_network_image_platform_interface-5.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "cached_network_image_web",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/cached_network_image_web-2.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
       "name": "characters",
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/characters-1.4.1",
       "packageUri": "lib/",
@@ -78,6 +96,12 @@
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/crypto-3.0.7",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "cupertino_ui",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_ui-1.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
     },
     {
       "name": "dart_earcut",
@@ -128,8 +152,26 @@
       "languageVersion": "3.10"
     },
     {
+      "name": "fixnum",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/fixnum-1.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
       "name": "flutter",
       "rootUri": "file:///C:/flutter/packages/flutter",
+      "packageUri": "lib/",
+      "languageVersion": "3.11"
+    },
+    {
+      "name": "flutter_cache_manager",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_cache_manager-3.4.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "flutter_localizations",
+      "rootUri": "file:///C:/flutter/packages/flutter_localizations",
       "packageUri": "lib/",
       "languageVersion": "3.11"
     },
@@ -302,6 +344,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "material_ui",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/material_ui-1.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
       "name": "meta",
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.18.3",
       "packageUri": "lib/",
@@ -324,6 +372,12 @@
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/objective_c-9.5.0",
       "packageUri": "lib/",
       "languageVersion": "3.10"
+    },
+    {
+      "name": "octo_image",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/octo_image-2.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "package_config",
@@ -434,6 +488,12 @@
       "languageVersion": "3.10"
     },
     {
+      "name": "rxdart",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/rxdart-0.28.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "shared_preferences",
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences-2.5.5",
       "packageUri": "lib/",
@@ -488,6 +548,36 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "sqflite",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite-2.4.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "sqflite_android",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite_android-2.4.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "sqflite_common",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite_common-2.5.12",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "sqflite_darwin",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite_darwin-2.4.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "sqflite_platform_interface",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite_platform_interface-2.4.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
       "name": "storage_client",
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/storage_client-2.8.0",
       "packageUri": "lib/",
@@ -522,6 +612,12 @@
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/supabase_flutter-2.17.2",
       "packageUri": "lib/",
       "languageVersion": "3.9"
+    },
+    {
+      "name": "synchronized",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/synchronized-3.4.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
     },
     {
       "name": "term_glyph",
@@ -588,6 +684,12 @@
       "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_windows-3.1.6",
       "packageUri": "lib/",
       "languageVersion": "3.10"
+    },
+    {
+      "name": "uuid",
+      "rootUri": "file:///C:/Users/timis/AppData/Local/Pub/Cache/hosted/pub.dev/uuid-4.6.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "vector_math",

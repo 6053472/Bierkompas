@@ -10,12 +10,26 @@ class Brewery {
   final String rating;
   final List<String> tags;
 
+  /// Plaats van de brouwerij.
+  final String location;
+
+  /// Jaar van oprichting, of null als dat (nog) niet bekend is.
+  final String? founded;
+
+  /// Korte beschrijving van de plek.
+  final String about;
+  final List<String> facts;
+
   const Brewery({
     required this.id,
     required this.title,
     required this.distance,
     required this.rating,
     required this.tags,
+    required this.location,
+    required this.about,
+    required this.facts,
+    this.founded,
   });
 }
 
@@ -26,6 +40,12 @@ const grutePierProeflokaal = Brewery(
   distance: '2.4 km bij jou vandaan',
   rating: '4.8',
   tags: ['BIER & SPIJS', 'PARTNER'],
+  location: 'Leeuwarden',
+  about: 'Een Friese brouwerij met proeflokaal, waar bier en eten samenkomen.',
+  facts: [
+    'Genoemd naar Grutte Pier (Pier Gerlofs Donia), een Friese volksheld uit de 16e eeuw.',
+    'Bier & spijs: probeer het Dubbel stoofvlees.',
+  ],
 );
 
 const breweries = [
@@ -35,6 +55,12 @@ const breweries = [
     distance: '0.8 km bij jou vandaan',
     rating: '4.8',
     tags: ['IPA', 'PROEFLOKAAL'],
+    location: 'Zaandijk',
+    about: 'Een brouwerij met eigen proeflokaal, waar je de bieren vers van de tap proeft.',
+    facts: [
+      "Staat vooral bekend om hoppige bieren zoals IPA's.",
+      'Je kunt er terecht in het eigen proeflokaal.',
+    ],
   ),
   Brewery(
     id: 2,
@@ -42,6 +68,15 @@ const breweries = [
     distance: '1.2 km bij jou vandaan',
     rating: '4.9',
     tags: ['TRAPPIST', 'BEPERKT'],
+    location: 'Westvleteren, België',
+    founded: '1831',
+    about:
+        'De Sint-Sixtusabdij is een trappistenabdij in West-Vlaanderen. De monniken brouwen er sinds 1838 bier.',
+    facts: [
+      'Het bier wordt gebrouwen door trappistenmonniken en is vrijwel alleen bij de abdij te koop.',
+      'De Westvleteren 12 geldt als een van de meest gezochte bieren ter wereld.',
+      'De flesjes hebben geen etiket; welk bier het is, zie je aan de kleur van de dop.',
+    ],
   ),
   Brewery(
     id: 3,
@@ -49,6 +84,14 @@ const breweries = [
     distance: '3.5 km bij jou vandaan',
     rating: '4.7',
     tags: ['STOUTS', 'BARREL'],
+    location: 'Bodegraven',
+    founded: '2004',
+    about:
+        'Brouwerij De Molen begon in de historische korenmolen De Arkduif in Bodegraven en groeide uit tot een van de bekendste Nederlandse craftbrouwerijen.',
+    facts: [
+      'Bekend om zware stouts en op houten vaten gerijpte bieren.',
+      'Organiseert jaarlijks het bierfestival Borefts.',
+    ],
   ),
   grutePierProeflokaal,
 ];
