@@ -148,6 +148,14 @@ class AuthService {
     }
   }
 
+  Future<void> deleteAccount() async {
+    try {
+      await _client.rpc('delete_account');
+    } on PostgrestException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
   String _translateAuthError(AuthApiException e) {
     switch (e.code) {
       case 'invalid_credentials':

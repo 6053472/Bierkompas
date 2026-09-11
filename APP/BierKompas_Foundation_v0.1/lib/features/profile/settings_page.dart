@@ -16,6 +16,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _pushNotifications = true;
   bool _emailUpdates = false;
+  bool _deletingAccount = false;
+  final _authService = AuthService();
 
   static const _bg = Color(0xFF1E1712);
   static const _card = Color(0xFF2C221C);
@@ -54,6 +56,49 @@ class _SettingsPageState extends State<SettingsPage> {
       MaterialPageRoute(builder: (_) => const AuthGate()),
       (route) => false,
     );
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _card,
+        title: Text('Account verwijderen', style: GoogleFonts.playfairDisplay(color: _cream, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Weet je zeker dat je je account wilt verwijderen? Al je gegevens worden permanent verwijderd. Dit kan niet ongedaan worden gemaakt.',
+          style: GoogleFonts.inter(color: _muted, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Annuleren', style: GoogleFonts.inter(color: _muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Verwijderen', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _deletingAccount = true);
+    try {
+      await _authService.deleteAccount();
+      await AuthStorage.clear();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _deletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    }
   }
 
   @override
@@ -142,9 +187,9 @@ class _SettingsPageState extends State<SettingsPage> {
               const Divider(color: _divider, height: 1),
               _navTile(
                 icon: Icons.delete_outline,
-                title: 'Account verwijderen',
+                title: _deletingAccount ? 'Account verwijderen...' : 'Account verwijderen',
                 titleColor: Colors.redAccent,
-                onTap: () {},
+                onTap: _deletingAccount ? null : _confirmDeleteAccount,
               ),
             ]),
             const SizedBox(height: 20),
