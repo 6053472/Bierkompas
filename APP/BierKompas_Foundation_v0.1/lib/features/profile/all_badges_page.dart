@@ -3,33 +3,51 @@ import 'package:google_fonts/google_fonts.dart';
 import 'stats_service.dart';
 
 /// Volledig overzicht van alle badges, geopend via "Bekijk alles" op het
-/// profiel. Layout gebaseerd op template/code.html (Mijn Prestaties).
+/// profiel. Layout gebaseerd op template/code.html (Mijn Prestaties),
+/// gegroepeerd per categorie.
 class AllBadgesPage extends StatelessWidget {
   const AllBadgesPage({super.key, required this.badges});
 
   final List<ProfileBadge> badges;
 
+  static const _categoryOrder = ['evenement', 'cultureel', 'algemeen'];
+  static const _categoryTitles = {
+    'evenement': 'Evenement Badges',
+    'cultureel': 'Culturele Verkenning',
+    'algemeen': 'Algemene Prestaties',
+  };
+
   @override
   Widget build(BuildContext context) {
+    final byCategory = <String, List<ProfileBadge>>{};
+    for (final badge in badges) {
+      byCategory.putIfAbsent(badge.category, () => []).add(badge);
+    }
+    final categories = [
+      ..._categoryOrder.where(byCategory.containsKey),
+      ...byCategory.keys.where((c) => !_categoryOrder.contains(c)),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFF1E1712),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2C221C),
         foregroundColor: const Color(0xFFEFE6DD),
         elevation: 0,
-        title: Text(
-          'Mijn Prestaties',
-          style: GoogleFonts.playfairDisplay(
-            color: const Color(0xFFEFE6DD),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           children: [
+            Text(
+              'Mijn Prestaties',
+              style: GoogleFonts.playfairDisplay(
+                color: const Color(0xFFEFE6DD),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
               'Verzamel unieke badges door bieren te ontdekken en locaties te bezoeken. '
               'Elke prestatie vertelt een verhaal van jouw zintuiglijke reis.',
@@ -39,23 +57,62 @@ class AllBadgesPage extends StatelessWidget {
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 20),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: badges.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.72,
+            const SizedBox(height: 24),
+            for (final category in categories) ...[
+              _CategorySection(
+                title: _categoryTitles[category] ?? category,
+                badges: byCategory[category]!,
               ),
-              itemBuilder: (context, index) => _BadgeCard(badge: badges[index]),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 24),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CategorySection extends StatelessWidget {
+  const _CategorySection({required this.title, required this.badges});
+
+  final String title;
+  final List<ProfileBadge> badges;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.only(bottom: 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Color(0x4D51443A), width: 1),
+            ),
+          ),
+          child: Text(
+            title,
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFFD4B28C),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: badges.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.72,
+          ),
+          itemBuilder: (context, index) => _BadgeCard(badge: badges[index]),
+        ),
+      ],
     );
   }
 }
