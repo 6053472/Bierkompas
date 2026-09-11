@@ -17,10 +17,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _pushNotifications = true;
   bool _emailUpdates = false;
-<<<<<<< Updated upstream
   bool _deletingAccount = false;
   final _authService = AuthService();
-=======
   late AppUser? _user;
 
   @override
@@ -37,7 +35,6 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _user = updated);
     }
   }
->>>>>>> Stashed changes
 
   static const _bg = Color(0xFF1E1712);
   static const _card = Color(0xFF2C221C);

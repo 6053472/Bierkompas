@@ -137,14 +137,6 @@ class AuthService {
     );
   }
 
-  Future<void> updateProfile({required String userId, required String name}) async {
-    try {
-      await _client.from('profiles').update({'name': name}).eq('id', userId);
-    } on PostgrestException catch (e) {
-      throw AuthException(e.message);
-    }
-  }
-
   /// Upload een profielfoto naar Supabase Storage en slaat de publieke URL op
   /// in de profiles-tabel. Geeft de nieuwe URL terug.
   Future<String> uploadAvatar({
