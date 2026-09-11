@@ -467,13 +467,29 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             )
           else
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF3C3028),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3C3028),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: accent, size: 26),
+                ),
+                if (!earned)
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: Colors.black26,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
+                  ),
+              ],
             ),
           const SizedBox(height: 10),
           Text(

@@ -170,13 +170,16 @@ class _BadgeCard extends StatelessWidget {
                     : Container(
                         width: 72,
                         height: 72,
-                        color: const Color(0xFF3C3028),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF3C3028),
+                          shape: BoxShape.circle,
+                        ),
                         child: Icon(
-                          earned ? badge.icon : Icons.lock_outline,
+                          badge.icon,
                           color: earned
                               ? const Color(0xFFD4B28C)
                               : const Color(0xFF6B5D50),
-                          size: 28,
+                          size: 32,
                         ),
                       ),
               ),

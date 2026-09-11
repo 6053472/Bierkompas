@@ -21,4 +21,8 @@ update public.badges set category = 'algemeen' where id in (
     'wheel_of_styles', 'streak_7', 'streak_30', 'streak_100'
 );
 
+-- Streak-badges tonen allemaal het vuurtje-icoon.
+update public.badges set icon_name = 'local_fire_department'
+    where id in ('streak_7', 'streak_30', 'streak_100');
+
 NOTIFY pgrst, 'reload schema';
