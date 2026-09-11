@@ -321,7 +321,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.3,
                       children: _stats!.badges
-                          .map((badge) => _buildPassportCard(badge.title, badge.icon, badge.earned))
+                          .map((badge) => _buildPassportCard(
+                                badge.title,
+                                badge.icon,
+                                badge.earned,
+                                imageAsset: badge.imageAsset,
+                              ))
                           .toList(),
                     ),
                   const SizedBox(height: 24),
@@ -396,7 +401,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Hulpwidget voor paspoort items. Vergrendelde badges tonen gedimd.
-  Widget _buildPassportCard(String title, IconData icon, bool earned) {
+  Widget _buildPassportCard(String title, IconData icon, bool earned, {String? imageAsset}) {
     final accent = earned ? const Color(0xFFD4B28C) : const Color(0xFF6B5D50);
     final textColor = earned ? const Color(0xFFEFE6DD) : const Color(0xFF9E8A7D);
     return Container(
@@ -408,14 +413,42 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              color: Color(0xFF3C3028),
-              shape: BoxShape.circle,
+          if (imageAsset != null)
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipOval(
+                  child: Opacity(
+                    opacity: earned ? 1 : 0.35,
+                    child: Image.asset(
+                      'assets/badges/$imageAsset.png',
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                if (!earned)
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: Colors.black26,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
+                  ),
+              ],
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: Color(0xFF3C3028),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
             ),
-            child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
-          ),
           const SizedBox(height: 10),
           Text(
             title,
