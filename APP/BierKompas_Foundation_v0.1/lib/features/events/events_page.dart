@@ -39,26 +39,57 @@ class _EventsPageState extends State<EventsPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
+        preferredSize: const Size.fromHeight(160),
         child: Container(
           decoration: const BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(24),
+            ),
             color: cardColor,
           ),
-          
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            title: Text(
-              'Evenementen',
-              style: GoogleFonts.playfairDisplay(
-                color: textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.sports_bar, color: beigeColor, size: 30),
+                      const SizedBox(width: 7),
+                      Text(
+                        'Evenementen',
+                        style: GoogleFonts.playfairDisplay(
+                          color: textColor,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    'De Moderne Events',
+                    style: GoogleFonts.playfairDisplay(
+                      color: beigeColor,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Jouw overzicht van exclusieve bierproeverijen en festivals, met de hand geselecteerd op basis van hun uitzonderlijke profiel en erfgoed.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      color: secondaryTextColor,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -140,13 +171,13 @@ class _EventsPageState extends State<EventsPage> {
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                            boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD4B28C).withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD4B28C).withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                     color: cardColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: borderColor),
@@ -160,7 +191,6 @@ class _EventsPageState extends State<EventsPage> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              
                               color: backgroundColor,
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: beigeColor.withOpacity(0.5)),
