@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../favorites/favorites_service.dart';
+import 'breweries.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -11,6 +14,71 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
+  final _favoritesService = FavoritesService();
+  final _pageController = PageController(viewportFraction: 0.86);
+  final Set<int> _favoriteIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final favorites = await _favoritesService.list(user.id);
+      if (!mounted) return;
+      setState(() {
+        _favoriteIds
+          ..clear()
+          ..addAll(favorites.where((f) => f.itemType == breweryItemType).map((f) => f.itemId));
+      });
+    } on FavoritesException catch (e) {
+      debugPrint('Fout bij ophalen favorieten: $e');
+    }
+  }
+
+  // Het hartje wisselt meteen; mislukt het opslaan, dan wordt het teruggezet.
+  Future<void> _toggleFavorite(Brewery brewery) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final wasFavorite = _favoriteIds.contains(brewery.id);
+    setState(() {
+      if (wasFavorite) {
+        _favoriteIds.remove(brewery.id);
+      } else {
+        _favoriteIds.add(brewery.id);
+      }
+    });
+    try {
+      if (wasFavorite) {
+        await _favoritesService.remove(userId: user.id, itemType: breweryItemType, itemId: brewery.id);
+      } else {
+        await _favoritesService.add(userId: user.id, itemType: breweryItemType, itemId: brewery.id);
+      }
+    } on FavoritesException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorite) {
+          _favoriteIds.add(brewery.id);
+        } else {
+          _favoriteIds.remove(brewery.id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,35 +205,20 @@ class _MapPageState extends State<MapPage> {
                     child: SizedBox(
                       height: 380,
                       child: PageView(
-                        controller: PageController(viewportFraction: 0.86),
+                        controller: _pageController,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-                            child: _buildBreweryCard(
-                              title: 'Brouwerij Hoop',
-                              distance: '0.8 km bij jou vandaan',
-                              rating: '4.8',
-                              tags: ['IPA', 'PROEFLOKAAL'],
+                          for (final brewery in breweries)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+                              child: _buildBreweryCard(
+                                title: brewery.title,
+                                distance: brewery.distance,
+                                rating: brewery.rating,
+                                tags: brewery.tags,
+                                isFavorite: _favoriteIds.contains(brewery.id),
+                                onFavoriteTap: () => _toggleFavorite(brewery),
+                              ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-                            child: _buildBreweryCard(
-                              title: 'Saint Sixtus',
-                              distance: '1.2 km bij jou vandaan',
-                              rating: '4.9',
-                              tags: ['TRAPPIST', 'BEPERKT'],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-                            child: _buildBreweryCard(
-                              title: 'De Molen',
-                              distance: '3.5 km bij jou vandaan',
-                              rating: '4.7',
-                              tags: ['STOUTS', 'BARREL'],
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -184,6 +237,8 @@ class _MapPageState extends State<MapPage> {
     required String distance,
     required String rating,
     required List<String> tags,
+    required bool isFavorite,
+    required VoidCallback onFavoriteTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -216,16 +271,19 @@ class _MapPageState extends State<MapPage> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.favorite_border,
-                    color: Colors.white,
-                    size: 18,
+                child: GestureDetector(
+                  onTap: onFavoriteTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? const Color(0xFFD4B28C) : Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
               ),
