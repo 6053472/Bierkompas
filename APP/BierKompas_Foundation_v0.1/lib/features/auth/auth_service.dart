@@ -82,6 +82,28 @@ class AuthService {
     }
   }
 
+  Future<AppUser> updateProfile({
+    required String userId,
+    required String name,
+    required String email,
+  }) async {
+    try {
+      final currentEmail = _client.auth.currentUser?.email;
+      if (email != currentEmail) {
+        await _client.auth.updateUser(UserAttributes(email: email));
+      }
+      await _client.from('profiles').update({
+        'name': name,
+        'email': email,
+      }).eq('id', userId);
+      return AppUser(id: userId, name: name, email: email);
+    } on AuthApiException catch (e) {
+      throw AuthException(_translateAuthError(e));
+    } on PostgrestException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
   Future<void> saveConsent({required String userId}) async {
     try {
       await _client.from('user_consents').upsert({
@@ -115,14 +137,6 @@ class AuthService {
     );
   }
 
-  Future<void> updateProfile({required String userId, required String name}) async {
-    try {
-      await _client.from('profiles').update({'name': name}).eq('id', userId);
-    } on PostgrestException catch (e) {
-      throw AuthException(e.message);
-    }
-  }
-
   /// Upload een profielfoto naar Supabase Storage en slaat de publieke URL op
   /// in de profiles-tabel. Geeft de nieuwe URL terug.
   Future<String> uploadAvatar({
@@ -143,6 +157,14 @@ class AuthService {
       return bustedUrl;
     } on StorageException catch (e) {
       throw AuthException(e.message);
+    } on PostgrestException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    try {
+      await _client.rpc('delete_account');
     } on PostgrestException catch (e) {
       throw AuthException(e.message);
     }

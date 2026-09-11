@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'profile_edit_page.dart';
 
 class SettingsPage extends StatefulWidget {
   final AppUser? user;
@@ -16,6 +17,24 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _pushNotifications = true;
   bool _emailUpdates = false;
+  bool _deletingAccount = false;
+  final _authService = AuthService();
+  late AppUser? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = widget.user;
+  }
+
+  Future<void> _editProfile() async {
+    final updated = await Navigator.of(context).push<AppUser>(
+      MaterialPageRoute(builder: (_) => ProfileEditPage(user: _user)),
+    );
+    if (updated != null && mounted) {
+      setState(() => _user = updated);
+    }
+  }
 
   static const _bg = Color(0xFF1E1712);
   static const _card = Color(0xFF2C221C);
@@ -56,6 +75,49 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _card,
+        title: Text('Account verwijderen', style: GoogleFonts.playfairDisplay(color: _cream, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Weet je zeker dat je je account wilt verwijderen? Al je gegevens worden permanent verwijderd. Dit kan niet ongedaan worden gemaakt.',
+          style: GoogleFonts.inter(color: _muted, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Annuleren', style: GoogleFonts.inter(color: _muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Verwijderen', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _deletingAccount = true);
+    try {
+      await _authService.deleteAccount();
+      await AuthStorage.clear();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _deletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,9 +146,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
             _sectionTitle('Account'),
             _sectionCard([
-              _infoTile(icon: Icons.person_outline, label: 'Naam', value: widget.user?.name ?? '-'),
+              _infoTile(icon: Icons.person_outline, label: 'Naam', value: _user?.name ?? '-'),
               const Divider(color: _divider, height: 1),
-              _infoTile(icon: Icons.mail_outline, label: 'E-mail', value: widget.user?.email ?? '-'),
+              _infoTile(icon: Icons.mail_outline, label: 'E-mail', value: _user?.email ?? '-'),
+              const Divider(color: _divider, height: 1),
+              _navTile(
+                icon: Icons.edit_outlined,
+                title: 'Profiel bewerken',
+                onTap: _editProfile,
+              ),
             ]),
             const SizedBox(height: 24),
 
@@ -142,9 +210,9 @@ class _SettingsPageState extends State<SettingsPage> {
               const Divider(color: _divider, height: 1),
               _navTile(
                 icon: Icons.delete_outline,
-                title: 'Account verwijderen',
+                title: _deletingAccount ? 'Account verwijderen...' : 'Account verwijderen',
                 titleColor: Colors.redAccent,
-                onTap: () {},
+                onTap: _deletingAccount ? null : _confirmDeleteAccount,
               ),
             ]),
             const SizedBox(height: 20),

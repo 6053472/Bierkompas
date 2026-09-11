@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
-import 'edit_profile_page.dart';
+import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
 
@@ -194,18 +194,16 @@ class _ProfilePageState extends State<ProfilePage> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _user == null
-                                ? null
-                                : () async {
-                                    final updated = await Navigator.of(context).push<AppUser>(
-                                      MaterialPageRoute(
-                                        builder: (_) => EditProfilePage(user: _user!),
-                                      ),
-                                    );
-                                    if (updated != null && mounted) {
-                                      setState(() => _user = updated);
-                                    }
-                                  },
+                            onPressed: () async {
+                              final updated = await Navigator.of(context).push<AppUser>(
+                                MaterialPageRoute(
+                                  builder: (_) => ProfileEditPage(user: _user),
+                                ),
+                              );
+                              if (updated != null && mounted) {
+                                setState(() => _user = updated);
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD4B28C),
                               foregroundColor: const Color(0xFF1E1712),
