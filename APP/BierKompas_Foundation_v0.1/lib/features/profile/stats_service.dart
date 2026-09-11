@@ -9,6 +9,7 @@ class ProfileBadge {
   final String? imageAsset;
   final int requirementValue;
   final bool earned;
+  final String category;
 
   const ProfileBadge({
     required this.id,
@@ -18,6 +19,7 @@ class ProfileBadge {
     this.imageAsset,
     required this.requirementValue,
     required this.earned,
+    this.category = 'algemeen',
   });
 }
 
@@ -80,6 +82,7 @@ class StatsService {
               imageAsset: row['image_asset'] as String?,
               requirementValue: row['requirement_value'] as int,
               earned: earnedIds.contains(row['id'] as String),
+              category: row['category'] as String? ?? 'algemeen',
             ))
         .toList();
 

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="nl"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mijn Prestaties - Artisanal Draught</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&amp;family=Open+Sans:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ffb4ab",
+                        "secondary": "#e3bfb2",
+                        "on-secondary-container": "#d4b1a4",
+                        "surface-bright": "#45362d",
+                        "on-tertiary-fixed": "#1e1b17",
+                        "on-tertiary-fixed-variant": "#4a4641",
+                        "inverse-on-surface": "#3b2d25",
+                        "surface-tint": "#fbb97b",
+                        "tertiary-container": "#a8a39c",
+                        "surface-variant": "#403229",
+                        "outline": "#9e8e81",
+                        "primary-fixed": "#ffdcbf",
+                        "on-primary-fixed": "#2d1600",
+                        "primary-container": "#d4975c",
+                        "surface-container-low": "#251911",
+                        "primary-fixed-dim": "#fbb97b",
+                        "on-surface-variant": "#d6c3b5",
+                        "tertiary-fixed-dim": "#ccc6be",
+                        "surface-container": "#291d15",
+                        "primary": "#fbb97b",
+                        "outline-variant": "#51443a",
+                        "on-primary": "#4b2800",
+                        "tertiary-fixed": "#e8e1da",
+                        "on-primary-fixed-variant": "#693c07",
+                        "surface-container-highest": "#403229",
+                        "secondary-fixed-dim": "#e3bfb2",
+                        "background": "#1c110a",
+                        "on-secondary-fixed-variant": "#5a4137",
+                        "secondary-fixed": "#ffdbce",
+                        "on-error": "#690005",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-lowest": "#160c06",
+                        "on-tertiary-container": "#3c3934",
+                        "secondary-container": "#5d4339",
+                        "inverse-primary": "#84531e",
+                        "on-tertiary": "#33302b",
+                        "surface": "#1c110a",
+                        "on-primary-container": "#583000",
+                        "error-container": "#93000a",
+                        "tertiary": "#ccc6be",
+                        "inverse-surface": "#f6ded1",
+                        "on-surface": "#f6ded1",
+                        "surface-container-high": "#35271f",
+                        "surface-dim": "#1c110a",
+                        "on-secondary": "#422b22",
+                        "on-background": "#f6ded1",
+                        "on-secondary-fixed": "#2a170f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "24px",
+                        "stack-lg": "48px",
+                        "base": "8px",
+                        "stack-sm": "12px",
+                        "container-padding-mobile": "20px",
+                        "gutter": "16px",
+                        "container-padding-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Playfair Display"],
+                        "label-sm": ["Open Sans"],
+                        "headline-md": ["Playfair Display"],
+                        "display-lg-mobile": ["Playfair Display"],
+                        "display-lg": ["Playfair Display"],
+                        "label-md": ["Open Sans"],
+                        "body-md": ["Open Sans"],
+                        "body-lg": ["Open Sans"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "display-lg-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #1c110a;
+            color: #f6ded1;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(44, 24, 16, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(251, 185, 123, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(251, 185, 123, 0.15);
+            border-color: rgba(251, 185, 123, 0.3);
+        }
+        .locked-badge {
+            filter: grayscale(1) opacity(0.3);
+            pointer-events: none;
+        }
+        .amber-glow {
+            text-shadow: 0 0 10px rgba(251, 185, 123, 0.5);
+        }
+        .progress-bar {
+            background: rgba(251, 185, 123, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #d4975c, #fbb97b);
+            box-shadow: 0 0 8px rgba(251, 185, 123, 0.6);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="font-body-md overflow-x-hidden">
+<header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-md border-b border-outline-variant/20 px-gutter h-16 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary cursor-pointer">menu</span>
+<h1 class="font-display-lg-mobile text-display-lg-mobile text-primary-fixed-dim tracking-tight">Artisanal Draught</h1>
+</div>
+<div class="w-10 h-10 rounded-full border border-primary/30 p-0.5">
+<img class="w-full h-full rounded-full object-cover" data-alt="A professional portrait of a beer connoisseur" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmaX15kZ55STaMghVh2GmmQomm1Qs3lDMm-Cnnjbf6UY7Ek9BKKVKFVCmug9MSOo10Kq7jNKbp1Iawgq-HVDmrOEYkZkCN--bfFy6kEnlNhucxPkvHicsnr0CzISFLrv-ctbJXA2T3GSyywf6ypnWDTNqhgsv72KgJNs-NB-7Svseu7PefPOqDMk84Bq05Rppv_BHp_wkgdZYADtdWnFjMatmPma9Vvu8P3NGILUtIBSIraMQD6bTj"/>
+</div>
+</header>
+<main class="pt-24 pb-32 px-gutter max-w-7xl mx-auto">
+<section class="mb-stack-lg animate-in fade-in slide-in-from-bottom-4 duration-700">
+<h2 class="font-headline-md text-display-lg-mobile text-on-surface mb-2">Mijn Prestaties</h2>
+<p class="font-body-md text-on-surface-variant max-w-lg">
+                Verzamel unieke badges door bieren te ontdekken en locaties te bezoeken. Elke prestatie vertelt een verhaal van jouw zintuiglijke reis.
+            </p>
+</section>
+<!-- Evenement Badges -->
+<section class="mb-stack-lg">
+<h3 class="font-headline-sm text-primary mb-gutter border-b border-outline-variant/30 pb-2">Evenement Badges</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter"><div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60"><div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50"><img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-umpgauWxbEGuqSkk-kEBXH6kZxI-rlBYfkiWiVe6A29JhDivzF7RkxXgX4pNeBJ4YvvY3DzSWH1s4GZCjNqd6RPZqB3ce4Z9doRIVwfxrEaAq6pjIxiXJFPeolfK5V1jsxl3Vxop8UKIZa6dUDpHMcGRFOM_Veaqo8abRRlJAJNdW7Qdl7OMsb330Dpng-N7aiTz9lxO9HpF05Fr8GLnLeEqbVo30tLaikuCmbVCageILbj7SWtm"/><div class="absolute inset-0 flex items-center justify-center"><span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span></div></div><h3 class="font-headline-sm text-on-surface-variant mb-1">Festival Grootmeester</h3><p class="font-label-sm text-on-surface-variant/60 mb-4">De ultieme erkenning voor wie alle grote bierfestivals heeft bezocht. Meester van de feesttent!</p><div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md"><span class="material-symbols-outlined text-sm">lock_clock</span><span>VERGRENDELD</span></div></div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFRFD-nMzcJFWkSvhna_d-ZQa1bD8l06E_6bjBw78voA4C-kCuZ-cXOjZk4bazCUV1cK2vJG-d90jxWAw1cPnv9QOwqXuf2nYilCGT5E1BVTiEAr2VaTNuaIFfMMEutMru_ZV_sIJz8BJ4TiYYSaDcSNJwWmG0ALDze1-SGfwlbeKDly_i4Id2TZ7LZH_8dI2Q2VCquej88j7qby5gOdxeZbkbw6PCTokMgeI-w1Hc_uvSoZQS2J1G"/>
+<div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">TAPT Pionier</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Gevierd op het TAPT Festival. Proost op de moderne craft beer cultuur!</p>
+<div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>BEHAALD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbpJFmOkSGoIOYhS30SkfbCjk9jqBVQvPxblSgX72NRtDSPEAcV_s8FeuUBf7n8lhtDEEr35pvmIarv9HDMApbRsyUMsl8XzFUut_V18rLBCrupg74n0Dt9RufYiFl87Gz4tY8UGR4043nc97j7uSH_FhqXCdZxfiYZlKFIsucLXC5CEalPz4jL4jfvvPf4F6pkvWuIfL0Ch3mg0N5aTCTkvwbiLjO0tnHWQDC7Kt-vPYMSt9qUNat"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">PINT Partner</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Voor de trouwe bezoekers van PINT evenementen. Een ode aan de traditie.</p>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>VERGRENDELD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_dYtl8zUk72BpL7ThOg2qhCPquKf3m7wdoV_UcTHoHHyMjpquJlzpC7456EEm44O7pSLYe3JEouzKUd2kiNYnWrXZ5c_gHM3gIIgydt4cEN-jfAey5yx-JYQkoubghW0kqN7YSrVQiMTh5UJjKjUxXQp7FHLuusYMPX1WwWu5uRVViHCGOH3TEkoRc5WLlXPGs-ngswVqnnVkYEZXXfc43_hUdi4SOXz28Tkx_cppyDoV4350GbcK"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">Mout Meester</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Industrieel genot op het Mout Bierfestival. Meester van het mout.</p>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>VERGRENDELD</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Culturele Verkenning -->
+<section class="mb-stack-lg">
+<h3 class="font-headline-sm text-primary mb-gutter border-b border-outline-variant/30 pb-2">Culturele Verkenning</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center border-primary/20 bg-primary/5">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIH_KdvqSUU0kPFkdFOOgL_v-iPZC1hg44URvsWGByLjQ2B9-88LJVMURulmS_5bGGi0NEVqnLHqIGiNnfamow_SCadisIMkyx9OqbqokPS1hADqkV8fgM48c2lgY4GQdq__tEre1zY5inzx6rjppR84ikrpAQM0ucZjEq_EyLHrXnNpKmxtwfCocNBqq_cAcD9W6Mk_R6uyWSRBDly57xKHSjA5tNjQ-jYQzm6CfFIC8dsKpVJqWF"/>
+<div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">Nederlandse Verkenner</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Ontdek de rijke diversiteit van de Nederlandse brouwwereld.</p>
+<div class="mt-auto w-full px-4">
+<div class="flex justify-between text-xs font-bold mb-1.5 text-primary-fixed-dim uppercase tracking-tighter">
+<span>Voortgang</span>
+<span>100%</span>
+</div>
+<div class="w-full h-2 progress-bar rounded-full">
+<div class="h-full progress-fill rounded-full" style="width: 100%"></div>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-70">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCv6JYHYMid2QRpiORhWkIFhZAi4kSDudTytv7OdpfPN9gc9r1RhC19NSKEFvs7A1c2HDlWaM0_J1hlBY8WHYOHFYWk2_IsDiSxWug1bBz7evGJTsuV-HHC8ptYvs9JkljU5NFdDAqriIKmhnp8jJZCp7PJryquDUdGmfnnW9O1mq9J3lRWWr3ZxhauqcyDRgpaNvouRHy5-BcZxvLGD_le5P3MtOObCHWq5oF_O_RTaDuByp411jHr"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">Belgische Verkenner</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Een reis door het hart van de Belgische biertraditie.</p>
+<div class="mt-auto w-full px-4">
+<div class="flex justify-between text-xs font-bold mb-1.5 text-on-surface-variant/60 uppercase tracking-tighter">
+<span>Voortgang</span>
+<span>40%</span>
+</div>
+<div class="w-full h-2 bg-on-surface/10 rounded-full overflow-hidden">
+<div class="h-full bg-on-surface/30 rounded-full" style="width: 40%"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Algemene Prestaties -->
+<section class="mb-stack-lg">
+<h3 class="font-headline-sm text-primary mb-gutter border-b border-outline-variant/30 pb-2">Algemene Prestaties</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtauvDsi4NpoQ6g6FjGH6cQcu91RMrqhgC2fpx0daEzEh_6UypzwtHV76imAxiymVK-tPS2CJjlNPCzVqBggzVc1B9HEhyJWEPMvnmFjGMiaKbUpXI58Tq4yzmCAdlKjTfxpkZ06IQNi75tSR2DdC6sZ4XUz1cguaeg9nT6Py50g__DAERQ4j6-EJ9uj9qbZi2ifYg2fxAPi18Q-50R6ihxCWYV-hq8GlsI3iYmnBIfUIyzoWZ4G_2RUi0"/>
+<div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">Hop Jager</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Proef 5 verschillende IPA's met een IBU van 60 of hoger.</p>
+<div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>BEHAALD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtndMrYu1fIq3W7gQKy3EZL48uJ55bjjzsPh_2lyloTHisB56YoJYBjDIcNWWSOzr-Ovn1bDoErCRcu7uwUSyghonpk49ZHOwTHqL-gq_2svol8Srgt1RvnBxm22rLtE1nI2rfFwInHQgvrJgSGuLz2tLR1BxrvSmNPTuHv3cu82x0Yac5GI_oaMSUw7TcP4f7Tu0QMFrx-0X_51QnI6UI1Eqfi6yII-GvmMOkSR9_uTIiJsR6xSTcR9Xw"/>
+<div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">Stout Specialist</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Ontdek de diepe smaken van Imperial Stouts en Porters.</p>
+<div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>BEHAALD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center border-primary/20 bg-primary/5">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtvIU9ysosT1ViclsRUaqaWSPcdYgxBk5-BV-pq5h8366qevSXdZGIRy03pALlT6CXrcnkQyQxEsNj_ADjqV-BhYhvINfWNbxNOU_NfsKylhSv8qlBS9mk39BAJeOp4LkAw7g8QChMfCr9hWsg_H7chLLo1HZ5qKTWWU1IHbx6MJT-ifwtGTtnCR4v79Crnslyc9sOSkleYBSt7sqhOZxQNKi-UPXrU5owQCl64aptzgEmFoDwl0jliae4"/>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">Brouwerij Verkenner</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Bezoek 10 verschillende aangesloten brouwerijen.</p>
+<div class="mt-auto w-full px-4">
+<div class="flex justify-between text-xs font-bold mb-1.5 text-primary-fixed-dim uppercase tracking-tighter">
+<span>Voortgang</span>
+<span>80%</span>
+</div>
+<div class="w-full h-2 progress-bar rounded-full">
+<div class="h-full progress-fill rounded-full" style="width: 80%"></div>
+</div>
+<div class="mt-2 text-[10px] text-on-surface-variant/70 italic uppercase tracking-widest">Nog 2 te gaan</div>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtvCN3gFgkTDNAfe6-bbRWF56sIsYDjVgrGv4jj_0m0120ZDVRmuA63RKtONdZHvd_Ek7ZSObWLOfLQ7nJuCZNW9NzdGTQP1U5JwHa_mWkxHwBG_4RXMi0VHJB9fdgJ0EtxZLy3fDokYpdiB0EchoC-wbJ5EZXaVBhOaZUaqb1DrBxLnPBs8HEHI5imZ5YZm8r7HLUiRYfQAJ88m2BSCJrOM-cGiHNaI-5u-57uIRHJGzf5RB7AlEAJZA"/>
+<div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">Proost Pionier</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Deel je eerste tasting note met de Artisanal community.</p>
+<div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>BEHAALD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 group">
+<img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLusp_EqwDhljEczUxgdkDo_lkgDHodS-rprnjqVwgia3fSJs_CFSBNLyd3b26tcITXh_Na3g9x2Ej68Qx-Lv0De7HicAujYdd89zADNhv9qGdNhlhXf14Xt4Jq9vXF3NOj9TzosO_mFGXQ-65Do9RxmaHjtsmQ14grXEuR4wi5uSXYVItirC_p9v1Mwq5qiNotdgA6GbLDISh8i9GieIDZ5w79rl_5s-2sRsrXV9lnzvfXm3XElvB7p7w"/>
+<div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div>
+</div>
+<h3 class="font-headline-sm text-primary mb-1">Blonde Baron</h3>
+<p class="font-label-sm text-on-surface-variant mb-4">Gouden adel. Geniet van 10 verschillende blonde bieren.</p>
+<div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>BEHAALD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLspEIHPLC_KBeJ5Dlm8d8KEKpfJfREg7OGhnW_OMIhXylJWXswdAqB2B_sE9hV_r4HvMgl2L1IA2d_qPy4TCHMGDy18VS5BG2Esh24t_lEFyR5PJam9qW_47dyT9SQBSbNf5RmAliG_DhNgQYODu-dOsJ4yiI7Nu70TET15su-LCIzRlqcER1FN76xQr0PKAqNRbHdZTIEqPXXZi1d15LwfWaLZWHmLnURcVyThJQQDqcnOb4w6myWTJfQ"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">Hop-Hertog</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Meester van de bitterheid. Drink 5 verschillende IPA's.</p>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>VERGRENDELD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsKg9HzU-eNaEc6iwRD0K1vPAsCly64QSavruarZBJrWA3btdwEo6zHFHLiurLDqZQN3EmSXYyuEEahEMVcNm0DmuMTmHgY4gwmL5NbGNG0_8VWtGJ7sHpLHCUOfdsS3fIPpqi7zsiZDfSklupgKv04oyF-Ax6TQfSdGWb3VjKjzx4z5nKBA5n6AkhKa7iW8P4m85dzB17r4Y7F24hqxJPkpHwsZSfIwwpnriIfbwVZGyo6cPDp5_Qmu-Y"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">Kersen-Ridder</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Beschermer van het fruit. Proef 3 authentieke Belgische Krieken.</p>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>VERGRENDELD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsiB0SrIWuJ3YZqjj-gZfS_Krojp_643V_nYwC24m1uTu8dm83YkKzAzIqcLldnO1de6wDPyvweN18JC2RoR1PXZJQpmwe3WPz0TPjPZ1tke-wca6gRcxrlZepeuyqVw44yQ8K4JJTsBnifFztbliY8C9xzlg6w5P8hwX1AlNjassaRmQYF4Zsfe1Mutme5zAjsQRzHLSOaXiJwZEak8BxsZ4-SwK_mBnI-XhxKdrUESZEn21TVP57VfQ"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">Tripel-Troon</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Heerser van de drie-eenheid. Ontdek 5 krachtige Tripels.</p>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>VERGRENDELD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center opacity-60">
+<div class="relative w-32 h-32 mb-4 group grayscale contrast-50 brightness-50">
+<img class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLuJDuCFNwIze4abOfdGMXZEkogCD6c8HBkJejFxt_9_HsKKFj95NXIF6B1Vlrs5sSkoV9yBDFyrXLrDWiLStxoml-nKH5XmK2_2sxRvmykdjWQw_w8UcNcA4NBCM6AvytYNwRvJW0GH0pNFT5ahLivBzkwGYcl8Bj-NeIn6FqtRqnNLJXHXtmWiUEMdi-PEmcRZtYXPmwHsMEJB1T2FmBHs-yk4e88d9wutwjdSkm0T_aaGZmFv1RyVdg"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-on-surface/40">lock</span>
+</div>
+</div>
+<h3 class="font-headline-sm text-on-surface-variant mb-1">Dubbel-Draak</h3>
+<p class="font-label-sm text-on-surface-variant/60 mb-4">Vuurspuwer van mout. Proef 5 rijke Dubbels.</p>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant/40 font-label-md">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>VERGRENDELD</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col items-center text-center"><div class="relative w-32 h-32 mb-4 group"><img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAGgzOsJbgioLGotb1WZmxQofJ52RkblbkgFole7iUdLxQCkATcjduqjT7cGiKTkNoOVNMEg-e0QnHC_g6dIljF0CmKaO5pW_v2PvpMZwMifUNNZMF4j-4RyPGrubQEaD9y-RmXQmE_wm3g9_lmCPQV76f2MKWFuxK9kZpIRxA_iQPlGe5TjCq9gE_dgVOfAnAU8okJOhpQC3JmDb4x3znEGmpt4dO10Jidn1ck0iweowoDh2CMZR-"/><div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div></div><h3 class="font-headline-sm text-primary mb-1">Brouwerij Veteraan</h3><p class="font-label-sm text-on-surface-variant mb-4">Bezoek minstens 10 verschillende brouwerijen en ontdek het ambacht bij de bron.</p><div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md"><span class="material-symbols-outlined text-sm">verified</span><span>BEHAALD</span></div></div><div class="glass-card rounded-xl p-5 flex flex-col items-center text-center"><div class="relative w-32 h-32 mb-4 group"><img class="w-full h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110 duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuArurH8kU-jWAX-Tp1ZtsDen1j_iEepKrHEQLhNfd85wyYc7cO17z83KznLe3R5B9pE2C0PqCAXsWpSJAl2kpJrrLJ80ubQRYkINKESHKhzW_l34HZxYCUYP76RgVPbgxCQq-m95qh7GBf-9H6sjR-mHmE7ig69Vdp9IX-pKxEYIlQLIzVMyKUH-65_DgHZjrLi41YHSTcr_Gwk7N6fggbl5ZdwbxEAzb0q9_hhxyAN58FjM9l59w-g"/><div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">Verdiend</div></div><h3 class="font-headline-sm text-primary mb-1">Smaak-Bourgondiër</h3><p class="font-label-sm text-on-surface-variant mb-4">Geniet van 10 unieke bier- en spijscombinaties of diners in een proeflokaal. De ware levensgenieter.</p><div class="mt-auto flex items-center gap-1 text-primary-fixed-dim font-label-md"><span class="material-symbols-outlined text-sm">verified</span><span>BEHAALD</span></div></div></div>
+</section>
+</main>
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-low border-t border-outline-variant/10 shadow-lg shadow-primary/5 flex justify-around items-center h-20 px-2 pb-safe">
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary-fixed transition-all cursor-pointer">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-sm text-label-sm mt-1">Cellar</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary-fixed transition-all cursor-pointer">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-sm text-label-sm mt-1">Explore</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary-fixed transition-all cursor-pointer">
+<span class="material-symbols-outlined">event_available</span>
+<span class="font-label-sm text-label-sm mt-1">Events</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary-fixed-dim font-bold bg-secondary-container/30 rounded-full px-4 py-1 transition-all active:scale-95 duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm mt-0.5">Profile</span>
+</div>
+</nav>
+<script>
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'translateY(-4px) scale(1)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    </script>
+</body></html>

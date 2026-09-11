@@ -14,6 +14,7 @@ import '../profile/profile_page.dart';
 import '../profile/settings_page.dart';
 import '../profile/stats_service.dart';
 import '../events/events_page.dart';
+import '../../shared/profile_avatar_button.dart';
 
 // Tab-indexen van de onderste navigatiebalk.
 const _tabAgenda = 1;
@@ -32,16 +33,36 @@ class _HomePageState extends State<HomePage> {
   final _statsService = StatsService();
   int _currentIndex = 0;
   int _currentStreak = 0;
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final profile = await Supabase.instance.client
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (!mounted) return;
+    setState(() => _avatarUrl = profile?['avatar_url'] as String?);
+  }
 
   void _goToTab(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
+    final goToProfile = () => _goToTab(_tabProfile);
     final pages = [
-      DiscoveryContentPage(onNavigate: _goToTab), // Index 0: Ontdek
-      const EventsPage(), // Index 1: Agenda
-      const FavoritesPage(),
-      const MapPage(),
+      DiscoveryContentPage(onNavigate: _goToTab, avatarUrl: _avatarUrl), // Index 0: Ontdek
+      EventsPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile), // Index 1: Agenda
+      FavoritesPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile),
+      MapPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile),
       const ProfilePage(),
     ];
 
@@ -122,11 +143,12 @@ const _avatarImage =
 
 class DiscoveryContentPage extends StatefulWidget {
   final int streak;
+  final String? avatarUrl;
 
   /// Springt naar een tab in de onderste navigatiebalk van [HomePage].
   final ValueChanged<int>? onNavigate;
 
-  const DiscoveryContentPage({super.key, this.streak = 0, this.onNavigate});
+  const DiscoveryContentPage({super.key, this.streak = 0, this.onNavigate, this.avatarUrl});
 
   @override
   State<DiscoveryContentPage> createState() => _DiscoveryContentPageState();
@@ -461,9 +483,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
-          IconButton(
-            onPressed: () => _goTo(_tabProfile),
-            icon: const Icon(Icons.account_circle_outlined, color: _primary),
+          ProfileAvatarButton(
+            onTap: () => _goTo(_tabProfile),
+            avatarUrl: widget.avatarUrl,
           ),
         ],
       ),

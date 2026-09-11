@@ -11,6 +11,7 @@ import '../feed/feed_service.dart';
 import '../map/breweries.dart';
 import 'beers.dart';
 import 'favorites_service.dart';
+import '../../shared/profile_avatar_button.dart';
 
 // Kleuren uit het "Artisanal Draught" design system (DESIGN.md).
 const _background = Color(0xFF1C110A);
@@ -43,7 +44,10 @@ const _events = [
 ];
 
 class FavoritesPage extends StatefulWidget {
-  const FavoritesPage({super.key});
+  const FavoritesPage({super.key, this.avatarUrl, this.onProfileTap});
+
+  final String? avatarUrl;
+  final VoidCallback? onProfileTap;
 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
@@ -526,6 +530,10 @@ class _FavoritesPageState extends State<FavoritesPage> {
             ),
           ),
           const Icon(Icons.search, color: _onSurfaceVariant),
+          if (widget.onProfileTap != null) ...[
+            const SizedBox(width: 12),
+            ProfileAvatarButton(onTap: widget.onProfileTap!, avatarUrl: widget.avatarUrl, size: 32),
+          ],
         ],
       ),
     );

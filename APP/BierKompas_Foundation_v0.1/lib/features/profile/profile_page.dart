@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'all_badges_page.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
@@ -292,19 +293,28 @@ class _ProfilePageState extends State<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        'Bekijk alles',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFD4B28C),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        onTap: _stats == null
+                            ? null
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => AllBadgesPage(badges: _stats!.badges),
+                                  ),
+                                ),
+                        child: Text(
+                          'Bekijk alles',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFD4B28C),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Paspoort Grid: badges op basis van de Streak-status.
+                  // Paspoort Grid: preview van een paar badges, de rest zie je via "Bekijk alles".
                   if (_stats == null)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
@@ -321,6 +331,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.3,
                       children: _stats!.badges
+                          .take(4)
                           .map((badge) => _buildPassportCard(
                                 badge.title,
                                 badge.icon,
@@ -456,13 +467,29 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             )
           else
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF3C3028),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3C3028),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: accent, size: 26),
+                ),
+                if (!earned)
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: Colors.black26,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
+                  ),
+              ],
             ),
           const SizedBox(height: 10),
           Text(
