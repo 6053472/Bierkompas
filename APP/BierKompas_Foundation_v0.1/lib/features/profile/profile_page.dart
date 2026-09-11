@@ -418,15 +418,30 @@ class _ProfilePageState extends State<ProfilePage> {
               alignment: Alignment.center,
               children: [
                 ClipOval(
-                  child: Opacity(
-                    opacity: earned ? 1 : 0.35,
-                    child: Image.asset(
-                      'assets/badges/$imageAsset.png',
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  child: earned
+                      ? Image.asset(
+                          'assets/badges/$imageAsset.png',
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                        )
+                      : ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0, 0, 0, 1, 0,
+                          ]),
+                          child: Opacity(
+                            opacity: 0.5,
+                            child: Image.asset(
+                              'assets/badges/$imageAsset.png',
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
                 ),
                 if (!earned)
                   Container(
