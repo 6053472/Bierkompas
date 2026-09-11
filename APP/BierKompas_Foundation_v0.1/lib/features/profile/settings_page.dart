@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'profile_edit_page.dart';
 
 class SettingsPage extends StatefulWidget {
   final AppUser? user;
@@ -16,8 +17,27 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _pushNotifications = true;
   bool _emailUpdates = false;
+<<<<<<< Updated upstream
   bool _deletingAccount = false;
   final _authService = AuthService();
+=======
+  late AppUser? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = widget.user;
+  }
+
+  Future<void> _editProfile() async {
+    final updated = await Navigator.of(context).push<AppUser>(
+      MaterialPageRoute(builder: (_) => ProfileEditPage(user: _user)),
+    );
+    if (updated != null && mounted) {
+      setState(() => _user = updated);
+    }
+  }
+>>>>>>> Stashed changes
 
   static const _bg = Color(0xFF1E1712);
   static const _card = Color(0xFF2C221C);
@@ -129,9 +149,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
             _sectionTitle('Account'),
             _sectionCard([
-              _infoTile(icon: Icons.person_outline, label: 'Naam', value: widget.user?.name ?? '-'),
+              _infoTile(icon: Icons.person_outline, label: 'Naam', value: _user?.name ?? '-'),
               const Divider(color: _divider, height: 1),
-              _infoTile(icon: Icons.mail_outline, label: 'E-mail', value: widget.user?.email ?? '-'),
+              _infoTile(icon: Icons.mail_outline, label: 'E-mail', value: _user?.email ?? '-'),
+              const Divider(color: _divider, height: 1),
+              _navTile(
+                icon: Icons.edit_outlined,
+                title: 'Profiel bewerken',
+                onTap: _editProfile,
+              ),
             ]),
             const SizedBox(height: 24),
 

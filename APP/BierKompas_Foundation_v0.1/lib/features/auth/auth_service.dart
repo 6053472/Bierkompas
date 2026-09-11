@@ -82,6 +82,28 @@ class AuthService {
     }
   }
 
+  Future<AppUser> updateProfile({
+    required String userId,
+    required String name,
+    required String email,
+  }) async {
+    try {
+      final currentEmail = _client.auth.currentUser?.email;
+      if (email != currentEmail) {
+        await _client.auth.updateUser(UserAttributes(email: email));
+      }
+      await _client.from('profiles').update({
+        'name': name,
+        'email': email,
+      }).eq('id', userId);
+      return AppUser(id: userId, name: name, email: email);
+    } on AuthApiException catch (e) {
+      throw AuthException(_translateAuthError(e));
+    } on PostgrestException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
   Future<void> saveConsent({required String userId}) async {
     try {
       await _client.from('user_consents').upsert({
