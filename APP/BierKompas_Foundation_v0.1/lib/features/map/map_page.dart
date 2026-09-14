@@ -157,17 +157,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     controller.forward();
   }
 
+  // Standaard Web Mercator-formule: hoeveel meter beslaat één pixel op het
+  // scherm, op deze breedtegraad en dit zoomniveau.
+  double _metersPerPixel(double latitudeDeg, double zoom) {
+    return 156543.03392 * cos(latitudeDeg * pi / 180) / pow(2, zoom);
+  }
+
+  // Schuift een punt een aantal schermpixels naar het noorden (= omhoog),
+  // zodat het bier-icoontje boven het kaart-paneel uit blijft steken i.p.v.
+  // er precies achter te verdwijnen.
+  LatLng _liftForPanel(LatLng point, double zoom) {
+    final metersPerPixel = _metersPerPixel(point.latitude, zoom);
+    final latShift = (150 * metersPerPixel) / 111320.0;
+    return LatLng(point.latitude - latShift, point.longitude);
+  }
+
   // Tikken op een bier-icoontje (of opnieuw op de al geselecteerde kaart):
   // toont het kaart-paneel voor die brouwerij en zoomt de kaart erop in.
   void _selectBrewery(int index, {bool zoomIn = false}) {
     if (index < 0 || index >= _results.length) return;
     final wasVisible = _selectedIndex != null;
     final brewery = _results[index].brewery;
+    final zoom = zoomIn ? _zoomFocused : _zoomNearby;
 
     setState(() => _selectedIndex = index);
     _animatedMapMove(
-      LatLng(brewery.latitude, brewery.longitude),
-      zoomIn ? _zoomFocused : _zoomNearby,
+      _liftForPanel(LatLng(brewery.latitude, brewery.longitude), zoom),
+      zoom,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -200,7 +216,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (index < 0 || index >= _results.length) return;
     setState(() => _selectedIndex = index);
     final brewery = _results[index].brewery;
-    _animatedMapMove(LatLng(brewery.latitude, brewery.longitude), _zoomNearby);
+    _animatedMapMove(
+      _liftForPanel(LatLng(brewery.latitude, brewery.longitude), _zoomNearby),
+      _zoomNearby,
+    );
   }
 
   // ============================================================
