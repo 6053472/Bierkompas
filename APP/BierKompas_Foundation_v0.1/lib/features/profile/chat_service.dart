@@ -1,6 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum MessageType { text, beerShare, eventInvite }
+enum MessageType { text, beerShare, eventInvite, image }
 
 MessageType _typeFromString(String? value) {
   switch (value) {
@@ -8,6 +10,8 @@ MessageType _typeFromString(String? value) {
       return MessageType.beerShare;
     case 'event_invite':
       return MessageType.eventInvite;
+    case 'image':
+      return MessageType.image;
     default:
       return MessageType.text;
   }
@@ -19,6 +23,8 @@ String _typeToString(MessageType type) {
       return 'beer_share';
     case MessageType.eventInvite:
       return 'event_invite';
+    case MessageType.image:
+      return 'image';
     case MessageType.text:
       return 'text';
   }
@@ -105,6 +111,23 @@ class ChatService {
     try {
       await _client.rpc('mark_messages_read', params: {'p_other_id': otherUserId});
     } on PostgrestException catch (e) {
+      throw ChatException(e.message);
+    }
+  }
+
+  /// Upload een chatfoto naar Supabase Storage en geeft de publieke URL terug.
+  Future<String> uploadImage({required Uint8List bytes, required String fileExt}) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw ChatException('Je bent niet ingelogd.');
+    try {
+      final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      await _client.storage.from('chat-images').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: 'image/$fileExt'),
+          );
+      return _client.storage.from('chat-images').getPublicUrl(path);
+    } on StorageException catch (e) {
       throw ChatException(e.message);
     }
   }

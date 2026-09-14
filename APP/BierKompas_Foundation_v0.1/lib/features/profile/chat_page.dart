@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../favorites/beers.dart';
 import 'chat_service.dart';
@@ -27,6 +28,7 @@ class _ChatPageState extends State<ChatPage> {
   final _scrollController = ScrollController();
   List<ChatMessage>? _messages;
   bool _sending = false;
+  bool _sendingPhoto = false;
   RealtimeChannel? _channel;
   String? _myId;
 
@@ -128,6 +130,37 @@ class _ChatPageState extends State<ChatPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature komt binnenkort beschikbaar.')),
     );
+  }
+
+  Future<void> _pickAndSendPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    setState(() => _sendingPhoto = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final fileExt = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : 'jpg';
+      final url = await _chatService.uploadImage(bytes: bytes, fileExt: fileExt);
+      await _chatService.sendMessage(
+        receiverId: widget.friend.id,
+        body: '',
+        type: MessageType.image,
+        metadata: {'image_url': url},
+      );
+      await _loadMessages();
+    } on ChatException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Foto versturen mislukt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sendingPhoto = false);
+    }
   }
 
   Future<void> _openShareSheet() async {
@@ -483,6 +516,10 @@ class _ChatPageState extends State<ChatPage> {
               if (message.body.isNotEmpty) const SizedBox(height: 10),
               _buildEventCard(message, isMe),
             ],
+            if (message.type == MessageType.image) ...[
+              if (message.body.isNotEmpty) const SizedBox(height: 10),
+              _buildImageBubble(message.metadata),
+            ],
             const SizedBox(height: 6),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -502,6 +539,65 @@ class _ChatPageState extends State<ChatPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageBubble(Map<String, dynamic>? metadata) {
+    final url = metadata?['image_url'] as String?;
+    if (url == null) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: () => _openFullscreenImage(url),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
+          fit: BoxFit.cover,
+          width: 220,
+          height: 220,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return SizedBox(
+              width: 220,
+              height: 220,
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _gold,
+                  value: progress.expectedTotalBytes != null
+                      ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                      : null,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 220,
+            height: 220,
+            color: _bg,
+            child: const Icon(Icons.broken_image_outlined, color: _muted),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openFullscreenImage(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: _cream),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.network(url),
+            ),
+          ),
         ),
       ),
     );
@@ -656,8 +752,14 @@ class _ChatPageState extends State<ChatPage> {
             onPressed: _sending ? null : _openShareSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.camera_alt_outlined, color: _muted),
-            onPressed: () => _comingSoon('Foto versturen'),
+            icon: _sendingPhoto
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                  )
+                : const Icon(Icons.camera_alt_outlined, color: _muted),
+            onPressed: _sendingPhoto ? null : _pickAndSendPhoto,
           ),
           Expanded(
             child: Container(
