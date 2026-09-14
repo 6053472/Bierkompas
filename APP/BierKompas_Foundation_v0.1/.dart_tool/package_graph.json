@@ -11,7 +11,6 @@
         "flutter",
         "flutter_map",
         "google_fonts",
-        "http",
         "image_picker",
         "latlong2",
         "shared_preferences",
@@ -209,11 +208,26 @@
       ]
     },
     {
+      "name": "meta",
+      "version": "1.18.3",
+      "dependencies": []
+    },
+    {
       "name": "logger",
       "version": "2.8.0",
       "dependencies": [
         "clock",
         "meta"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -224,6 +238,19 @@
     {
       "name": "collection",
       "version": "1.19.1",
+      "dependencies": []
+    },
+    {
+      "name": "async",
+      "version": "2.13.1",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
       "dependencies": []
     },
     {
@@ -529,6 +556,16 @@
       ]
     },
     {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
+    },
+    {
       "name": "url_launcher_windows",
       "version": "3.1.6",
       "dependencies": [
@@ -815,9 +852,11 @@
       ]
     },
     {
-      "name": "term_glyph",
-      "version": "1.2.2",
-      "dependencies": []
+      "name": "typed_data",
+      "version": "1.4.0",
+      "dependencies": [
+        "collection"
+      ]
     },
     {
       "name": "fixnum",
@@ -870,6 +909,22 @@
       "version": "0.3.1",
       "dependencies": [
         "lists"
+      ]
+    },
+    {
+      "name": "string_scanner",
+      "version": "1.4.1",
+      "dependencies": [
+        "source_span"
+      ]
+    },
+    {
+      "name": "source_span",
+      "version": "1.10.2",
+      "dependencies": [
+        "collection",
+        "path",
+        "term_glyph"
       ]
     },
     {
@@ -967,6 +1022,11 @@
       "dependencies": [
         "meta"
       ]
+    },
+    {
+      "name": "term_glyph",
+      "version": "1.2.2",
+      "dependencies": []
     },
     {
       "name": "web_socket",

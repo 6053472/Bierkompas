@@ -4,7 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'add_friend_page.dart';
 import 'all_badges_page.dart';
+import 'friends_service.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
@@ -18,14 +20,17 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _statsService = StatsService();
+  final _friendsService = FriendsService();
   AppUser? _user;
   ProfileStats? _stats;
+  List<Friend>? _friends;
 
   @override
   void initState() {
     super.initState();
     _loadUser();
     _loadStats();
+    _loadFriends();
   }
 
   Future<void> _loadUser() async {
@@ -51,6 +56,27 @@ class _ProfilePageState extends State<ProfilePage> {
     final stats = await _statsService.fetchStats(authUser.id);
     if (!mounted) return;
     setState(() => _stats = stats);
+  }
+
+  Future<void> _loadFriends() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+    try {
+      final friends = await _friendsService.list(authUser.id);
+      if (!mounted) return;
+      setState(() => _friends = friends);
+    } on FriendsException catch (e) {
+      debugPrint('Fout bij ophalen vrienden: $e');
+    }
+  }
+
+  Future<void> _openAddFriend() async {
+    final added = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AddFriendPage()),
+    );
+    if (added == true) {
+      _loadFriends();
+    }
   }
 
   Future<void> _logout() async {
@@ -419,32 +445,84 @@ class _ProfilePageState extends State<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        'Bekijk alle',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFD4B28C),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        onTap: _openAddFriend,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3028),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.person_add_alt_1, color: Color(0xFFD4B28C), size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Toevoegen',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFFD4B28C),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.5,
-                    children: const [
-                      _BeerFriend(name: 'Thomas'),
-                      _BeerFriend(name: 'Sophie'),
-                      _BeerFriend(name: 'Lars'),
-                      _BeerFriend(name: 'Emma'),
-                    ],
-                  ),
+                  if (_friends == null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
+                      ),
+                    )
+                  else if (_friends!.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C221C),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Je hebt nog geen Bier-vrienden.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF9E8A7D),
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tik op "Toevoegen" om iemand te zoeken.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF9E8A7D),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.5,
+                      children: _friends!
+                          .map((friend) => _BeerFriend(name: friend.name, avatarUrl: friend.avatarUrl))
+                          .toList(),
+                    ),
                   const SizedBox(height: 30),
                 ],
               ),

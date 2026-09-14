@@ -19,22 +19,6 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
-class Brewery {
-  final String title;
-  final double latitude;
-  final double longitude;
-  final String rating;
-  final List<String> tags;
-
-  const Brewery({
-    required this.title,
-    required this.latitude,
-    required this.longitude,
-    required this.rating,
-    required this.tags,
-  });
-}
-
 class BreweryResult {
   final Brewery brewery;
   final double distance;
@@ -60,17 +44,63 @@ class CityLocation {
 
 class _MapPageState extends State<MapPage> {
   final _favoritesService = FavoritesService();
-  final _pageController = PageController(viewportFraction: 0.86);
+  final TextEditingController _searchController = TextEditingController();
+  final MapController _mapController = MapController();
+  final PageController _pageController = PageController(viewportFraction: 0.86);
   final Set<int> _favoriteIds = {};
+
+  bool _isSearching = false;
+  String _searchedLocation = '';
+
+  // Landelijke database met bekende steden in Nederland
+  final List<CityLocation> _cities = const [
+    CityLocation(name: 'Amsterdam', latitude: 52.3676, longitude: 4.9041),
+    CityLocation(name: 'Rotterdam', latitude: 51.9244, longitude: 4.4777),
+    CityLocation(name: 'Utrecht', latitude: 52.0907, longitude: 5.1214),
+    CityLocation(name: 'Den Haag', latitude: 52.0705, longitude: 4.3007),
+    CityLocation(name: 'Eindhoven', latitude: 51.4416, longitude: 5.4697),
+    CityLocation(name: 'Groningen', latitude: 53.2194, longitude: 6.5665),
+    CityLocation(name: 'Maastricht', latitude: 50.8513, longitude: 5.6909),
+    CityLocation(name: 'Haarlem', latitude: 52.3874, longitude: 4.6462),
+    CityLocation(name: 'Arnhem', latitude: 51.9851, longitude: 5.8987),
+    CityLocation(name: 'Zwolle', latitude: 52.5168, longitude: 6.0830),
+    CityLocation(name: 'Leeuwarden', latitude: 53.2012, longitude: 5.7999),
+    CityLocation(name: 'Assen', latitude: 52.9926, longitude: 6.5642),
+    CityLocation(name: 'Middelburg', latitude: 51.4988, longitude: 3.6108),
+    CityLocation(name: 'Lelystad', latitude: 52.5185, longitude: 5.4714),
+    CityLocation(name: ''
+        's-Hertogenbosch', latitude: 51.6992, longitude: 5.3037),
+    CityLocation(name: 'Breda', latitude: 51.5719, longitude: 4.7683),
+    CityLocation(name: 'Tilburg', latitude: 51.5555, longitude: 5.0913),
+    CityLocation(name: 'Enschede', latitude: 52.2215, longitude: 6.8937),
+    CityLocation(name: 'Delft', latitude: 52.0116, longitude: 4.3571),
+    CityLocation(name: 'Leiden', latitude: 52.1601, longitude: 4.4970),
+    CityLocation(name: 'Nijmegen', latitude: 51.8126, longitude: 5.8372),
+  ];
+
+  List<BreweryResult> _results = [];
 
   @override
   void initState() {
     super.initState();
+    _resetResults();
     _loadFavorites();
+  }
+
+  void _resetResults() {
+    _results = breweries
+        .map(
+          (brewery) => BreweryResult(
+            brewery: brewery,
+            distance: 0,
+          ),
+        )
+        .toList();
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -122,6 +152,122 @@ class _MapPageState extends State<MapPage> {
         SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
       );
     }
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * pi / 180;
+  }
+
+  double _calculateDistance(
+    double latitude1,
+    double longitude1,
+    double latitude2,
+    double longitude2,
+  ) {
+    const double earthRadius = 6371;
+
+    final double dLatitude = _degreesToRadians(latitude2 - latitude1);
+    final double dLongitude = _degreesToRadians(longitude2 - longitude1);
+
+    final double a = sin(dLatitude / 2) * sin(dLatitude / 2) +
+        cos(_degreesToRadians(latitude1)) *
+            cos(_degreesToRadians(latitude2)) *
+            sin(dLongitude / 2) *
+            sin(dLongitude / 2);
+
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  void _searchLocation() {
+    final String query = _searchController.text.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      // Zoek de stad op in de ingebouwde lijst (case-insensitive)
+      CityLocation? foundCity;
+      for (var city in _cities) {
+        if (city.name.toLowerCase().contains(query)) {
+          foundCity = city;
+          break;
+        }
+      }
+
+      if (foundCity == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Stad niet gevonden in de lijst. Probeer bijv. Amsterdam, Utrecht, Groningen.'),
+          ),
+        );
+        setState(() {
+          _isSearching = false;
+        });
+        return;
+      }
+
+      // Verplaats de kaart naar de gevonden stad
+      _mapController.move(
+        LatLng(foundCity.latitude, foundCity.longitude),
+        9,
+      );
+
+      // Bereken de afstand voor ALLE brouwerijen t.o.v. deze stad
+      final List<BreweryResult> newResults = breweries.map((brewery) {
+        final double distance = _calculateDistance(
+          foundCity!.latitude,
+          foundCity.longitude,
+          brewery.latitude,
+          brewery.longitude,
+        );
+
+        return BreweryResult(
+          brewery: brewery,
+          distance: distance,
+        );
+      }).toList();
+
+      // Sorteer direct van dichtbij naar ver weg
+      newResults.sort(
+        (a, b) => a.distance.compareTo(b.distance),
+      );
+
+      setState(() {
+        _searchedLocation = foundCity!.name;
+        _results = newResults;
+        _isSearching = false;
+      });
+
+      if (_pageController.hasClients && newResults.isNotEmpty) {
+        _pageController.jumpToPage(0);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Er ging iets mis met zoeken'),
+        ),
+      );
+      setState(() {
+        _isSearching = false;
+      });
+    }
+  }
+
+  String _formatDistance(double distance) {
+    if (distance < 1) {
+      return '${(distance * 1000).round()} m';
+    }
+
+    return '${distance.toStringAsFixed(1)} km';
   }
 
   @override
@@ -334,16 +480,18 @@ class _MapPageState extends State<MapPage> {
                       child: PageView(
                         controller: _pageController,
                         children: [
-                          for (final brewery in breweries)
+                          for (final result in safeResults)
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
                               child: _buildBreweryCard(
-                                title: brewery.title,
-                                distance: brewery.distance,
-                                rating: brewery.rating,
-                                tags: brewery.tags,
-                                isFavorite: _favoriteIds.contains(brewery.id),
-                                onFavoriteTap: () => _toggleFavorite(brewery),
+                                title: result.brewery.title,
+                                distance: _searchedLocation.isEmpty
+                                    ? result.brewery.distance
+                                    : '${_formatDistance(result.distance)} vanaf $_searchedLocation',
+                                rating: result.brewery.rating,
+                                tags: result.brewery.tags,
+                                isFavorite: _favoriteIds.contains(result.brewery.id),
+                                onFavoriteTap: () => _toggleFavorite(result.brewery),
                               ),
                             ),
                         ],
