@@ -24,6 +24,8 @@ class _ProfilePageState extends State<ProfilePage> {
   AppUser? _user;
   ProfileStats? _stats;
   List<Friend>? _friends;
+  List<FriendRequest>? _incomingRequests;
+  final Set<String> _pendingRequestActions = {};
 
   @override
   void initState() {
@@ -62,20 +64,47 @@ class _ProfilePageState extends State<ProfilePage> {
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser == null) return;
     try {
-      final friends = await _friendsService.list(authUser.id);
+      final results = await Future.wait([
+        _friendsService.listFriends(authUser.id),
+        _friendsService.listIncomingRequests(authUser.id),
+      ]);
       if (!mounted) return;
-      setState(() => _friends = friends);
+      setState(() {
+        _friends = results[0] as List<Friend>;
+        _incomingRequests = results[1] as List<FriendRequest>;
+      });
     } on FriendsException catch (e) {
       debugPrint('Fout bij ophalen vrienden: $e');
     }
   }
 
   Future<void> _openAddFriend() async {
-    final added = await Navigator.of(context).push<bool>(
+    final sent = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const AddFriendPage()),
     );
-    if (added == true) {
+    if (sent == true) {
       _loadFriends();
+    }
+  }
+
+  Future<void> _respondToRequest(FriendRequest request, bool accept) async {
+    setState(() => _pendingRequestActions.add(request.requesterId));
+    try {
+      await _friendsService.respondToRequest(requesterId: request.requesterId, accept: accept);
+      if (!mounted) return;
+      setState(() {
+        _pendingRequestActions.remove(request.requesterId);
+        _incomingRequests?.removeWhere((r) => r.requesterId == request.requesterId);
+        if (accept) {
+          _friends = [...?_friends, Friend(id: request.requesterId, name: request.name, avatarUrl: request.avatarUrl)];
+        }
+      });
+    } on FriendsException catch (e) {
+      if (!mounted) return;
+      setState(() => _pendingRequestActions.remove(request.requesterId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reageren mislukt: $e')),
+      );
     }
   }
 
@@ -474,14 +503,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 12),
 
-                  if (_friends == null)
+                  if (_friends == null || _incomingRequests == null)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: Center(
                         child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
                       ),
                     )
-                  else if (_friends!.isEmpty)
+                  else if (_friends!.isEmpty && _incomingRequests!.isEmpty)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -519,9 +548,18 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.5,
-                      children: _friends!
-                          .map((friend) => _BeerFriend(name: friend.name, avatarUrl: friend.avatarUrl))
-                          .toList(),
+                      children: [
+                        for (final request in _incomingRequests!)
+                          _FriendRequestTile(
+                            name: request.name,
+                            avatarUrl: request.avatarUrl,
+                            busy: _pendingRequestActions.contains(request.requesterId),
+                            onAccept: () => _respondToRequest(request, true),
+                            onDecline: () => _respondToRequest(request, false),
+                          ),
+                        for (final friend in _friends!)
+                          _BeerFriend(name: friend.name, avatarUrl: friend.avatarUrl),
+                      ],
                     ),
                   const SizedBox(height: 30),
                 ],
@@ -795,6 +833,113 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendRequestTile extends StatelessWidget {
+  final String name;
+  final String? avatarUrl;
+  final bool busy;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _FriendRequestTile({
+    required this.name,
+    this.avatarUrl,
+    required this.onAccept,
+    required this.onDecline,
+    this.busy = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C221C),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF3C3028),
+              image: avatarUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: avatarUrl == null
+                ? const Center(
+                    child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 20),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: const Color(0xFFEFE6DD),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            'Vriendschapsverzoek',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: const Color(0xFF9E8A7D),
+              fontSize: 9,
+            ),
+          ),
+          const SizedBox(height: 6),
+          busy
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: onAccept,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFD4B28C),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, size: 14, color: Color(0xFF1E1712)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: onDecline,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF3C3028),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, size: 14, color: Color(0xFF9E8A7D)),
+                      ),
+                    ),
+                  ],
+                ),
         ],
       ),
     );

@@ -63,10 +63,10 @@ class _AddFriendPageState extends State<AddFriendPage> {
     }
   }
 
-  Future<void> _addFriend(FriendSearchResult person) async {
+  Future<void> _sendRequest(FriendSearchResult person) async {
     setState(() => _pendingIds.add(person.id));
     try {
-      await _friendsService.addFriend(person.id);
+      await _friendsService.sendRequest(person.id);
       if (!mounted) return;
       _friendsAdded = true;
       setState(() {
@@ -77,19 +77,19 @@ class _AddFriendPageState extends State<AddFriendPage> {
                     id: r.id,
                     name: r.name,
                     avatarUrl: r.avatarUrl,
-                    alreadyFriend: true,
+                    status: FriendStatus.requestSent,
                   )
                 : r)
             .toList();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${person.name} is toegevoegd als vriend!')),
+        SnackBar(content: Text('Vriendschapsverzoek verstuurd naar ${person.name}.')),
       );
     } on FriendsException catch (e) {
       if (!mounted) return;
       setState(() => _pendingIds.remove(person.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Toevoegen mislukt: $e')),
+        SnackBar(content: Text('Versturen mislukt: $e')),
       );
     }
   }
@@ -260,7 +260,9 @@ class _AddFriendPageState extends State<AddFriendPage> {
               SizedBox(
                 height: 34,
                 child: ElevatedButton(
-                  onPressed: person.alreadyFriend || isPending ? null : () => _addFriend(person),
+                  onPressed: person.status != FriendStatus.none || isPending
+                      ? null
+                      : () => _sendRequest(person),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD4B28C),
                     foregroundColor: const Color(0xFF1E1712),
@@ -279,7 +281,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E1712)),
                         )
                       : Text(
-                          person.alreadyFriend ? 'Vrienden' : 'Toevoegen',
+                          switch (person.status) {
+                            FriendStatus.friends => 'Vrienden',
+                            FriendStatus.requestSent => 'Aangevraagd',
+                            FriendStatus.requestReceived => 'Nodigt jou uit',
+                            FriendStatus.none => 'Toevoegen',
+                          },
                           style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                 ),
