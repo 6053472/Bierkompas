@@ -61,7 +61,7 @@ class SearchSuggestion {
   });
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final _favoritesService = FavoritesService();
 
   final _pageController = PageController(
@@ -88,6 +88,17 @@ class _MapPageState extends State<MapPage> {
   // want de publieke Overpass-servers kunnen tot een minuut per poging duren.
   bool _loadingMoreBreweries = false;
 
+  // Zoomniveaus voor het selecteren van een brouwerij op de kaart.
+  static const _zoomOverview = 8.0;
+  static const _zoomSearch = 11.0;
+  static const _zoomNearby = 14.0;
+  static const _zoomFocused = 17.0;
+
+  // null = nog geen bier-icoontje aangetikt: dan tonen we alleen de kaart met
+  // pinnetjes, geen kaart-paneel eronder.
+  int? _selectedIndex;
+  AnimationController? _mapAnimController;
+
   @override
   void initState() {
     super.initState();
@@ -107,9 +118,89 @@ class _MapPageState extends State<MapPage> {
   @override
   void dispose() {
     _suggestionTimer?.cancel();
+    _mapAnimController?.dispose();
     _pageController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  // ============================================================
+  // KAART-SELECTIE & ANIMATIE
+  // ============================================================
+
+  // Beweegt de kaart vloeiend naar een locatie/zoomniveau i.p.v. de
+  // ongeanimeerde `_mapController.move()`.
+  void _animatedMapMove(LatLng destination, double destZoom) {
+    final camera = _mapController.camera;
+    final latTween = Tween<double>(begin: camera.center.latitude, end: destination.latitude);
+    final lngTween = Tween<double>(begin: camera.center.longitude, end: destination.longitude);
+    final zoomTween = Tween<double>(begin: camera.zoom, end: destZoom);
+
+    _mapAnimController?.dispose();
+    final controller = AnimationController(duration: const Duration(milliseconds: 550), vsync: this);
+    final animation = CurvedAnimation(parent: controller, curve: Curves.easeInOutCubic);
+
+    controller.addListener(() {
+      _mapController.move(
+        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
+        zoomTween.evaluate(animation),
+      );
+    });
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
+        controller.dispose();
+        if (identical(_mapAnimController, controller)) _mapAnimController = null;
+      }
+    });
+
+    _mapAnimController = controller;
+    controller.forward();
+  }
+
+  // Tikken op een bier-icoontje (of opnieuw op de al geselecteerde kaart):
+  // toont het kaart-paneel voor die brouwerij en zoomt de kaart erop in.
+  void _selectBrewery(int index, {bool zoomIn = false}) {
+    if (index < 0 || index >= _results.length) return;
+    final wasVisible = _selectedIndex != null;
+    final brewery = _results[index].brewery;
+
+    setState(() => _selectedIndex = index);
+    _animatedMapMove(
+      LatLng(brewery.latitude, brewery.longitude),
+      zoomIn ? _zoomFocused : _zoomNearby,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      if (wasVisible) {
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+        );
+      } else {
+        _pageController.jumpToPage(index);
+      }
+    });
+  }
+
+  // Terug naar het overzicht: kaart-paneel verbergen, alleen pinnetjes tonen.
+  void _deselectBrewery() {
+    if (_selectedIndex == null) return;
+    setState(() => _selectedIndex = null);
+    _animatedMapMove(
+      const LatLng(52.1326, 5.2913),
+      _searchedLocation.isEmpty ? _zoomOverview : _zoomSearch,
+    );
+  }
+
+  // Swipen door de kaarten: volgt de kaart mee naar elke nieuwe brouwerij, op
+  // een iets ruimer zoomniveau dan het "focused" niveau van een tik.
+  void _onCardPageChanged(int index) {
+    if (index < 0 || index >= _results.length) return;
+    setState(() => _selectedIndex = index);
+    final brewery = _results[index].brewery;
+    _animatedMapMove(LatLng(brewery.latitude, brewery.longitude), _zoomNearby);
   }
 
   // ============================================================
@@ -786,20 +877,17 @@ out center tags;
       _results = sortedResults;
       _suggestions = [];
       _isSearching = false;
+      // Een nieuwe zoekopdracht toont het overzicht, geen open kaart-paneel.
+      _selectedIndex = null;
     });
 
-    _mapController.move(
+    _animatedMapMove(
       LatLng(
         location.latitude,
         location.longitude,
       ),
-      11,
+      _zoomSearch,
     );
-
-    if (_pageController.hasClients &&
-        sortedResults.isNotEmpty) {
-      _pageController.jumpToPage(0);
-    }
   }
 
   // ============================================================
@@ -896,14 +984,15 @@ out center tags;
       _searchedLocation = '';
       _suggestions = [];
       _results = resetResults;
+      _selectedIndex = null;
     });
 
-    _mapController.move(
+    _animatedMapMove(
       const LatLng(
         52.1326,
         5.2913,
       ),
-      8,
+      _zoomOverview,
     );
   }
 
@@ -922,12 +1011,14 @@ out center tags;
         children: [
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: LatLng(
+            options: MapOptions(
+              initialCenter: const LatLng(
                 52.1326,
                 5.2913,
               ),
               initialZoom: 8,
+              // Tikken op een leeg stuk kaart sluit het geopende kaart-paneel weer.
+              onTap: (_, __) => _deselectBrewery(),
             ),
             children: [
               TileLayer(
@@ -937,42 +1028,51 @@ out center tags;
                     'com.example.bierkompas',
               ),
               MarkerLayer(
-                markers: _results.map(
-                  (result) {
-                    return Marker(
+                markers: [
+                  for (final entry in _results.asMap().entries)
+                    Marker(
                       point: LatLng(
-                        result.brewery.latitude,
-                        result.brewery.longitude,
+                        entry.value.brewery.latitude,
+                        entry.value.brewery.longitude,
                       ),
-                      width: 36,
-                      height: 36,
-                      child: Container(
-                        decoration:
-                            BoxDecoration(
-                          color: const Color(
-                            0xFFD4B28C,
-                          ),
-                          shape:
-                              BoxShape.circle,
-                          border:
-                              Border.all(
-                            color: const Color(
-                              0xFF2C221C,
+                      width: entry.key == _selectedIndex ? 46 : 36,
+                      height: entry.key == _selectedIndex ? 46 : 36,
+                      child: GestureDetector(
+                        onTap: () => _selectBrewery(
+                          entry.key,
+                          zoomIn: entry.key == _selectedIndex,
+                        ),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOut,
+                          decoration: BoxDecoration(
+                            color: entry.key == _selectedIndex
+                                ? const Color(0xFFEFE6DD)
+                                : const Color(0xFFD4B28C),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF2C221C),
+                              width: 2,
                             ),
-                            width: 2,
+                            boxShadow: entry.key == _selectedIndex
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFFD4B28C).withOpacity(0.6),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.sports_bar,
-                          color: Color(
-                            0xFF2C221C,
+                          child: Icon(
+                            Icons.sports_bar,
+                            color: const Color(0xFF2C221C),
+                            size: entry.key == _selectedIndex ? 20 : 16,
                           ),
-                          size: 16,
                         ),
                       ),
-                    );
-                  },
-                ).toList(),
+                    ),
+                ],
               ),
             ],
           ),
@@ -1104,46 +1204,73 @@ out center tags;
 
                 Expanded(
                   child: _results.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Geen brouwerijen gevonden.',
-                                style:
-                                    GoogleFonts.inter(
-                                  color:
-                                      const Color(
-                                    0xFF9E8A7D,
+                      ? Center(
+                          child: Text(
+                            'Geen brouwerijen gevonden.',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF9E8A7D),
+                            ),
+                          ),
+                        )
+                      : AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _selectedIndex == null
+                              // Nog niets geselecteerd: alleen de kaart met
+                              // pinnetjes, met een subtiel hintje.
+                              ? Center(
+                                  key: const ValueKey('map-hint'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2C221C).withOpacity(0.85),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 16),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Tik op een bier-icoon voor details',
+                                          style: GoogleFonts.inter(
+                                            color: const Color(0xFFEFE6DD),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              // Wel geselecteerd: het kaart-paneel, tik op de
+                              // kaart om verder in te zoomen, swipe voor de
+                              // volgende dichtbijzijnde brouwerij.
+                              : Center(
+                                  key: const ValueKey('brewery-cards'),
+                                  child: SizedBox(
+                                    height: 380,
+                                    child: PageView(
+                                      controller: _pageController,
+                                      onPageChanged: _onCardPageChanged,
+                                      children: [
+                                        for (final entry in _results.asMap().entries)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 4,
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () => _selectBrewery(entry.key, zoomIn: true),
+                                              child: _buildBreweryCard(
+                                                brewery: entry.value.brewery,
+                                                distance: entry.value.distance,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            )
-                          : Center(
-                              child: SizedBox(
-                                height: 380,
-                                child: PageView(
-                                  controller:
-                                      _pageController,
-                                  children: [
-                                    for (final result
-                                        in _results)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets
-                                                .symmetric(
-                                          horizontal: 6,
-                                          vertical: 4,
-                                        ),
-                                        child:
-                                            _buildBreweryCard(
-                                          brewery:
-                                              result.brewery,
-                                          distance:
-                                              result.distance,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                        ),
                 ),
 
                 const Padding(
