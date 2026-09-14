@@ -6,6 +6,7 @@ import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
 import 'add_friend_page.dart';
 import 'all_badges_page.dart';
+import 'chat_page.dart';
 import 'cheers_service.dart';
 import 'friends_service.dart';
 import 'profile_edit_page.dart';
@@ -171,6 +172,12 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       if (mounted) setState(() => _sendingCheerIds.remove(friend.id));
     }
+  }
+
+  void _openChat(Friend friend) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ChatPage(friend: friend)),
+    );
   }
 
   Future<void> _logout() async {
@@ -629,6 +636,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             online: friend.online,
                             sending: _sendingCheerIds.contains(friend.id),
                             onProost: () => _sendCheer(friend),
+                            onTap: () => _openChat(friend),
                           ),
                       ],
                     ),
@@ -1022,6 +1030,7 @@ class _BeerFriend extends StatelessWidget {
   final String? avatarUrl;
   final bool online;
   final VoidCallback? onProost;
+  final VoidCallback? onTap;
   final bool sending;
 
   const _BeerFriend({
@@ -1029,12 +1038,15 @@ class _BeerFriend extends StatelessWidget {
     this.avatarUrl,
     this.online = false,
     this.onProost,
+    this.onTap,
     this.sending = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF2C221C),
@@ -1122,6 +1134,7 @@ class _BeerFriend extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

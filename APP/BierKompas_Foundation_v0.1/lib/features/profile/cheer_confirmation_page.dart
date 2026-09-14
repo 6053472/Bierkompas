@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'chat_page.dart';
 import 'cheers_service.dart';
+import 'friends_service.dart';
 
 /// Volledig scherm getoond wanneer een vriend "Proost terug" stuurt als
 /// antwoord op jouw proost. Toont bewust géén "Proost terug"-knop meer —
@@ -38,6 +40,20 @@ class _CheerConfirmationPageState extends State<CheerConfirmationPage> {
   void _comingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature komt binnenkort beschikbaar.')),
+    );
+  }
+
+  void _openChat() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatPage(
+          friend: Friend(
+            id: widget.cheer.senderId,
+            name: widget.cheer.senderName,
+            avatarUrl: widget.cheer.senderAvatarUrl,
+          ),
+        ),
+      ),
     );
   }
 
@@ -174,7 +190,7 @@ class _CheerConfirmationPageState extends State<CheerConfirmationPage> {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton.icon(
-                          onPressed: () => _comingSoon('Berichten'),
+                          onPressed: _openChat,
                           icon: const Icon(Icons.send_rounded, size: 18),
                           label: Text(
                             'STUUR BERICHT',
