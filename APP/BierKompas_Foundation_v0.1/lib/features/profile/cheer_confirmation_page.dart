@@ -27,8 +27,18 @@ class _CheerConfirmationPageState extends State<CheerConfirmationPage> {
   Future<void> _close() async {
     if (_closing) return;
     setState(() => _closing = true);
-    await widget.service.markSeen(widget.cheer.id);
+    try {
+      await widget.service.markSeen(widget.cheer.id);
+    } on CheersException {
+      // negeren: het scherm sluit sowieso, anders blijft de gebruiker vast zitten.
+    }
     if (mounted) Navigator.of(context).pop();
+  }
+
+  void _comingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature komt binnenkort beschikbaar.')),
+    );
   }
 
   @override
@@ -70,81 +80,140 @@ class _CheerConfirmationPageState extends State<CheerConfirmationPage> {
           ],
         ),
         body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _card,
-                      border: Border.all(color: _gold, width: 3),
-                      image: widget.cheer.senderAvatarUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(widget.cheer.senderAvatarUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: widget.cheer.senderAvatarUrl == null
-                        ? const Center(child: Icon(Icons.person, color: _muted, size: 42))
-                        : null,
-                  ),
-                  const SizedBox(height: 24),
-                  Icon(Icons.sports_bar, color: _gold, size: 32),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Proost bevestigd!',
-                    style: GoogleFonts.playfairDisplay(
-                      color: _cream,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: GoogleFonts.inter(color: _muted, fontSize: 15, height: 1.4),
-                      children: [
-                        TextSpan(
-                          text: widget.cheer.senderName,
-                          style: const TextStyle(color: _gold, fontWeight: FontWeight.bold),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Feestelijke banner i.p.v. een echte foto (die hebben we niet).
+                Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      height: 190,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF4A3221), Color(0xFF1E1712)],
                         ),
-                        const TextSpan(text: ' heeft je proost beantwoord. Tot de volgende keer! \u{1F37B}'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _closing ? null : _close,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _gold,
-                        foregroundColor: _bg,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: _closing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: _bg),
-                            )
-                          : Text(
-                              'Sluiten',
-                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                      child: Center(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Transform.rotate(
+                              angle: -0.35,
+                              child: const Icon(Icons.sports_bar, color: _gold, size: 64),
                             ),
+                            Transform.translate(
+                              offset: const Offset(28, 0),
+                              child: Transform.rotate(
+                                angle: 0.35,
+                                child: Icon(Icons.sports_bar, color: _gold.withOpacity(0.85), size: 64),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                    Positioned(
+                      top: 14,
+                      right: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _bg.withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _gold.withOpacity(0.6)),
+                        ),
+                        child: Text(
+                          'PROOST!',
+                          style: GoogleFonts.inter(
+                            color: _gold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(color: _card, shape: BoxShape.circle),
+                        child: const Icon(Icons.sports_bar, color: _gold, size: 30),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        '${widget.cheer.senderName} heeft je Proost-verzoek geaccepteerd!',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.playfairDisplay(
+                          color: _cream,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '"Samen een eentje proosten, gezellig"',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: _muted,
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _comingSoon('Berichten'),
+                          icon: const Icon(Icons.send_rounded, size: 18),
+                          label: Text(
+                            'STUUR BERICHT',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _gold,
+                            foregroundColor: _bg,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _comingSoon('Profielen bekijken'),
+                          icon: const Icon(Icons.person_outline, size: 18, color: _gold),
+                          label: Text(
+                            'BEKIJK PROFIEL',
+                            style: GoogleFonts.inter(
+                              color: _gold,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: _gold),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
