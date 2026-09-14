@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../favorites/favorites_service.dart';
@@ -41,6 +41,9 @@ class _MapPageState extends State<MapPage> {
   final _mapController = MapController();
   final _searchController = TextEditingController();
   final Set<int> _favoriteIds = {};
+  String _searchedLocation = '';
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isSearching = false;
   String _searchedLocation = '';
@@ -108,7 +111,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  // Het hartje wisselt meteen; mislukt het opslaan, dan wordt het teruggezet.
   Future<void> _toggleFavorite(Brewery brewery) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -219,7 +221,6 @@ class _MapPageState extends State<MapPage> {
       backgroundColor: const Color(0xFF1E1712),
       body: Stack(
         children: [
-          // 1. OpenStreetMap achtergrond
           FlutterMap(
             mapController: _mapController,
             options: const MapOptions(
@@ -250,12 +251,9 @@ class _MapPageState extends State<MapPage> {
               ),
             ],
           ),
-
-          // 2. UI-elementen erbovenop
           SafeArea(
             child: Column(
               children: [
-                // Header met dezelfde stijl als EventsPage
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   decoration: BoxDecoration(
@@ -274,11 +272,14 @@ class _MapPageState extends State<MapPage> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30),
+                          const Icon(
+                            Icons.sports_bar,
+                            color: Color(0xFFD4B28C),
+                            size: 30,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -299,10 +300,10 @@ class _MapPageState extends State<MapPage> {
                       ),
                       const SizedBox(height: 15),
                       Text(
-                        'De Moderne Kaart',
+                        'Dichtstbijzijnde Brouwerij',
                         style: GoogleFonts.playfairDisplay(
                           color: const Color(0xFFD4B28C),
-                          fontSize: 26,
+                          fontSize: 24,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -322,17 +323,17 @@ class _MapPageState extends State<MapPage> {
                     ],
                   ),
                 ),
-
-                // Zoekbalk onder de header
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 42,
                     decoration: BoxDecoration(
                       color: const Color(0xFF2C221C),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFF3E312A)),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: const Color(0xFF3E312A),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
@@ -371,6 +372,31 @@ class _MapPageState extends State<MapPage> {
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
                             ),
+                            cursorColor: const Color(0xFFD4B28C),
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              hintText: 'Zoek stad (bijv. Utrecht, Groningen)...',
+                              hintStyle: GoogleFonts.inter(
+                                color: const Color(0xFF9E8A7D),
+                                fontSize: 13,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _isSearching ? null : _searchLocation,
+                          icon: const Icon(
+                            Icons.arrow_forward,
+                            color: Color(0xFFD4B28C),
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
                           ),
                         ),
                         if (_searchedLocation.isNotEmpty)
@@ -390,8 +416,6 @@ class _MapPageState extends State<MapPage> {
                     ),
                   ),
                 ),
-
-                // Gecentreerde kaarten carrousel
                 Expanded(
                   child: Center(
                     child: SizedBox(
@@ -438,7 +462,9 @@ class _MapPageState extends State<MapPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF2C221C),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF3E312A), width: 1),
+        border: Border.all(
+          color: const Color(0xFF3E312A),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.4),
@@ -456,10 +482,16 @@ class _MapPageState extends State<MapPage> {
                 height: 210,
                 decoration: const BoxDecoration(
                   color: Color(0xFF3E312A),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(15),
+                  ),
                 ),
                 child: const Center(
-                  child: Icon(Icons.image, color: Color(0xFF7A6355), size: 48),
+                  child: Icon(
+                    Icons.local_bar,
+                    color: Color(0xFF7A6355),
+                    size: 48,
+                  ),
                 ),
               ),
               Positioned(
@@ -484,7 +516,7 @@ class _MapPageState extends State<MapPage> {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -504,7 +536,11 @@ class _MapPageState extends State<MapPage> {
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                        const Icon(
+                          Icons.star,
+                          color: Colors.amber,
+                          size: 14,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           rating,
@@ -521,7 +557,11 @@ class _MapPageState extends State<MapPage> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.navigation, color: Color(0xFF9E8A7D), size: 12),
+                    const Icon(
+                      Icons.navigation,
+                      color: Color(0xFF9E8A7D),
+                      size: 12,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -539,24 +579,29 @@ class _MapPageState extends State<MapPage> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: tags
-                      .map((tag) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E1712),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: const Color(0xFF3E312A)),
-                            ),
-                            child: Text(
-                              tag,
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFFC4A482),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ))
-                      .toList(),
+                  children: tags.map((tag) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1712),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: const Color(0xFF3E312A),
+                        ),
+                      ),
+                      child: Text(
+                        tag,
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFC4A482),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),
