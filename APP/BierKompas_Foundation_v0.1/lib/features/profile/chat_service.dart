@@ -76,7 +76,7 @@ class ChatService {
           .select()
           .or('and(sender_id.eq.$userId,receiver_id.eq.$otherUserId),'
               'and(sender_id.eq.$otherUserId,receiver_id.eq.$userId)')
-          .order('created_at');
+          .order('created_at', ascending: true);
       return (rows as List).map((row) => ChatMessage.fromRow(row as Map<String, dynamic>)).toList();
     } on PostgrestException catch (e) {
       throw ChatException(e.message);
