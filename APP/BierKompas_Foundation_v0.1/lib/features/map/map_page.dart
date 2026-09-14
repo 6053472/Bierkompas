@@ -4,19 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../favorites/favorites_service.dart';
-import 'breweries.dart';
-import '../../shared/profile_avatar_button.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key, this.avatarUrl, this.onProfileTap});
-
-  final String? avatarUrl;
-  final VoidCallback? onProfileTap;
+  const MapPage({super.key});
 
   @override
   State<MapPage> createState() => _MapPageState();
+}
+
+class Brewery {
+  final String title;
+  final double latitude;
+  final double longitude;
+  final String rating;
+  final List<String> tags;
+
+  const Brewery({
+    required this.title,
+    required this.latitude,
+    required this.longitude,
+    required this.rating,
+    required this.tags,
+  });
 }
 
 class BreweryResult {
@@ -43,11 +52,9 @@ class CityLocation {
 }
 
 class _MapPageState extends State<MapPage> {
-  final _favoritesService = FavoritesService();
   final TextEditingController _searchController = TextEditingController();
   final MapController _mapController = MapController();
   final PageController _pageController = PageController(viewportFraction: 0.86);
-  final Set<int> _favoriteIds = {};
 
   bool _isSearching = false;
   String _searchedLocation = '';
@@ -78,17 +85,94 @@ class _MapPageState extends State<MapPage> {
     CityLocation(name: 'Nijmegen', latitude: 51.8126, longitude: 5.8372),
   ];
 
+  // Landelijke database met brouwerijen door heel Nederland
+  final List<Brewery> _breweries = const [
+    // Groningen
+    Brewery(title: 'Baxbier', latitude: 53.2250, longitude: 6.5700, rating: '4.7', tags: ['MODERN', 'IPA']),
+    Brewery(title: 'Stadsbrouwerij Groningen', latitude: 53.2194, longitude: 6.5665, rating: '4.4', tags: ['STAD', 'BLOND']),
+    Brewery(title: 'Rebelse Moed', latitude: 53.2120, longitude: 6.5600, rating: '4.5', tags: ['CRAFT', 'ORGANIC']),
+
+    // Friesland
+    Brewery(title: 'US Heit Bier', latitude: 53.0450, longitude: 5.6580, rating: '4.4', tags: ['FRISSIAN', 'WISKY']),
+    Brewery(title: 'Brouwerij Dockum', latitude: 53.3262, longitude: 5.9995, rating: '4.5', tags: ['LOCAL', 'CRAFT']),
+    Brewery(title: 'Grutte Pier Brewery', latitude: 53.1500, longitude: 5.4300, rating: '4.6', tags: ['TRIPLE', 'BLOND']),
+
+    // Drenthe
+    Brewery(title: 'Maallust', latitude: 53.0290, longitude: 6.3050, rating: '4.7', tags: ['HISTORISCH', 'MATERIAAL']),
+    Brewery(title: 'Brouwerij & Proeflokaal Beilen', latitude: 52.8550, longitude: 6.5120, rating: '4.3', tags: ['PROEFLOKAAL']),
+    Brewery(title: 'Salie & Zware Jongens', latitude: 52.9800, longitude: 6.5600, rating: '4.4', tags: ['LOCAL']),
+
+    // Overijssel
+    Brewery(title: 'Dolle Mina', latitude: 52.5010, longitude: 6.0830, rating: '4.3', tags: ['LOCAL']),
+    Brewery(title: 'Mommeriete', latitude: 52.6100, longitude: 6.7150, rating: '4.5', tags: ['STOUT', 'BOCK']),
+    Brewery(title: 'Eanske Bier', latitude: 52.2215, longitude: 6.8937, rating: '4.6', tags: ['ENSCHEDE', 'IPA']),
+    Brewery(title: 'Brouwerij Huttenkloas', latitude: 52.3400, longitude: 6.8100, rating: '4.5', tags: ['TWENTE', 'CRAFT']),
+
+    // Flevoland
+    Brewery(title: 'Stadsbrouwerij Zeewolde', latitude: 52.3330, longitude: 5.5350, rating: '4.3', tags: ['LOCAL']),
+    Brewery(title: 'Compaan Flevoland', latitude: 52.5120, longitude: 5.4710, rating: '4.4', tags: ['CRAFT']),
+
+    // Gelderland
+    Brewery(title: 'Oersoep', latitude: 51.8426, longitude: 5.8584, rating: '4.6', tags: ['SOUR', 'EXPERIMENTAL']),
+    Brewery(title: 'Gajes Bier', latitude: 52.2112, longitude: 5.9699, rating: '4.4', tags: ['BLOND', 'TRIPLE']),
+    Brewery(title: 'Bronckhorster Brewing Company', latitude: 52.0510, longitude: 6.2300, rating: '4.6', tags: ['CRAFT', 'WOOD']),
+    Brewery(title: 'Stadsbrouwerij Wageningen', latitude: 51.9692, longitude: 5.6657, rating: '4.4', tags: ['ORGANIC']),
+    Brewery(title: 'AXL Brewery', latitude: 52.1326, longitude: 5.9140, rating: '4.5', tags: ['APELDOORN']),
+    Brewery(title: 'Pantsers Bier', latitude: 51.9850, longitude: 5.9100, rating: '4.3', tags: ['ARNHEM']),
+
+    // Utrecht
+    Brewery(title: 'Uiltje Brewing Company', latitude: 52.3874, longitude: 4.6462, rating: '4.7', tags: ['IPA', 'MODERN']),
+    Brewery(title: 'Brouwerij De Leckere', latitude: 52.0313, longitude: 5.0997, rating: '4.3', tags: ['BIOLOGISCH', 'LOCAL']),
+    Brewery(title: 'Brewpub De Kromme Haring', latitude: 52.0780, longitude: 5.1320, rating: '4.6', tags: ['WILD', 'SOUR']),
+    Brewery(title: 'Brouwerij Maximus', latitude: 52.0910, longitude: 5.0350, rating: '4.5', tags: ['TERRAS', 'DUBBEL']),
+    Brewery(title: 'VandeStreek Bier', latitude: 52.1100, longitude: 5.0700, rating: '4.6', tags: ['IPA', 'ZERO']),
+
+    // Noord-Holland
+    Brewery(title: 'Brouwerij Het IJ', latitude: 52.3667, longitude: 4.9306, rating: '4.6', tags: ['IPA', 'BLOND']),
+    Brewery(title: 'Poesiat & Kater', latitude: 52.3565, longitude: 4.9312, rating: '4.5', tags: ['CRAFT', 'TERRAS']),
+    Brewery(title: 'Brouwerij Troost', latitude: 52.3533, longitude: 4.8805, rating: '4.4', tags: ['BURGER', 'BIER']),
+    Brewery(title: 'Jopenkerk', latitude: 52.3810, longitude: 4.6362, rating: '4.5', tags: ['HAARLEM', 'PROEFLOKAAL']),
+    Brewery(title: 'Egmondse Bierbrouwerij', latitude: 52.6170, longitude: 4.6300, rating: '4.4', tags: ['ABDIJ', 'SAINT']),
+    Brewery(title: 'Brouwerij Homeland', latitude: 52.3730, longitude: 4.9150, rating: '4.5', tags: ['AMSTERDAM', 'NAVY']),
+
+    // Zuid-Holland
+    Brewery(title: 'Brouwerij De Molen', latitude: 52.1258, longitude: 4.6589, rating: '4.7', tags: ['STOUTS', 'BARREL']),
+    Brewery(title: 'Brouwerij Hoop', latitude: 52.0789, longitude: 4.3116, rating: '4.8', tags: ['IPA', 'PROEFLOKAAL']),
+    Brewery(title: 'Brouwerij Noordt', latitude: 51.9310, longitude: 4.4750, rating: '4.5', tags: ['IPA', 'LAGER']),
+    Brewery(title: 'Kaapse Brouwers', latitude: 51.9073, longitude: 4.8566, rating: '4.6', tags: ['CRAFT', 'IPA']),
+    Brewery(title: 'Stadsbrouwerij De Pelgrim', latitude: 51.9244, longitude: 4.4777, rating: '4.4', tags: ['HISTORISCH', 'BLOND']),
+    Brewery(title: 'Delftse Brouwers', latitude: 52.0116, longitude: 4.3571, rating: '4.4', tags: ['DELFT', 'LOCAL']),
+
+    // Zeeland
+    Brewery(title: 'Emelisse', latitude: 51.5210, longitude: 3.5680, rating: '4.6', tags: ['BLACK', 'IPA']),
+    Brewery(title: 'Stadsbrouwerij Middelburg', latitude: 51.4988, longitude: 3.6108, rating: '4.4', tags: ['LOCAL']),
+    Brewery(title: 'Dutch Bargain', latitude: 51.3500, longitude: 3.5000, rating: '4.5', tags: ['BORDER', 'CRAFT']),
+
+    // Noord-Brabant
+    Brewery(title: 'Brouwerij Frontaal', latitude: 51.5900, longitude: 4.7750, rating: '4.7', tags: ['IPA', 'CRAFT']),
+    Brewery(title: 'La Trappe (Trappistenbrouwerij)', latitude: 51.5372, longitude: 5.0315, rating: '4.8', tags: ['TRAPPIST', 'KLASSIEK']),
+    Brewery(title: 'Stadsbrouwerij Eindhoven', latitude: 51.4416, longitude: 5.4697, rating: '4.5', tags: ['STAD', 'PROEFLOKAAL']),
+    Brewery(title: 'Brouwerij 75', latitude: 51.6920, longitude: 5.3030, rating: '4.4', tags: ['CRAFT']),
+    Brewery(title: 'Brouwerij Van Vollenhoven', latitude: 51.6900, longitude: 5.3000, rating: '4.3', tags: ['TRADITIONAL']),
+    Brewery(title: 'Stadsbrouwerij Tilburg', latitude: 51.5550, longitude: 5.0910, rating: '4.5', tags: ['TILburg']),
+
+    // Limburg
+    Brewery(title: 'Brand Bierbrouwerij', latitude: 51.6310, longitude: 5.9180, rating: '4.5', tags: ['LIMBURG', 'PILSNER']),
+    Brewery(title: 'Stadsbrouwerij Maastricht', latitude: 50.8483, longitude: 5.6889, rating: '4.6', tags: ['HISTORISCH', 'PROEFLOKAAL']),
+    Brewery(title: 'Gulpener Bierbrouwerij', latitude: 50.8250, longitude: 5.8970, rating: '4.7', tags: ['BIOLOGISCH', 'LOCAL']),
+    Brewery(title: 'Lindeboom Bierbrouwerij', latitude: 51.4800, longitude: 5.9300, rating: '4.4', tags: ['NEER', 'FAMILY']),
+  ];
+
   List<BreweryResult> _results = [];
 
   @override
   void initState() {
     super.initState();
     _resetResults();
-    _loadFavorites();
   }
 
   void _resetResults() {
-    _results = breweries
+    _results = _breweries
         .map(
           (brewery) => BreweryResult(
             brewery: brewery,
@@ -103,55 +187,6 @@ class _MapPageState extends State<MapPage> {
     _searchController.dispose();
     _pageController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadFavorites() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    try {
-      final favorites = await _favoritesService.list(user.id);
-      if (!mounted) return;
-      setState(() {
-        _favoriteIds
-          ..clear()
-          ..addAll(favorites.where((f) => f.itemType == breweryItemType).map((f) => f.itemId));
-      });
-    } on FavoritesException catch (e) {
-      debugPrint('Fout bij ophalen favorieten: $e');
-    }
-  }
-
-  // Het hartje wisselt meteen; mislukt het opslaan, dan wordt het teruggezet.
-  Future<void> _toggleFavorite(Brewery brewery) async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    final wasFavorite = _favoriteIds.contains(brewery.id);
-    setState(() {
-      if (wasFavorite) {
-        _favoriteIds.remove(brewery.id);
-      } else {
-        _favoriteIds.add(brewery.id);
-      }
-    });
-    try {
-      if (wasFavorite) {
-        await _favoritesService.remove(userId: user.id, itemType: breweryItemType, itemId: brewery.id);
-      } else {
-        await _favoritesService.add(userId: user.id, itemType: breweryItemType, itemId: brewery.id);
-      }
-    } on FavoritesException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        if (wasFavorite) {
-          _favoriteIds.add(brewery.id);
-        } else {
-          _favoriteIds.remove(brewery.id);
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Favoriet opslaan mislukt: $e')),
-      );
-    }
   }
 
   double _degreesToRadians(double degrees) {
@@ -218,11 +253,11 @@ class _MapPageState extends State<MapPage> {
       // Verplaats de kaart naar de gevonden stad
       _mapController.move(
         LatLng(foundCity.latitude, foundCity.longitude),
-        9,
+        11,
       );
 
       // Bereken de afstand voor ALLE brouwerijen t.o.v. deze stad
-      final List<BreweryResult> newResults = breweries.map((brewery) {
+      final List<BreweryResult> newResults = _breweries.map((brewery) {
         final double distance = _calculateDistance(
           foundCity!.latitude,
           foundCity.longitude,
@@ -348,21 +383,14 @@ class _MapPageState extends State<MapPage> {
                             size: 30,
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Kaart',
-                              style: GoogleFonts.playfairDisplay(
-                                color: const Color(0xFFEFE6DD),
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          Text(
+                            'BierKompas',
+                            style: GoogleFonts.playfairDisplay(
+                              color: const Color(0xFFEFE6DD),
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (widget.onProfileTap != null)
-                            ProfileAvatarButton(
-                              onTap: widget.onProfileTap!,
-                              avatarUrl: widget.avatarUrl,
-                            ),
                         ],
                       ),
                       const SizedBox(height: 15),
@@ -474,30 +502,45 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
                 Expanded(
-                  child: Center(
-                    child: SizedBox(
-                      height: 380,
-                      child: PageView(
-                        controller: _pageController,
-                        children: [
-                          for (final result in safeResults)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-                              child: _buildBreweryCard(
-                                title: result.brewery.title,
-                                distance: _searchedLocation.isEmpty
-                                    ? result.brewery.distance
-                                    : '${_formatDistance(result.distance)} vanaf $_searchedLocation',
-                                rating: result.brewery.rating,
-                                tags: result.brewery.tags,
-                                isFavorite: _favoriteIds.contains(result.brewery.id),
-                                onFavoriteTap: () => _toggleFavorite(result.brewery),
-                              ),
+                  child: safeResults.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Geen brouwerijen gevonden',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
                             ),
-                        ],
-                      ),
-                    ),
-                  ),
+                          ),
+                        )
+                      : Center(
+                          child: SizedBox(
+                            height: 380,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              itemCount: safeResults.length,
+                              itemBuilder: (context, index) {
+                                final BreweryResult result = safeResults[index];
+
+                                final String distanceText =
+                                    _searchedLocation.isEmpty
+                                        ? 'Zoek een stad om de afstand te zien'
+                                        : '${_formatDistance(result.distance)} van $_searchedLocation';
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
+                                  child: _buildBreweryCard(
+                                    title: result.brewery.title,
+                                    distance: distanceText,
+                                    rating: result.brewery.rating,
+                                    tags: result.brewery.tags,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -512,8 +555,6 @@ class _MapPageState extends State<MapPage> {
     required String distance,
     required String rating,
     required List<String> tags,
-    required bool isFavorite,
-    required VoidCallback onFavoriteTap,
   }) {
     final safeTags = tags;
 
@@ -556,19 +597,16 @@ class _MapPageState extends State<MapPage> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: GestureDetector(
-                  onTap: onFavoriteTap,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? const Color(0xFFD4B28C) : Colors.white,
-                      size: 18,
-                    ),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.favorite_border,
+                    color: Colors.white,
+                    size: 18,
                   ),
                 ),
               ),

@@ -4,9 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
-import 'add_friend_page.dart';
-import 'all_badges_page.dart';
-import 'friends_service.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
@@ -20,19 +17,15 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _statsService = StatsService();
-  final _friendsService = FriendsService();
   AppUser? _user;
   ProfileStats? _stats;
   List<Friend>? _friends;
-  List<FriendRequest>? _incomingRequests;
-  final Set<String> _pendingRequestActions = {};
 
   @override
   void initState() {
     super.initState();
     _loadUser();
     _loadStats();
-    _loadFriends();
   }
 
   Future<void> _loadUser() async {
@@ -64,47 +57,20 @@ class _ProfilePageState extends State<ProfilePage> {
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser == null) return;
     try {
-      final results = await Future.wait([
-        _friendsService.listFriends(authUser.id),
-        _friendsService.listIncomingRequests(authUser.id),
-      ]);
+      final friends = await _friendsService.list(authUser.id);
       if (!mounted) return;
-      setState(() {
-        _friends = results[0] as List<Friend>;
-        _incomingRequests = results[1] as List<FriendRequest>;
-      });
+      setState(() => _friends = friends);
     } on FriendsException catch (e) {
       debugPrint('Fout bij ophalen vrienden: $e');
     }
   }
 
   Future<void> _openAddFriend() async {
-    final sent = await Navigator.of(context).push<bool>(
+    final added = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const AddFriendPage()),
     );
-    if (sent == true) {
+    if (added == true) {
       _loadFriends();
-    }
-  }
-
-  Future<void> _respondToRequest(FriendRequest request, bool accept) async {
-    setState(() => _pendingRequestActions.add(request.requesterId));
-    try {
-      await _friendsService.respondToRequest(requesterId: request.requesterId, accept: accept);
-      if (!mounted) return;
-      setState(() {
-        _pendingRequestActions.remove(request.requesterId);
-        _incomingRequests?.removeWhere((r) => r.requesterId == request.requesterId);
-        if (accept) {
-          _friends = [...?_friends, Friend(id: request.requesterId, name: request.name, avatarUrl: request.avatarUrl)];
-        }
-      });
-    } on FriendsException catch (e) {
-      if (!mounted) return;
-      setState(() => _pendingRequestActions.remove(request.requesterId));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reageren mislukt: $e')),
-      );
     }
   }
 
@@ -138,8 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Even breed als het agenda-icoon rechts, zodat de titel gecentreerd blijft.
-                  const SizedBox(width: 24),
+                  const Icon(Icons.menu, color: Color(0xFFEFE6DD)),
                   Text(
                     'Craft Discoveries',
                     style: GoogleFonts.playfairDisplay(
@@ -349,28 +314,19 @@ class _ProfilePageState extends State<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: _stats == null
-                            ? null
-                            : () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => AllBadgesPage(badges: _stats!.badges),
-                                  ),
-                                ),
-                        child: Text(
-                          'Bekijk alles',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFFD4B28C),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      Text(
+                        'Bekijk alles',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFD4B28C),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Paspoort Grid: preview van een paar badges, de rest zie je via "Bekijk alles".
+                  // Paspoort Grid: badges op basis van de Streak-status.
                   if (_stats == null)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
@@ -387,52 +343,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.3,
                       children: _stats!.badges
-                          .take(4)
-                          .map((badge) => _buildPassportCard(
-                                badge.title,
-                                badge.icon,
-                                badge.earned,
-                                imageAsset: badge.imageAsset,
-                              ))
+                          .map((badge) => _buildPassportCard(badge.title, badge.icon, badge.earned))
                           .toList(),
                     ),
-                  const SizedBox(height: 24),
-
-                  // Sectie: Mijn Proefnotities
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Mijn Proefnotities',
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFEFE6DD),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Bekijk alle',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFD4B28C),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildTastingNoteCard(
-                    title: 'Zundert 8 Trappist',
-                    note: 'Prachtige kastanjebruine kleur met een stevige...',
-                    rating: 5,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTastingNoteCard(
-                    title: 'La Chouffe',
-                    note: 'Fris en fruitig met een aangename hint van...',
-                    rating: 4,
-                  ),
                   const SizedBox(height: 24),
 
                   Align(
@@ -503,14 +416,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 12),
 
-                  if (_friends == null || _incomingRequests == null)
+                  if (_friends == null)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: Center(
                         child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
                       ),
                     )
-                  else if (_friends!.isEmpty && _incomingRequests!.isEmpty)
+                  else if (_friends!.isEmpty)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -548,18 +461,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.5,
-                      children: [
-                        for (final request in _incomingRequests!)
-                          _FriendRequestTile(
-                            name: request.name,
-                            avatarUrl: request.avatarUrl,
-                            busy: _pendingRequestActions.contains(request.requesterId),
-                            onAccept: () => _respondToRequest(request, true),
-                            onDecline: () => _respondToRequest(request, false),
-                          ),
-                        for (final friend in _friends!)
-                          _BeerFriend(name: friend.name, avatarUrl: friend.avatarUrl),
-                      ],
+                      children: _friends!
+                          .map((friend) => _BeerFriend(name: friend.name, avatarUrl: friend.avatarUrl))
+                          .toList(),
                     ),
                   const SizedBox(height: 30),
                 ],
@@ -606,7 +510,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Hulpwidget voor paspoort items. Vergrendelde badges tonen gedimd.
-  Widget _buildPassportCard(String title, IconData icon, bool earned, {String? imageAsset}) {
+  Widget _buildPassportCard(String title, IconData icon, bool earned) {
     final accent = earned ? const Color(0xFFD4B28C) : const Color(0xFF6B5D50);
     final textColor = earned ? const Color(0xFFEFE6DD) : const Color(0xFF9E8A7D);
     return Container(
@@ -618,73 +522,14 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (imageAsset != null)
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                ClipOval(
-                  child: earned
-                      ? Image.asset(
-                          'assets/badges/$imageAsset.png',
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                        )
-                      : ColorFiltered(
-                          colorFilter: const ColorFilter.matrix(<double>[
-                            0.2126, 0.7152, 0.0722, 0, 0,
-                            0.2126, 0.7152, 0.0722, 0, 0,
-                            0.2126, 0.7152, 0.0722, 0, 0,
-                            0, 0, 0, 1, 0,
-                          ]),
-                          child: Opacity(
-                            opacity: 0.5,
-                            child: Image.asset(
-                              'assets/badges/$imageAsset.png',
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                ),
-                if (!earned)
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: Colors.black26,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
-                  ),
-              ],
-            )
-          else
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF3C3028),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: accent, size: 26),
-                ),
-                if (!earned)
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: Colors.black26,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
-                  ),
-              ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: Color(0xFF3C3028),
+              shape: BoxShape.circle,
             ),
+            child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
+          ),
           const SizedBox(height: 10),
           Text(
             title,
@@ -693,80 +538,6 @@ class _ProfilePageState extends State<ProfilePage> {
               color: textColor,
               fontSize: 13,
               fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTastingNoteCard({
-    required String title,
-    required String note,
-    required int rating,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C221C),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3C3028),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Icon(Icons.sports_bar, color: Color(0xFF9E8A7D), size: 24),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFEFE6DD),
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (index) => Icon(
-                          index < rating ? Icons.star : Icons.star_border,
-                          color: const Color(0xFFD4B28C),
-                          size: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  note,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF9E8A7D),
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -940,81 +711,6 @@ class _FriendRequestTile extends StatelessWidget {
                     ),
                   ],
                 ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BeerFriend extends StatelessWidget {
-  final String name;
-  final String? avatarUrl;
-
-  const _BeerFriend({required this.name, this.avatarUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C221C),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF3C3028),
-              image: avatarUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(avatarUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: avatarUrl == null
-                ? const Center(
-                    child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 24),
-                  )
-                : null,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            style: GoogleFonts.inter(
-              color: const Color(0xFFEFE6DD),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: 90,
-            height: 28,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4B28C),
-                foregroundColor: const Color(0xFF1E1712),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Proost!',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

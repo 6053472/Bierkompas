@@ -20,10 +20,6 @@ class Brewery {
   final String about;
   final List<String> facts;
 
-  /// Coördinaten, gebruikt voor de kaartmarkers en de stad-zoekfunctie.
-  final double latitude;
-  final double longitude;
-
   const Brewery({
     required this.id,
     required this.title,
@@ -33,8 +29,6 @@ class Brewery {
     required this.location,
     required this.about,
     required this.facts,
-    required this.latitude,
-    required this.longitude,
     this.founded,
   });
 }
@@ -52,8 +46,6 @@ const grutePierProeflokaal = Brewery(
     'Genoemd naar Grutte Pier (Pier Gerlofs Donia), een Friese volksheld uit de 16e eeuw.',
     'Bier & spijs: probeer het Dubbel stoofvlees.',
   ],
-  latitude: 53.2012,
-  longitude: 5.7999,
 );
 
 const breweries = [
@@ -69,8 +61,6 @@ const breweries = [
       "Staat vooral bekend om hoppige bieren zoals IPA's.",
       'Je kunt er terecht in het eigen proeflokaal.',
     ],
-    latitude: 52.4700,
-    longitude: 4.8200,
   ),
   Brewery(
     id: 2,
@@ -87,8 +77,6 @@ const breweries = [
       'De Westvleteren 12 geldt als een van de meest gezochte bieren ter wereld.',
       'De flesjes hebben geen etiket; welk bier het is, zie je aan de kleur van de dop.',
     ],
-    latitude: 50.9020,
-    longitude: 2.7150,
   ),
   Brewery(
     id: 3,
@@ -104,8 +92,6 @@ const breweries = [
       'Bekend om zware stouts en op houten vaten gerijpte bieren.',
       'Organiseert jaarlijks het bierfestival Borefts.',
     ],
-    latitude: 52.0850,
-    longitude: 4.7460,
   ),
   grutePierProeflokaal,
 ];

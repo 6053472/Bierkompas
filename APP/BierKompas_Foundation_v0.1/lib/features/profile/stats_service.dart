@@ -6,20 +6,16 @@ class ProfileBadge {
   final String title;
   final String description;
   final IconData icon;
-  final String? imageAsset;
   final int requirementValue;
   final bool earned;
-  final String category;
 
   const ProfileBadge({
     required this.id,
     required this.title,
     required this.description,
     required this.icon,
-    this.imageAsset,
     required this.requirementValue,
     required this.earned,
-    this.category = 'algemeen',
   });
 }
 
@@ -79,10 +75,8 @@ class StatsService {
               title: row['title'] as String,
               description: row['description'] as String,
               icon: _iconsByName[row['icon_name'] as String] ?? Icons.emoji_events,
-              imageAsset: row['image_asset'] as String?,
               requirementValue: row['requirement_value'] as int,
               earned: earnedIds.contains(row['id'] as String),
-              category: row['category'] as String? ?? 'algemeen',
             ))
         .toList();
 
