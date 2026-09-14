@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import 'all_badges_page.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
@@ -82,7 +83,8 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.menu, color: Color(0xFFEFE6DD)),
+                  // Even breed als het agenda-icoon rechts, zodat de titel gecentreerd blijft.
+                  const SizedBox(width: 24),
                   Text(
                     'Craft Discoveries',
                     style: GoogleFonts.playfairDisplay(
@@ -292,19 +294,28 @@ class _ProfilePageState extends State<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        'Bekijk alles',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFD4B28C),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        onTap: _stats == null
+                            ? null
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => AllBadgesPage(badges: _stats!.badges),
+                                  ),
+                                ),
+                        child: Text(
+                          'Bekijk alles',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFD4B28C),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Paspoort Grid: badges op basis van de Streak-status.
+                  // Paspoort Grid: preview van een paar badges, de rest zie je via "Bekijk alles".
                   if (_stats == null)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
@@ -321,7 +332,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.3,
                       children: _stats!.badges
-                          .map((badge) => _buildPassportCard(badge.title, badge.icon, badge.earned))
+                          .take(4)
+                          .map((badge) => _buildPassportCard(
+                                badge.title,
+                                badge.icon,
+                                badge.earned,
+                                imageAsset: badge.imageAsset,
+                              ))
                           .toList(),
                     ),
                   const SizedBox(height: 24),
@@ -396,7 +413,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Hulpwidget voor paspoort items. Vergrendelde badges tonen gedimd.
-  Widget _buildPassportCard(String title, IconData icon, bool earned) {
+  Widget _buildPassportCard(String title, IconData icon, bool earned, {String? imageAsset}) {
     final accent = earned ? const Color(0xFFD4B28C) : const Color(0xFF6B5D50);
     final textColor = earned ? const Color(0xFFEFE6DD) : const Color(0xFF9E8A7D);
     return Container(
@@ -408,14 +425,73 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              color: Color(0xFF3C3028),
-              shape: BoxShape.circle,
+          if (imageAsset != null)
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipOval(
+                  child: earned
+                      ? Image.asset(
+                          'assets/badges/$imageAsset.png',
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                        )
+                      : ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0, 0, 0, 1, 0,
+                          ]),
+                          child: Opacity(
+                            opacity: 0.5,
+                            child: Image.asset(
+                              'assets/badges/$imageAsset.png',
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                ),
+                if (!earned)
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: Colors.black26,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
+                  ),
+              ],
+            )
+          else
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3C3028),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: accent, size: 26),
+                ),
+                if (!earned)
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: Colors.black26,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: Color(0xFFEFE6DD), size: 20),
+                  ),
+              ],
             ),
-            child: Icon(earned ? icon : Icons.lock_outline, color: accent, size: 22),
-          ),
           const SizedBox(height: 10),
           Text(
             title,
