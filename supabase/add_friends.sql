@@ -106,4 +106,53 @@ $$;
 
 grant execute on function public.respond_friend_request(uuid, boolean) to authenticated;
 
+-- Let op: `profiles` heeft RLS "select own" (iedereen ziet alleen zijn eigen
+-- rij). Een gewone join/embed vanuit de app (bv. friend_requests -> profiles)
+-- levert dus geen naam/avatar van de ánder op en toont "Onbekend". Deze twee
+-- functies zijn security definer en mogen daarom wél de naam/avatar van de
+-- vriend/aanvrager opzoeken, zonder de RLS van `profiles` verder open te zetten.
+create or replace function public.list_friends()
+returns table(friend_id uuid, name text, avatar_url text)
+language sql
+security definer set search_path = public
+stable
+as $$
+    select
+        case when fr.requester_id = auth.uid() then fr.addressee_id else fr.requester_id end as friend_id,
+        p.name,
+        p.avatar_url
+    from public.friend_requests fr
+    join public.profiles p
+      on p.id = case when fr.requester_id = auth.uid() then fr.addressee_id else fr.requester_id end
+    where fr.status = 'accepted'
+      and (fr.requester_id = auth.uid() or fr.addressee_id = auth.uid());
+$$;
+
+grant execute on function public.list_friends() to authenticated;
+
+create or replace function public.list_incoming_friend_requests()
+returns table(requester_id uuid, name text, avatar_url text)
+language sql
+security definer set search_path = public
+stable
+as $$
+    select fr.requester_id, p.name, p.avatar_url
+    from public.friend_requests fr
+    join public.profiles p on p.id = fr.requester_id
+    where fr.addressee_id = auth.uid()
+      and fr.status = 'pending';
+$$;
+
+grant execute on function public.list_incoming_friend_requests() to authenticated;
+
+-- Realtime aanzetten voor deze tabel, zodat een nieuw/geaccepteerd verzoek
+-- meteen doorkomt bij de andere gebruiker, zonder dat die hoeft te verversen.
+do $$
+begin
+    alter publication supabase_realtime add table public.friend_requests;
+exception
+    when duplicate_object then null;
+end;
+$$;
+
 NOTIFY pgrst, 'reload schema';

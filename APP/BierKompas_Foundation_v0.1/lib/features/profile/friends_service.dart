@@ -46,32 +46,18 @@ class FriendsException implements Exception {
 class FriendsService {
   SupabaseClient get _client => Supabase.instance.client;
 
-  static Map<String, dynamic>? _profile(dynamic value) {
-    if (value is Map<String, dynamic>) return value;
-    if (value is List && value.isNotEmpty) return value.first as Map<String, dynamic>;
-    return null;
-  }
-
+  // `profiles` heeft RLS "select own": een gewone join vanuit de app zou de
+  // naam/avatar van de ánder niet mogen zien en levert dan "Onbekend" op. Deze
+  // twee lijsten komen daarom uit security-definer RPC's (`list_friends` /
+  // `list_incoming_friend_requests`) die dat aan de databasekant oplossen.
   Future<List<Friend>> listFriends(String userId) async {
     try {
-      final rows = await _client
-          .from('friend_requests')
-          .select(
-            'requester_id, addressee_id, '
-            'requester:profiles!requester_id(name, avatar_url), '
-            'addressee:profiles!addressee_id(name, avatar_url)',
-          )
-          .eq('status', 'accepted')
-          .or('requester_id.eq.$userId,addressee_id.eq.$userId');
-
+      final rows = await _client.rpc('list_friends');
       return (rows as List).map((row) {
-        final isRequester = row['requester_id'] == userId;
-        final otherId = (isRequester ? row['addressee_id'] : row['requester_id']) as String;
-        final otherProfile = _profile(isRequester ? row['addressee'] : row['requester']);
         return Friend(
-          id: otherId,
-          name: otherProfile?['name'] as String? ?? 'Onbekend',
-          avatarUrl: otherProfile?['avatar_url'] as String?,
+          id: row['friend_id'] as String,
+          name: row['name'] as String? ?? 'Onbekend',
+          avatarUrl: row['avatar_url'] as String?,
         );
       }).toList();
     } on PostgrestException catch (e) {
@@ -81,18 +67,12 @@ class FriendsService {
 
   Future<List<FriendRequest>> listIncomingRequests(String userId) async {
     try {
-      final rows = await _client
-          .from('friend_requests')
-          .select('requester_id, requester:profiles!requester_id(name, avatar_url)')
-          .eq('addressee_id', userId)
-          .eq('status', 'pending');
-
+      final rows = await _client.rpc('list_incoming_friend_requests');
       return (rows as List).map((row) {
-        final profile = _profile(row['requester']);
         return FriendRequest(
           requesterId: row['requester_id'] as String,
-          name: profile?['name'] as String? ?? 'Onbekend',
-          avatarUrl: profile?['avatar_url'] as String?,
+          name: row['name'] as String? ?? 'Onbekend',
+          avatarUrl: row['avatar_url'] as String?,
         );
       }).toList();
     } on PostgrestException catch (e) {
