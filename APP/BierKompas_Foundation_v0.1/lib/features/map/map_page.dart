@@ -3,9 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -63,6 +62,10 @@ class SearchSuggestion {
 
 class _MapPageState extends State<MapPage> {
   final _favoritesService = FavoritesService();
+  final _pageController = PageController(viewportFraction: 0.86);
+  final _mapController = MapController();
+  final _searchController = TextEditingController();
+  final Set<int> _favoriteIds = {};
 
   final _pageController = PageController(
     viewportFraction: 0.86,
@@ -398,29 +401,11 @@ out center tags;
     }
   }
 
-  Future<void> _toggleFavorite(
-    Brewery brewery,
-  ) async {
-    final user =
-        Supabase.instance.client.auth.currentUser;
-
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Je moet ingelogd zijn om favorieten te gebruiken.',
-          ),
-        ),
-      );
-
-      return;
-    }
-
-    final wasFavorite =
-        _favoriteIds.contains(
-      brewery.id,
-    );
-
+  // Het hartje wisselt meteen; mislukt het opslaan, dan wordt het teruggezet.
+  Future<void> _toggleFavorite(Brewery brewery) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final wasFavorite = _favoriteIds.contains(brewery.id);
     setState(() {
       if (wasFavorite) {
         _favoriteIds.remove(
@@ -919,6 +904,7 @@ out center tags;
           const Color(0xFF1E1712),
       body: Stack(
         children: [
+          // 1. OpenStreetMap achtergrond
           FlutterMap(
             mapController: _mapController,
             options: const MapOptions(
@@ -976,9 +962,11 @@ out center tags;
             ],
           ),
 
+          // 2. UI-elementen erbovenop
           SafeArea(
             child: Column(
               children: [
+                // Header met dezelfde stijl als EventsPage
                 Container(
                   padding:
                       const EdgeInsets.fromLTRB(
@@ -999,18 +987,12 @@ out center tags;
                     ),
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
-                          const Icon(
-                            Icons.sports_bar,
-                            color: Color(
-                              0xFFD4B28C,
-                            ),
-                            size: 30,
-                          ),
+                          const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -1038,15 +1020,11 @@ out center tags;
                       ),
                       const SizedBox(height: 15),
                       Text(
-                        'Brouwerijen in Nederland',
-                        style:
-                            GoogleFonts.playfairDisplay(
-                          color: const Color(
-                            0xFFD4B28C,
-                          ),
-                          fontSize: 24,
-                          fontWeight:
-                              FontWeight.w600,
+                        'De Moderne Kaart',
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFD4B28C),
+                          fontSize: 26,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1070,17 +1048,76 @@ out center tags;
                   ),
                 ),
 
+                // Zoekbalk onder de header
                 Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(
-                    16,
-                    16,
-                    16,
-                    0,
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C221C),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0xFF3E312A)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _isSearching ? null : _searchLocation,
+                          child: _isSearching
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
+                                )
+                              : const Icon(Icons.search, color: Color(0xFF9E8A7D), size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            onSubmitted: (_) => _searchLocation(),
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                            cursorColor: const Color(0xFFD4B28C),
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              hintText: 'Zoek brouwerijen of steden...',
+                              hintStyle: GoogleFonts.inter(
+                                color: const Color(0xFF9E8A7D),
+                                fontSize: 13,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        if (_searchedLocation.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchedLocation = '';
+                                _resetResults();
+                              });
+                            },
+                            child: const Icon(Icons.close, color: Color(0xFF9E8A7D), size: 18),
+                          )
+                        else
+                          const Icon(Icons.tune, color: Color(0xFF9E8A7D), size: 18),
+                      ],
+                    ),
                   ),
                   child: _buildSearchBox(),
                 ),
 
+                // Gecentreerde kaarten carrousel
                 Expanded(
                   child: _loadingBreweries
                       ? const Center(
@@ -1475,16 +1512,9 @@ out center tags;
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(
-          0xFF2C221C,
-        ),
-        borderRadius:
-            BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(
-            0xFF3E312A,
-          ),
-        ),
+        color: const Color(0xFF2C221C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF3E312A), width: 1),
         boxShadow: [
           BoxShadow(
             color:
@@ -1505,26 +1535,12 @@ out center tags;
             children: [
               Container(
                 height: 210,
-                decoration:
-                    const BoxDecoration(
-                  color: Color(
-                    0xFF3E312A,
-                  ),
-                  borderRadius:
-                      BorderRadius.vertical(
-                    top: Radius.circular(
-                      15,
-                    ),
-                  ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3E312A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
                 ),
                 child: const Center(
-                  child: Icon(
-                    Icons.local_bar,
-                    color: Color(
-                      0xFF7A6355,
-                    ),
-                    size: 48,
-                  ),
+                  child: Icon(Icons.image, color: Color(0xFF7A6355), size: 48),
                 ),
               ),
 
@@ -1568,8 +1584,7 @@ out center tags;
           ),
 
           Padding(
-            padding:
-                const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment:
                   CrossAxisAlignment.start,
@@ -1596,15 +1611,8 @@ out center tags;
 
                     Row(
                       children: [
-                        const Icon(
-                          Icons.star,
-                          color:
-                              Colors.amber,
-                          size: 14,
-                        ),
-                        const SizedBox(
-                          width: 4,
-                        ),
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                        const SizedBox(width: 4),
                         Text(
                           brewery.rating,
                           style:
@@ -1627,16 +1635,8 @@ out center tags;
 
                 Row(
                   children: [
-                    const Icon(
-                      Icons.navigation,
-                      color: Color(
-                        0xFF9E8A7D,
-                      ),
-                      size: 12,
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
+                    const Icon(Icons.navigation, color: Color(0xFF9E8A7D), size: 12),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         distanceText,
@@ -1662,50 +1662,24 @@ out center tags;
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children:
-                      brewery.tags.map(
-                    (tag) {
-                      return Container(
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration:
-                            BoxDecoration(
-                          color: const Color(
-                            0xFF1E1712,
-                          ),
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            4,
-                          ),
-                          border:
-                              Border.all(
-                            color:
-                                const Color(
-                              0xFF3E312A,
+                  children: tags
+                      .map((tag) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E1712),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFF3E312A)),
                             ),
-                          ),
-                        ),
-                        child: Text(
-                          tag,
-                          style:
-                              GoogleFonts.inter(
-                            color:
-                                const Color(
-                              0xFFC4A482,
+                            child: Text(
+                              tag,
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFC4A482),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            fontSize: 10,
-                            fontWeight:
-                                FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    },
-                  ).toList(),
+                          ))
+                      .toList(),
                 ),
               ],
             ),

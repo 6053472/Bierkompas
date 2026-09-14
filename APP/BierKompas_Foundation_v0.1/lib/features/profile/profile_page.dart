@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import '../favorites/favorites_service.dart';
+import '../map/breweries.dart';
 import 'add_friend_page.dart';
 import 'all_badges_page.dart';
 import 'chat_page.dart';
@@ -24,8 +26,10 @@ class _ProfilePageState extends State<ProfilePage> {
   final _statsService = StatsService();
   final _friendsService = FriendsService();
   final _cheersService = CheersService();
+  final _favoritesService = FavoritesService();
   AppUser? _user;
   ProfileStats? _stats;
+  List<Brewery>? _favoriteBreweries;
   List<Friend>? _friends;
   List<FriendRequest>? _incomingRequests;
   final Set<String> _pendingRequestActions = {};
@@ -37,6 +41,7 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _loadUser();
     _loadStats();
+    _loadFavoriteBreweries();
     _loadFriends();
     _subscribeToFriendUpdates();
   }
@@ -70,6 +75,23 @@ class _ProfilePageState extends State<ProfilePage> {
     final stats = await _statsService.fetchStats(authUser.id);
     if (!mounted) return;
     setState(() => _stats = stats);
+  }
+
+  Future<void> _loadFavoriteBreweries() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+    try {
+      final favorites = await _favoritesService.list(authUser.id);
+      final breweryIds = favorites
+          .where((f) => f.itemType == breweryItemType)
+          .map((f) => f.itemId)
+          .toSet();
+      final favoriteBreweries = breweries.where((b) => breweryIds.contains(b.id)).toList();
+      if (!mounted) return;
+      setState(() => _favoriteBreweries = favoriteBreweries);
+    } on FavoritesException catch (e) {
+      debugPrint('Fout bij ophalen favoriete brouwerijen: $e');
+    }
   }
 
   Future<void> _loadFriends() async {
@@ -521,17 +543,52 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 12),
 
                   // Favoriete Brouwerij Kaarten
-                  _buildFavoriteBreweryCard(
-                    title: 'Brouwerij De Halve Maan',
-                    location: 'Brugge, België',
-                    rating: 5,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildFavoriteBreweryCard(
-                    title: 'Jongens van de Wit',
-                    location: '’s-Hertogenbosch',
-                    rating: 4,
-                  ),
+                  if (_favoriteBreweries == null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
+                      ),
+                    )
+                  else if (_favoriteBreweries!.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C221C),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Je hebt nog geen favoriete brouwerijen.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF9E8A7D),
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tik op het hartje bij een brouwerij op de Kaart om hem toe te voegen.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF9E8A7D),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    for (int i = 0; i < _favoriteBreweries!.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 12),
+                      _buildFavoriteBreweryCard(
+                        title: _favoriteBreweries![i].title,
+                        location: _favoriteBreweries![i].location,
+                        rating: double.tryParse(_favoriteBreweries![i].rating)?.round() ?? 5,
+                      ),
+                    ],
                   const SizedBox(height: 24),
 
                   // Sectie: Mijn Bier-vrienden
