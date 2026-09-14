@@ -15,7 +15,9 @@ $$;
 grant execute on function public.touch_presence() to authenticated;
 
 -- `list_friends` (uit add_friends.sql) opnieuw gedefinieerd met een extra
--- `online`-kolom: recent (binnen 2 minuten) actief geweest.
+-- `online`-kolom: recent (binnen 2 minuten) actief geweest. Het returntype
+-- verandert, dus `create or replace` is niet genoeg: eerst droppen.
+drop function if exists public.list_friends();
 create or replace function public.list_friends()
 returns table(friend_id uuid, name text, avatar_url text, online boolean)
 language sql

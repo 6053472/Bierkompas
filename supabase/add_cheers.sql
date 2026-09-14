@@ -38,6 +38,7 @@ grant select, insert, update on public.cheers to authenticated;
 -- Alleen geldig als díe proost ook echt door p_receiver_id aan mij is
 -- gestuurd, anders zou je een willekeurige proost als "beantwoord" kunnen
 -- markeren.
+drop function if exists public.send_cheer(uuid);
 create or replace function public.send_cheer(p_receiver_id uuid, p_reply_to_id bigint default null)
 returns void
 language plpgsql
@@ -76,6 +77,7 @@ grant execute on function public.send_cheer(uuid, bigint) to authenticated;
 -- Ongeziene proosts voor de ingelogde gebruiker, met naam/avatar van de
 -- afzender (security definer omvat de RLS "select own" op `profiles`).
 -- is_reply: true als dit een "Proost terug" is op een proost die ík stuurde.
+drop function if exists public.list_unseen_cheers();
 create or replace function public.list_unseen_cheers()
 returns table(id bigint, sender_id uuid, name text, avatar_url text, created_at timestamptz, is_reply boolean)
 language sql
