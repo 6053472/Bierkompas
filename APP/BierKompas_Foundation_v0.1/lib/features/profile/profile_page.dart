@@ -343,6 +343,43 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   const SizedBox(height: 24),
 
+                  // Sectie: Mijn Proefnotities
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Mijn Proefnotities',
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFEFE6DD),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Bekijk alle',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFD4B28C),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildTastingNoteCard(
+                    title: 'Zundert 8 Trappist',
+                    note: 'Prachtige kastanjebruine kleur met een stevige...',
+                    rating: 5,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTastingNoteCard(
+                    title: 'La Chouffe',
+                    note: 'Fris en fruitig met een aangename hint van...',
+                    rating: 4,
+                  ),
+                  const SizedBox(height: 24),
+
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -367,6 +404,46 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: 'Jongens van de Wit',
                     location: '’s-Hertogenbosch',
                     rating: 4,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Sectie: Mijn Bier-vrienden
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Mijn Bier-vrienden',
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFEFE6DD),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Bekijk alle',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFD4B28C),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.5,
+                    children: const [
+                      _BeerFriend(name: 'Thomas'),
+                      _BeerFriend(name: 'Sophie'),
+                      _BeerFriend(name: 'Lars'),
+                      _BeerFriend(name: 'Emma'),
+                    ],
                   ),
                   const SizedBox(height: 30),
                 ],
@@ -507,6 +584,80 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildTastingNoteCard({
+    required String title,
+    required String note,
+    required int rating,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C221C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: const Color(0xFF3C3028),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Icon(Icons.sports_bar, color: Color(0xFF9E8A7D), size: 24),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: GoogleFonts.playfairDisplay(
+                          color: const Color(0xFFEFE6DD),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(
+                        5,
+                        (index) => Icon(
+                          index < rating ? Icons.star : Icons.star_border,
+                          color: const Color(0xFFD4B28C),
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  note,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF9E8A7D),
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFavoriteBreweryCard({
     required String title,
     required String location,
@@ -564,6 +715,81 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BeerFriend extends StatelessWidget {
+  final String name;
+  final String? avatarUrl;
+
+  const _BeerFriend({required this.name, this.avatarUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C221C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF3C3028),
+              image: avatarUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: avatarUrl == null
+                ? const Center(
+                    child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 24),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            style: GoogleFonts.inter(
+              color: const Color(0xFFEFE6DD),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 90,
+            height: 28,
+            child: ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4B28C),
+                foregroundColor: const Color(0xFF1E1712),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Proost!',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ],
