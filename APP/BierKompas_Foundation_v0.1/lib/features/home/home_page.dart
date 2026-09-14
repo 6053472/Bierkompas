@@ -9,6 +9,8 @@ import '../feed/feed_card.dart';
 import '../feed/feed_service.dart';
 import '../map/breweries.dart';
 import '../map/map_page.dart';
+import '../profile/cheer_overlay.dart';
+import '../profile/cheers_service.dart';
 import '../profile/profile_page.dart';
 import '../profile/stats_service.dart';
 import '../events/events_page.dart';
@@ -29,14 +31,25 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _statsService = StatsService();
+  final _cheersService = CheersService();
   int _currentIndex = 0;
   int _currentStreak = 0;
   String? _avatarUrl;
+  RealtimeChannel? _cheersChannel;
+  bool _showingCheer = false;
 
   @override
   void initState() {
     super.initState();
     _loadAvatar();
+    _checkPendingCheers();
+    _subscribeToCheers();
+  }
+
+  @override
+  void dispose() {
+    _cheersChannel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadAvatar() async {
@@ -49,6 +62,47 @@ class _HomePageState extends State<HomePage> {
         .maybeSingle();
     if (!mounted) return;
     setState(() => _avatarUrl = profile?['avatar_url'] as String?);
+  }
+
+  // Toont eventuele nog niet geziene "Proost!"-kaarten, bv. binnengekomen
+  // terwijl de app dicht was. Ze verschijnen na elkaar als er meerdere zijn.
+  Future<void> _checkPendingCheers() async {
+    try {
+      final unseen = await _cheersService.listUnseen();
+      for (final cheer in unseen) {
+        await _showCheer(cheer);
+      }
+    } on CheersException catch (e) {
+      debugPrint('Fout bij ophalen proosts: $e');
+    }
+  }
+
+  Future<void> _showCheer(Cheer cheer) async {
+    if (!mounted || _showingCheer) return;
+    _showingCheer = true;
+    await showCheerOverlay(context, cheer, _cheersService);
+    _showingCheer = false;
+  }
+
+  // Houdt "Proost!" live: een binnenkomende proost verschijnt meteen als
+  // pop-up, ongeacht welk tabblad open staat.
+  void _subscribeToCheers() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    _cheersChannel = Supabase.instance.client
+        .channel('cheers_${user.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'cheers',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'receiver_id',
+            value: user.id,
+          ),
+          callback: (_) => _checkPendingCheers(),
+        )
+        .subscribe();
   }
 
   void _goToTab(int index) => setState(() => _currentIndex = index);

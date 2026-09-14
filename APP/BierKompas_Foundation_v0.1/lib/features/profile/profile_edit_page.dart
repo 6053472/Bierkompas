@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../auth/auth_service.dart';
 
 class ProfileEditPage extends StatefulWidget {
@@ -17,7 +18,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   bool _isLoading = false;
+  bool _isUploadingAvatar = false;
   String? _error;
+  String? _avatarUrl;
 
   static const _bg = Color(0xFF1E1712);
   static const _card = Color(0xFF2C221C);
@@ -31,6 +34,38 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     super.initState();
     _nameController = TextEditingController(text: widget.user?.name ?? '');
     _emailController = TextEditingController(text: widget.user?.email ?? '');
+    _avatarUrl = widget.user?.avatarUrl;
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    if (widget.user == null) return;
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final fileExt = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : 'jpg';
+      final url = await _authService.uploadAvatar(
+        userId: widget.user!.id,
+        bytes: bytes,
+        fileExt: fileExt,
+      );
+      if (!mounted) return;
+      setState(() => _avatarUrl = url);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profielfoto uploaden mislukt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
   }
 
   @override
@@ -55,7 +90,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         email: _emailController.text.trim(),
       );
       if (!mounted) return;
-      Navigator.of(context).pop(updated);
+      Navigator.of(context).pop(updated.copyWith(avatarUrl: _avatarUrl));
     } on AuthException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -101,6 +136,64 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Center(
+                        child: GestureDetector(
+                          onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _field,
+                                  border: Border.all(color: _gold.withOpacity(0.5), width: 2),
+                                  image: _avatarUrl != null
+                                      ? DecorationImage(
+                                          image: NetworkImage(_avatarUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
+                                child: _avatarUrl == null
+                                    ? const Center(
+                                        child: Icon(Icons.person, color: _muted, size: 44),
+                                      )
+                                    : null,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: _gold,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: _isUploadingAvatar
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: _bg,
+                                          ),
+                                        )
+                                      : const Icon(Icons.camera_alt, color: _bg, size: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          'Tik om je profielfoto te wijzigen',
+                          style: GoogleFonts.inter(color: _muted, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       _buildTextField(
                         controller: _nameController,
                         label: 'Naam',

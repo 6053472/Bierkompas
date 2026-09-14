@@ -6,6 +6,7 @@ import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
 import 'add_friend_page.dart';
 import 'all_badges_page.dart';
+import 'cheers_service.dart';
 import 'friends_service.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
@@ -21,11 +22,13 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _statsService = StatsService();
   final _friendsService = FriendsService();
+  final _cheersService = CheersService();
   AppUser? _user;
   ProfileStats? _stats;
   List<Friend>? _friends;
   List<FriendRequest>? _incomingRequests;
   final Set<String> _pendingRequestActions = {};
+  final Set<String> _sendingCheerIds = {};
   RealtimeChannel? _friendsChannel;
 
   @override
@@ -149,6 +152,24 @@ class _ProfilePageState extends State<ProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Reageren mislukt: $e')),
       );
+    }
+  }
+
+  Future<void> _sendCheer(Friend friend) async {
+    setState(() => _sendingCheerIds.add(friend.id));
+    try {
+      await _cheersService.sendCheer(friend.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Proost verstuurd naar ${friend.name}!')),
+      );
+    } on CheersException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Proost versturen mislukt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sendingCheerIds.remove(friend.id));
     }
   }
 
@@ -602,7 +623,12 @@ class _ProfilePageState extends State<ProfilePage> {
                             onDecline: () => _respondToRequest(request, false),
                           ),
                         for (final friend in _friends!)
-                          _BeerFriend(name: friend.name, avatarUrl: friend.avatarUrl),
+                          _BeerFriend(
+                            name: friend.name,
+                            avatarUrl: friend.avatarUrl,
+                            sending: _sendingCheerIds.contains(friend.id),
+                            onProost: () => _sendCheer(friend),
+                          ),
                       ],
                     ),
                   const SizedBox(height: 30),
@@ -993,8 +1019,10 @@ class _FriendRequestTile extends StatelessWidget {
 class _BeerFriend extends StatelessWidget {
   final String name;
   final String? avatarUrl;
+  final VoidCallback? onProost;
+  final bool sending;
 
-  const _BeerFriend({required this.name, this.avatarUrl});
+  const _BeerFriend({required this.name, this.avatarUrl, this.onProost, this.sending = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1040,23 +1068,30 @@ class _BeerFriend extends StatelessWidget {
             width: 90,
             height: 28,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: sending ? null : onProost,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD4B28C),
                 foregroundColor: const Color(0xFF1E1712),
+                disabledBackgroundColor: const Color(0xFF3C3028),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                'Proost!',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: sending
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
+                    )
+                  : Text(
+                      'Proost!',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ],
