@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -17,20 +19,76 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
+class BreweryResult {
+  final Brewery brewery;
+  final double distance;
+
+  const BreweryResult({required this.brewery, required this.distance});
+}
+
+// Model voor bekende steden met hun coördinaten, gebruikt om op te zoeken.
+class CityLocation {
+  final String name;
+  final double latitude;
+  final double longitude;
+
+  const CityLocation({required this.name, required this.latitude, required this.longitude});
+}
+
 class _MapPageState extends State<MapPage> {
   final _favoritesService = FavoritesService();
   final _pageController = PageController(viewportFraction: 0.86);
+  final _mapController = MapController();
+  final _searchController = TextEditingController();
   final Set<int> _favoriteIds = {};
+
+  bool _isSearching = false;
+  String _searchedLocation = '';
+  List<BreweryResult> _results = [];
+
+  final List<CityLocation> _cities = const [
+    CityLocation(name: 'Amsterdam', latitude: 52.3676, longitude: 4.9041),
+    CityLocation(name: 'Rotterdam', latitude: 51.9244, longitude: 4.4777),
+    CityLocation(name: 'Utrecht', latitude: 52.0907, longitude: 5.1214),
+    CityLocation(name: 'Den Haag', latitude: 52.0705, longitude: 4.3007),
+    CityLocation(name: 'Eindhoven', latitude: 51.4416, longitude: 5.4697),
+    CityLocation(name: 'Groningen', latitude: 53.2194, longitude: 6.5665),
+    CityLocation(name: 'Maastricht', latitude: 50.8513, longitude: 5.6909),
+    CityLocation(name: 'Haarlem', latitude: 52.3874, longitude: 4.6462),
+    CityLocation(name: 'Arnhem', latitude: 51.9851, longitude: 5.8987),
+    CityLocation(name: 'Zwolle', latitude: 52.5168, longitude: 6.0830),
+    CityLocation(name: 'Leeuwarden', latitude: 53.2012, longitude: 5.7999),
+    CityLocation(name: 'Assen', latitude: 52.9926, longitude: 6.5642),
+    CityLocation(name: 'Middelburg', latitude: 51.4988, longitude: 3.6108),
+    CityLocation(name: 'Lelystad', latitude: 52.5185, longitude: 5.4714),
+    CityLocation(name: ''
+        's-Hertogenbosch', latitude: 51.6992, longitude: 5.3037),
+    CityLocation(name: 'Breda', latitude: 51.5719, longitude: 4.7683),
+    CityLocation(name: 'Tilburg', latitude: 51.5555, longitude: 5.0913),
+    CityLocation(name: 'Enschede', latitude: 52.2215, longitude: 6.8937),
+    CityLocation(name: 'Delft', latitude: 52.0116, longitude: 4.3571),
+    CityLocation(name: 'Leiden', latitude: 52.1601, longitude: 4.4970),
+    CityLocation(name: 'Nijmegen', latitude: 51.8126, longitude: 5.8372),
+    CityLocation(name: 'Westvleteren', latitude: 50.9020, longitude: 2.7150),
+    CityLocation(name: 'Zaandijk', latitude: 52.4700, longitude: 4.8200),
+    CityLocation(name: 'Bodegraven', latitude: 52.0850, longitude: 4.7460),
+  ];
 
   @override
   void initState() {
     super.initState();
+    _resetResults();
     _loadFavorites();
+  }
+
+  void _resetResults() {
+    _results = breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -83,6 +141,78 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  double _degreesToRadians(double degrees) => degrees * pi / 180;
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const earthRadius = 6371.0;
+    final dLat = _degreesToRadians(lat2 - lat1);
+    final dLon = _degreesToRadians(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  String _formatDistance(double distance) {
+    if (distance < 1) return '${(distance * 1000).round()} m';
+    return '${distance.toStringAsFixed(1)} km';
+  }
+
+  void _searchLocation() {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() {
+        _searchedLocation = '';
+        _resetResults();
+      });
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() => _isSearching = true);
+
+    CityLocation? foundCity;
+    for (final city in _cities) {
+      if (city.name.toLowerCase().contains(query)) {
+        foundCity = city;
+        break;
+      }
+    }
+
+    if (foundCity == null) {
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stad niet gevonden. Probeer bijv. Amsterdam, Utrecht, Groningen.')),
+      );
+      return;
+    }
+
+    _mapController.move(LatLng(foundCity.latitude, foundCity.longitude), 10);
+
+    final newResults = breweries
+        .map((brewery) => BreweryResult(
+              brewery: brewery,
+              distance: _calculateDistance(
+                foundCity!.latitude,
+                foundCity.longitude,
+                brewery.latitude,
+                brewery.longitude,
+              ),
+            ))
+        .toList()
+      ..sort((a, b) => a.distance.compareTo(b.distance));
+
+    setState(() {
+      _searchedLocation = foundCity!.name;
+      _results = newResults;
+      _isSearching = false;
+    });
+
+    if (_pageController.hasClients && newResults.isNotEmpty) {
+      _pageController.jumpToPage(0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,14 +221,32 @@ class _MapPageState extends State<MapPage> {
         children: [
           // 1. OpenStreetMap achtergrond
           FlutterMap(
+            mapController: _mapController,
             options: const MapOptions(
               initialCenter: LatLng(52.0907, 5.1214),
-              initialZoom: 14.0,
+              initialZoom: 8,
             ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.bierkompas',
+              ),
+              MarkerLayer(
+                markers: _results.map((result) {
+                  return Marker(
+                    point: LatLng(result.brewery.latitude, result.brewery.longitude),
+                    width: 36,
+                    height: 36,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4B28C),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF2C221C), width: 2),
+                      ),
+                      child: const Icon(Icons.sports_bar, color: Color(0xFF2C221C), size: 16),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),
@@ -160,7 +308,9 @@ class _MapPageState extends State<MapPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Ontdek unieke brouwerijen en proeflokalen bij jou in de buurt, zorgvuldig geselecteerd op erfgoed en kwaliteit.',
+                        _searchedLocation.isEmpty
+                            ? 'Ontdek unieke brouwerijen en proeflokalen bij jou in de buurt, zorgvuldig geselecteerd op erfgoed en kwaliteit.'
+                            : 'Resultaten vanaf $_searchedLocation (dichtstbijzijnde eerst).',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
@@ -177,7 +327,7 @@ class _MapPageState extends State<MapPage> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     height: 42,
                     decoration: BoxDecoration(
                       color: const Color(0xFF2C221C),
@@ -193,18 +343,49 @@ class _MapPageState extends State<MapPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.search, color: Color(0xFF9E8A7D), size: 18),
+                        GestureDetector(
+                          onTap: _isSearching ? null : _searchLocation,
+                          child: _isSearching
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
+                                )
+                              : const Icon(Icons.search, color: Color(0xFF9E8A7D), size: 18),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(
-                            'Zoek brouwerijen of steden...',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF9E8A7D),
-                              fontSize: 13,
+                          child: TextField(
+                            controller: _searchController,
+                            onSubmitted: (_) => _searchLocation(),
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                            cursorColor: const Color(0xFFD4B28C),
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              hintText: 'Zoek brouwerijen of steden...',
+                              hintStyle: GoogleFonts.inter(
+                                color: const Color(0xFF9E8A7D),
+                                fontSize: 13,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
                             ),
                           ),
                         ),
-                        const Icon(Icons.tune, color: Color(0xFF9E8A7D), size: 18),
+                        if (_searchedLocation.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchedLocation = '';
+                                _resetResults();
+                              });
+                            },
+                            child: const Icon(Icons.close, color: Color(0xFF9E8A7D), size: 18),
+                          )
+                        else
+                          const Icon(Icons.tune, color: Color(0xFF9E8A7D), size: 18),
                       ],
                     ),
                   ),
@@ -218,16 +399,18 @@ class _MapPageState extends State<MapPage> {
                       child: PageView(
                         controller: _pageController,
                         children: [
-                          for (final brewery in breweries)
+                          for (final result in _results)
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
                               child: _buildBreweryCard(
-                                title: brewery.title,
-                                distance: brewery.distance,
-                                rating: brewery.rating,
-                                tags: brewery.tags,
-                                isFavorite: _favoriteIds.contains(brewery.id),
-                                onFavoriteTap: () => _toggleFavorite(brewery),
+                                title: result.brewery.title,
+                                distance: _searchedLocation.isEmpty
+                                    ? result.brewery.distance
+                                    : '${_formatDistance(result.distance)} vanaf $_searchedLocation',
+                                rating: result.brewery.rating,
+                                tags: result.brewery.tags,
+                                isFavorite: _favoriteIds.contains(result.brewery.id),
+                                onFavoriteTap: () => _toggleFavorite(result.brewery),
                               ),
                             ),
                         ],
