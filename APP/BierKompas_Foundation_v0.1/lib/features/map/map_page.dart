@@ -84,11 +84,17 @@ class _MapPageState extends State<MapPage> {
 
   bool _isSearching = false;
   bool _isLoadingSuggestions = false;
-  bool _loadingBreweries = true;
+  // Toont alleen een klein "meer laden"-hintje; blokkeert de kaart niet meer,
+  // want de publieke Overpass-servers kunnen tot een minuut per poging duren.
+  bool _loadingMoreBreweries = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Toon de lokale lijst meteen, zodat de kaart niet minutenlang leeg/aan
+    // het laden lijkt terwijl er op de online brouwerijen gewacht wordt.
+    _results = breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList();
 
     _loadBreweries();
     _loadFavorites();
@@ -110,9 +116,12 @@ class _MapPageState extends State<MapPage> {
   // BROUWERIJEN
   // ============================================================
 
+  // Haalt extra brouwerijen op via OpenStreetMap, ná het tonen van de lokale
+  // lijst. Lukt dit niet (trage/overbelaste publieke server), dan blijft
+  // gewoon de lokale lijst staan — de gebruiker hoeft daar niet op te wachten.
   Future<void> _loadBreweries() async {
     setState(() {
-      _loadingBreweries = true;
+      _loadingMoreBreweries = true;
     });
 
     try {
@@ -146,26 +155,18 @@ class _MapPageState extends State<MapPage> {
 
       setState(() {
         _results = result;
-        _loadingBreweries = false;
+        _loadingMoreBreweries = false;
       });
     } catch (e) {
       debugPrint(
         'Online brouwerijen laden mislukt: $e',
       );
 
+      // De lokale lijst staat al (gezet in initState); niets overschrijven.
       if (!mounted) return;
 
       setState(() {
-        _results = breweries
-            .map(
-              (brewery) => BreweryResult(
-                brewery: brewery,
-                distance: 0,
-              ),
-            )
-            .toList();
-
-        _loadingBreweries = false;
+        _loadingMoreBreweries = false;
       });
     }
   }
@@ -209,7 +210,7 @@ out center tags;
               },
             )
             .timeout(
-              const Duration(seconds: 70),
+              const Duration(seconds: 15),
             );
 
         if (response.statusCode != 200) {
@@ -1081,17 +1082,28 @@ out center tags;
                   child: _buildSearchBox(),
                 ),
 
+                if (_loadingMoreBreweries)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Meer brouwerijen laden...',
+                          style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 Expanded(
-                  child: _loadingBreweries
-                      ? const Center(
-                          child:
-                              CircularProgressIndicator(
-                            color: Color(
-                              0xFFD4B28C,
-                            ),
-                          ),
-                        )
-                      : _results.isEmpty
+                  child: _results.isEmpty
                           ? Center(
                               child: Text(
                                 'Geen brouwerijen gevonden.',
