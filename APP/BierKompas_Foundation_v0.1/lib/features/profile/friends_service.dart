@@ -4,8 +4,9 @@ class Friend {
   final String id;
   final String name;
   final String? avatarUrl;
+  final bool online;
 
-  const Friend({required this.id, required this.name, this.avatarUrl});
+  const Friend({required this.id, required this.name, this.avatarUrl, this.online = false});
 }
 
 /// Binnengekomen, nog niet beantwoord vriendschapsverzoek.
@@ -58,6 +59,7 @@ class FriendsService {
           id: row['friend_id'] as String,
           name: row['name'] as String? ?? 'Onbekend',
           avatarUrl: row['avatar_url'] as String?,
+          online: row['online'] as bool? ?? false,
         );
       }).toList();
     } on PostgrestException catch (e) {
@@ -153,6 +155,16 @@ class FriendsService {
       });
     } on PostgrestException catch (e) {
       throw FriendsException(e.message);
+    }
+  }
+
+  /// Zet mijn `last_active_at` op nu, zodat vrienden mij als online zien.
+  /// Fouten worden bewust genegeerd: dit draait periodiek op de achtergrond.
+  Future<void> touchPresence() async {
+    try {
+      await _client.rpc('touch_presence');
+    } on PostgrestException {
+      // stilzwijgend negeren
     }
   }
 }

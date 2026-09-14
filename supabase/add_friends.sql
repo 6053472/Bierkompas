@@ -18,15 +18,19 @@ create table if not exists public.friend_requests (
 
 alter table public.friend_requests enable row level security;
 
+drop policy if exists "Friend requests: select involved" on public.friend_requests;
 create policy "Friend requests: select involved" on public.friend_requests
     for select using (auth.uid() = requester_id or auth.uid() = addressee_id);
 
+drop policy if exists "Friend requests: insert own" on public.friend_requests;
 create policy "Friend requests: insert own" on public.friend_requests
     for insert with check (auth.uid() = requester_id);
 
+drop policy if exists "Friend requests: addressee can update" on public.friend_requests;
 create policy "Friend requests: addressee can update" on public.friend_requests
     for update using (auth.uid() = addressee_id);
 
+drop policy if exists "Friend requests: involved can delete" on public.friend_requests;
 create policy "Friend requests: involved can delete" on public.friend_requests
     for delete using (auth.uid() = requester_id or auth.uid() = addressee_id);
 
@@ -152,6 +156,7 @@ begin
     alter publication supabase_realtime add table public.friend_requests;
 exception
     when duplicate_object then null;
+    when undefined_object then null;
 end;
 $$;
 
