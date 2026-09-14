@@ -188,18 +188,19 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Kleuren uit het "Artisanal Draught" design system (DESIGN.md).
-const _background = Color(0xFF1C110A);
-const _primary = Color(0xFFFBB97B);
-const _onPrimary = Color(0xFF4B2800);
-const _secondary = Color(0xFFE3BFB2);
-const _onSecondary = Color(0xFF422B22);
-const _secondaryContainer = Color(0xFF5D4339);
-const _surfaceContainerLow = Color(0xFF251911);
-const _surfaceContainer = Color(0xFF291D15);
-const _onSurface = Color(0xFFF6DED1);
-const _onSurfaceVariant = Color(0xFFD6C3B5);
-const _outlineVariant = Color(0xFF51443A);
+// Zelfde kleurenpalet als de rest van de app (Profiel, Kaart, Agenda, ...),
+// zodat Ontdek er niet meer uitspringt met eigen "Artisanal Draught"-kleuren.
+const _background = Color(0xFF1E1712);
+const _primary = Color(0xFFD4B28C);
+const _onPrimary = Color(0xFF1E1712);
+const _secondary = Color(0xFFD4B28C);
+const _onSecondary = Color(0xFF1E1712);
+const _secondaryContainer = Color(0xFF3C3028);
+const _surfaceContainerLow = Color(0xFF2C221C);
+const _surfaceContainer = Color(0xFF2C221C);
+const _onSurface = Color(0xFFEFE6DD);
+const _onSurfaceVariant = Color(0xFF9E8A7D);
+const _outlineVariant = Color(0xFF3E312A);
 
 const _logoImage =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuBM580LJgGSlvZ-vRLbR8gR8YgCyscQpi9v23krIsU1Guv5lOfaBskJ9JU0mAQfjQ1lLx2JpEin-c8CRLQUKrrp2h9_rlhwvsXtUzKB82_sN9jqFo8KaIZ4p0n6lW7t7-a9ZBD17gqjKLyg7VthIMxzX5MEI8ErfqOXJhOV6IVqqi21Eo84uNNaBkkMfh3dS6SoiH87ofeiFMlfb7V-RoAaWbx94fXBu2zBenGe_GMOUk2P_--GMBAnIrE35R6aGf-bZA';
@@ -735,7 +736,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [_background, Color(0x001C110A)],
+                  colors: [_background, Color(0x001E1712)],
                   stops: [0, 0.5],
                 ),
               ),
@@ -832,7 +833,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       gradient: const LinearGradient(
         begin: Alignment(-0.57, -0.82), // 145deg zoals in de CSS
         end: Alignment(0.57, 0.82),
-        colors: [Color(0xFF2C1810), _background],
+        colors: [Color(0xFF2C221C), _background],
       ),
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: borderColor ?? _primary.withOpacity(0.1), width: borderWidth),
