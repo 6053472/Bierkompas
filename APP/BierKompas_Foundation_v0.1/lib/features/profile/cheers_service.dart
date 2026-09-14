@@ -6,11 +6,17 @@ class Cheer {
   final String senderName;
   final String? senderAvatarUrl;
 
+  /// True als dit een "Proost terug" is op een proost die ík eerder stuurde.
+  /// Zo'n reactie toont het rustige bevestigingsscherm in plaats van weer een
+  /// "Proost terug"-knop, om een oneindige heen-en-weer keten te voorkomen.
+  final bool isReply;
+
   const Cheer({
     required this.id,
     required this.senderId,
     required this.senderName,
     this.senderAvatarUrl,
+    this.isReply = false,
   });
 }
 
@@ -27,9 +33,12 @@ class CheersException implements Exception {
 class CheersService {
   SupabaseClient get _client => Supabase.instance.client;
 
-  Future<void> sendCheer(String receiverId) async {
+  Future<void> sendCheer(String receiverId, {int? replyToId}) async {
     try {
-      await _client.rpc('send_cheer', params: {'p_receiver_id': receiverId});
+      await _client.rpc('send_cheer', params: {
+        'p_receiver_id': receiverId,
+        if (replyToId != null) 'p_reply_to_id': replyToId,
+      });
     } on PostgrestException catch (e) {
       throw CheersException(e.message);
     }
@@ -44,6 +53,7 @@ class CheersService {
                 senderId: row['sender_id'] as String,
                 senderName: row['name'] as String? ?? 'Onbekend',
                 senderAvatarUrl: row['avatar_url'] as String?,
+                isReply: row['is_reply'] as bool? ?? false,
               ))
           .toList();
     } on PostgrestException catch (e) {

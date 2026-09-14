@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,8 +11,10 @@ import '../feed/feed_card.dart';
 import '../feed/feed_service.dart';
 import '../map/breweries.dart';
 import '../map/map_page.dart';
+import '../profile/cheer_confirmation_page.dart';
 import '../profile/cheer_overlay.dart';
 import '../profile/cheers_service.dart';
+import '../profile/friends_service.dart';
 import '../profile/profile_page.dart';
 import '../profile/stats_service.dart';
 import '../events/events_page.dart';
@@ -32,11 +36,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _statsService = StatsService();
   final _cheersService = CheersService();
+  final _friendsService = FriendsService();
   int _currentIndex = 0;
   int _currentStreak = 0;
   String? _avatarUrl;
   RealtimeChannel? _cheersChannel;
   bool _showingCheer = false;
+  Timer? _presenceTimer;
 
   @override
   void initState() {
@@ -44,11 +50,14 @@ class _HomePageState extends State<HomePage> {
     _loadAvatar();
     _checkPendingCheers();
     _subscribeToCheers();
+    _friendsService.touchPresence();
+    _presenceTimer = Timer.periodic(const Duration(seconds: 60), (_) => _friendsService.touchPresence());
   }
 
   @override
   void dispose() {
     _cheersChannel?.unsubscribe();
+    _presenceTimer?.cancel();
     super.dispose();
   }
 
@@ -80,7 +89,17 @@ class _HomePageState extends State<HomePage> {
   Future<void> _showCheer(Cheer cheer) async {
     if (!mounted || _showingCheer) return;
     _showingCheer = true;
-    await showCheerOverlay(context, cheer, _cheersService);
+    if (cheer.isReply) {
+      // Reactie op mijn eigen proost: rustig bevestigingsscherm, zonder
+      // opnieuw een "Proost terug"-knop (voorkomt een oneindige keten).
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CheerConfirmationPage(cheer: cheer, service: _cheersService),
+        ),
+      );
+    } else {
+      await showCheerOverlay(context, cheer, _cheersService);
+    }
     _showingCheer = false;
   }
 

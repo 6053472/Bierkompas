@@ -626,6 +626,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           _BeerFriend(
                             name: friend.name,
                             avatarUrl: friend.avatarUrl,
+                            online: friend.online,
                             sending: _sendingCheerIds.contains(friend.id),
                             onProost: () => _sendCheer(friend),
                           ),
@@ -1019,10 +1020,17 @@ class _FriendRequestTile extends StatelessWidget {
 class _BeerFriend extends StatelessWidget {
   final String name;
   final String? avatarUrl;
+  final bool online;
   final VoidCallback? onProost;
   final bool sending;
 
-  const _BeerFriend({required this.name, this.avatarUrl, this.onProost, this.sending = false});
+  const _BeerFriend({
+    required this.name,
+    this.avatarUrl,
+    this.online = false,
+    this.onProost,
+    this.sending = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1035,24 +1043,43 @@ class _BeerFriend extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF3C3028),
-              image: avatarUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(avatarUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: avatarUrl == null
-                ? const Center(
-                    child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 24),
-                  )
-                : null,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF3C3028),
+                  image: avatarUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(avatarUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: avatarUrl == null
+                    ? const Center(
+                        child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 24),
+                      )
+                    : null,
+              ),
+              if (online)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF4CAF50),
+                      border: Border.all(color: const Color(0xFF2C221C), width: 2),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(

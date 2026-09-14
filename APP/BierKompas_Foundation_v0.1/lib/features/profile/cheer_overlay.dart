@@ -38,7 +38,11 @@ class _CheerCardState extends State<_CheerCard> {
   Future<void> _dismiss() async {
     if (_busy) return;
     setState(() => _busy = true);
-    await widget.service.markSeen(widget.cheer.id);
+    try {
+      await widget.service.markSeen(widget.cheer.id);
+    } on CheersException {
+      // negeren: sluit het scherm sowieso, anders blijft de gebruiker vast zitten.
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -46,7 +50,7 @@ class _CheerCardState extends State<_CheerCard> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await widget.service.sendCheer(widget.cheer.senderId);
+      await widget.service.sendCheer(widget.cheer.senderId, replyToId: widget.cheer.id);
       await widget.service.markSeen(widget.cheer.id);
       if (!mounted) return;
       Navigator.of(context).pop();
