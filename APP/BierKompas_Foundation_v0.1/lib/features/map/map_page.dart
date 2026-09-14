@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -48,20 +49,42 @@ class SearchLocation {
   });
 }
 
+class SearchSuggestion {
+  final String displayName;
+  final double latitude;
+  final double longitude;
+
+  const SearchSuggestion({
+    required this.displayName,
+    required this.latitude,
+    required this.longitude,
+  });
+}
+
 class _MapPageState extends State<MapPage> {
   final _favoritesService = FavoritesService();
-  final _pageController = PageController(viewportFraction: 0.86);
+
+  final _pageController = PageController(
+    viewportFraction: 0.86,
+  );
+
   final _mapController = MapController();
+
   final _searchController = TextEditingController();
 
   final Set<int> _favoriteIds = {};
 
+  List<BreweryResult> _results = [];
+
+  List<SearchSuggestion> _suggestions = [];
+
+  Timer? _suggestionTimer;
+
   String _searchedLocation = '';
 
   bool _isSearching = false;
-  bool _isLoadingBreweries = false;
-
-  List<BreweryResult> _results = [];
+  bool _isLoadingSuggestions = false;
+  bool _loadingBreweries = true;
 
   @override
   void initState() {
@@ -69,48 +92,70 @@ class _MapPageState extends State<MapPage> {
 
     _loadBreweries();
     _loadFavorites();
+
+    _searchController.addListener(
+      _onSearchChanged,
+    );
   }
 
   @override
   void dispose() {
+    _suggestionTimer?.cancel();
     _pageController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  // ============================================================
+  // BROUWERIJEN
+  // ============================================================
+
   Future<void> _loadBreweries() async {
     setState(() {
-      _isLoadingBreweries = true;
+      _loadingBreweries = true;
     });
 
     try {
-      final breweriesFromOsm =
-          await _getBreweriesFromOpenStreetMap();
+      final onlineBreweries =
+          await _fetchDutchBreweries();
+
+      final allBreweries = [
+        ...onlineBreweries,
+        ...breweries,
+      ];
+
+      final unique = <String, Brewery>{};
+
+      for (final brewery in allBreweries) {
+        final key =
+            '${brewery.title.toLowerCase()}_${brewery.latitude.toStringAsFixed(4)}_${brewery.longitude.toStringAsFixed(4)}';
+
+        unique[key] = brewery;
+      }
+
+      final result = unique.values
+          .map(
+            (brewery) => BreweryResult(
+              brewery: brewery,
+              distance: 0,
+            ),
+          )
+          .toList();
 
       if (!mounted) return;
 
       setState(() {
-        _results = breweriesFromOsm
-            .map(
-              (brewery) => BreweryResult(
-                brewery: brewery,
-                distance: 0,
-              ),
-            )
-            .toList();
-
-        _isLoadingBreweries = false;
+        _results = result;
+        _loadingBreweries = false;
       });
     } catch (e) {
-      debugPrint('Fout bij ophalen brouwerijen: $e');
+      debugPrint(
+        'Online brouwerijen laden mislukt: $e',
+      );
 
       if (!mounted) return;
 
       setState(() {
-        _isLoadingBreweries = false;
-
-        // Als OpenStreetMap niet werkt,
-        // gebruiken we de bestaande brouwerijen.
         _results = breweries
             .map(
               (brewery) => BreweryResult(
@@ -119,27 +164,214 @@ class _MapPageState extends State<MapPage> {
               ),
             )
             .toList();
-      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Online brouwerijen konden niet worden geladen. '
-            'De standaard brouwerijen worden getoond.',
-          ),
-        ),
-      );
+        _loadingBreweries = false;
+      });
     }
   }
 
+  Future<List<Brewery>> _fetchDutchBreweries() async {
+    const query = '''
+[out:json][timeout:60];
+
+area["ISO3166-1"="NL"][admin_level=2]->.nl;
+
+(
+  nwr["craft"="brewery"](area.nl);
+  nwr["brewery"](area.nl);
+  nwr["industrial"="brewery"](area.nl);
+  nwr["building"="brewery"](area.nl);
+);
+
+out center tags;
+''';
+
+    const endpoints = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.private.coffee/api/interpreter',
+    ];
+
+    Object? lastError;
+
+    for (final endpoint in endpoints) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse(endpoint),
+              headers: const {
+                'User-Agent': 'BierKompas/1.0',
+                'Content-Type':
+                    'application/x-www-form-urlencoded',
+              },
+              body: {
+                'data': query,
+              },
+            )
+            .timeout(
+              const Duration(seconds: 70),
+            );
+
+        if (response.statusCode != 200) {
+          lastError = Exception(
+            'Overpass ${response.statusCode}',
+          );
+          continue;
+        }
+
+        final decoded =
+            jsonDecode(response.body);
+
+        final elements =
+            decoded['elements'];
+
+        if (elements is! List) {
+          continue;
+        }
+
+        final result = <Brewery>[];
+
+        for (final element in elements) {
+          final tags = element['tags'];
+
+          if (tags is! Map) continue;
+
+          final name =
+              tags['name']?.toString().trim();
+
+          if (name == null ||
+              name.isEmpty) {
+            continue;
+          }
+
+          double? latitude;
+          double? longitude;
+
+          if (element['type'] == 'node') {
+            latitude =
+                double.tryParse(
+              element['lat'].toString(),
+            );
+
+            longitude =
+                double.tryParse(
+              element['lon'].toString(),
+            );
+          } else {
+            final center =
+                element['center'];
+
+            if (center is Map) {
+              latitude =
+                  double.tryParse(
+                center['lat'].toString(),
+              );
+
+              longitude =
+                  double.tryParse(
+                center['lon'].toString(),
+              );
+            }
+          }
+
+          if (latitude == null ||
+              longitude == null) {
+            continue;
+          }
+
+          final osmId =
+              int.tryParse(
+            element['id'].toString(),
+          );
+
+          if (osmId == null) continue;
+
+          final breweryId =
+              -osmId.abs();
+
+          final city =
+              tags['addr:city']?.toString() ??
+                  'Nederland';
+
+          final street =
+              tags['addr:street']?.toString();
+
+          final houseNumber =
+              tags['addr:housenumber']
+                  ?.toString();
+
+          String location = city;
+
+          if (street != null &&
+              street.isNotEmpty) {
+            location =
+                houseNumber != null &&
+                        houseNumber.isNotEmpty
+                    ? '$street $houseNumber, $city'
+                    : '$street, $city';
+          }
+
+          final website =
+              tags['website']?.toString();
+
+          result.add(
+            Brewery(
+              id: breweryId,
+              title: name,
+              distance:
+                  'Brouwerij in $city',
+              rating: '—',
+              tags: const [
+                'BROUWERIJ',
+              ],
+              location: location,
+              founded:
+                  tags['start_date']
+                      ?.toString(),
+              about:
+                  'Nederlandse brouwerij.',
+              facts: [
+                if (street != null)
+                  'Adres: $location',
+                if (website != null)
+                  'Website: $website',
+              ],
+              latitude: latitude,
+              longitude: longitude,
+            ),
+          );
+        }
+
+        return result;
+      } catch (e) {
+        lastError = e;
+
+        debugPrint(
+          'Overpass endpoint mislukt: $endpoint',
+        );
+      }
+    }
+
+    throw Exception(
+      'Geen Overpass-server beschikbaar: $lastError',
+    );
+  }
+
+  // ============================================================
+  // FAVORIETEN
+  // ============================================================
+
   Future<void> _loadFavorites() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user =
+        Supabase.instance.client.auth.currentUser;
 
     if (user == null) return;
 
     try {
       final favorites =
-          await _favoritesService.list(user.id);
+          await _favoritesService.list(
+        user.id,
+      );
 
       if (!mounted) return;
 
@@ -149,10 +381,13 @@ class _MapPageState extends State<MapPage> {
           ..addAll(
             favorites
                 .where(
-                  (f) => f.itemType == breweryItemType,
+                  (favorite) =>
+                      favorite.itemType ==
+                      breweryItemType,
                 )
                 .map(
-                  (f) => f.itemId,
+                  (favorite) =>
+                      favorite.itemId,
                 ),
           );
       });
@@ -177,17 +412,24 @@ class _MapPageState extends State<MapPage> {
           ),
         ),
       );
+
       return;
     }
 
     final wasFavorite =
-        _favoriteIds.contains(brewery.id);
+        _favoriteIds.contains(
+      brewery.id,
+    );
 
     setState(() {
       if (wasFavorite) {
-        _favoriteIds.remove(brewery.id);
+        _favoriteIds.remove(
+          brewery.id,
+        );
       } else {
-        _favoriteIds.add(brewery.id);
+        _favoriteIds.add(
+          brewery.id,
+        );
       }
     });
 
@@ -210,9 +452,13 @@ class _MapPageState extends State<MapPage> {
 
       setState(() {
         if (wasFavorite) {
-          _favoriteIds.add(brewery.id);
+          _favoriteIds.add(
+            brewery.id,
+          );
         } else {
-          _favoriteIds.remove(brewery.id);
+          _favoriteIds.remove(
+            brewery.id,
+          );
         }
       });
 
@@ -225,6 +471,339 @@ class _MapPageState extends State<MapPage> {
       );
     }
   }
+
+  // ============================================================
+  // AUTOCOMPLETE
+  // ============================================================
+
+  void _onSearchChanged() {
+    final query =
+        _searchController.text.trim();
+
+    _suggestionTimer?.cancel();
+
+    if (query.length < 2) {
+      if (mounted) {
+        setState(() {
+          _suggestions = [];
+          _isLoadingSuggestions = false;
+        });
+      }
+
+      return;
+    }
+
+    setState(() {
+      _isLoadingSuggestions = true;
+    });
+
+    _suggestionTimer = Timer(
+      const Duration(milliseconds: 500),
+      () {
+        _loadSuggestions(query);
+      },
+    );
+  }
+
+  Future<void> _loadSuggestions(
+    String query,
+  ) async {
+    try {
+      final encodedQuery =
+          Uri.encodeQueryComponent(
+        '$query, Nederland',
+      );
+
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=$encodedQuery'
+        '&format=json'
+        '&limit=5'
+        '&countrycodes=nl'
+        '&addressdetails=1',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'BierKompas/1.0',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Nominatim ${response.statusCode}',
+        );
+      }
+
+      final List<dynamic> data =
+          jsonDecode(response.body);
+
+      final suggestions =
+          <SearchSuggestion>[];
+
+      for (final item in data) {
+        final latitude =
+            double.tryParse(
+          item['lat'].toString(),
+        );
+
+        final longitude =
+            double.tryParse(
+          item['lon'].toString(),
+        );
+
+        if (latitude == null ||
+            longitude == null) {
+          continue;
+        }
+
+        suggestions.add(
+          SearchSuggestion(
+            displayName:
+                item['display_name']
+                    .toString(),
+            latitude: latitude,
+            longitude: longitude,
+          ),
+        );
+      }
+
+      if (!mounted) return;
+
+      if (_searchController.text.trim() !=
+          query) {
+        return;
+      }
+
+      setState(() {
+        _suggestions = suggestions;
+        _isLoadingSuggestions = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'Autocomplete mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _suggestions = [];
+        _isLoadingSuggestions = false;
+      });
+    }
+  }
+
+  Future<void> _selectSuggestion(
+    SearchSuggestion suggestion,
+  ) async {
+    FocusScope.of(context).unfocus();
+
+    _searchController.text =
+        _getShortLocationName(
+      suggestion.displayName,
+      suggestion.displayName,
+    );
+
+    setState(() {
+      _suggestions = [];
+      _isSearching = true;
+    });
+
+    await _applyLocation(
+      SearchLocation(
+        displayName:
+            suggestion.displayName,
+        latitude:
+            suggestion.latitude,
+        longitude:
+            suggestion.longitude,
+      ),
+    );
+  }
+
+  // ============================================================
+  // ZOEKEN
+  // ============================================================
+
+  Future<SearchLocation?> _geocodeLocation(
+    String query,
+  ) async {
+    final encodedQuery =
+        Uri.encodeQueryComponent(
+      '$query, Nederland',
+    );
+
+    final uri = Uri.parse(
+      'https://nominatim.openstreetmap.org/search'
+      '?q=$encodedQuery'
+      '&format=json'
+      '&limit=1'
+      '&countrycodes=nl'
+      '&addressdetails=1',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: const {
+        'User-Agent': 'BierKompas/1.0',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Nominatim fout: ${response.statusCode}',
+      );
+    }
+
+    final List<dynamic> data =
+        jsonDecode(response.body);
+
+    if (data.isEmpty) {
+      return null;
+    }
+
+    final result = data.first;
+
+    final latitude =
+        double.tryParse(
+      result['lat'].toString(),
+    );
+
+    final longitude =
+        double.tryParse(
+      result['lon'].toString(),
+    );
+
+    if (latitude == null ||
+        longitude == null) {
+      return null;
+    }
+
+    return SearchLocation(
+      displayName:
+          result['display_name'].toString(),
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
+
+  Future<void> _searchLocation() async {
+    final query =
+        _searchController.text.trim();
+
+    if (query.isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _suggestions = [];
+      _isSearching = true;
+    });
+
+    try {
+      final location =
+          await _geocodeLocation(query);
+
+      if (location == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _isSearching = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Locatie niet gevonden.',
+            ),
+          ),
+        );
+
+        return;
+      }
+
+      await _applyLocation(
+        location,
+      );
+    } catch (e) {
+      debugPrint(
+        'Zoeken mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSearching = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Zoeken is tijdelijk niet beschikbaar.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _applyLocation(
+    SearchLocation location,
+  ) async {
+    final sortedResults =
+        _results.map((result) {
+      final distance =
+          _calculateDistance(
+        location.latitude,
+        location.longitude,
+        result.brewery.latitude,
+        result.brewery.longitude,
+      );
+
+      return BreweryResult(
+        brewery: result.brewery,
+        distance: distance,
+      );
+    }).toList();
+
+    sortedResults.sort(
+      (a, b) =>
+          a.distance.compareTo(
+        b.distance,
+      ),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _searchedLocation =
+          _getShortLocationName(
+        location.displayName,
+        'deze locatie',
+      );
+
+      _results = sortedResults;
+      _suggestions = [];
+      _isSearching = false;
+    });
+
+    _mapController.move(
+      LatLng(
+        location.latitude,
+        location.longitude,
+      ),
+      11,
+    );
+
+    if (_pageController.hasClients &&
+        sortedResults.isNotEmpty) {
+      _pageController.jumpToPage(0);
+    }
+  }
+
+  // ============================================================
+  // AFSTAND
+  // ============================================================
 
   double _degreesToRadians(
     double degrees,
@@ -249,11 +828,16 @@ class _MapPageState extends State<MapPage> {
     );
 
     final a =
-        sin(dLat / 2) * sin(dLat / 2) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
+        sin(dLat / 2) *
+                sin(dLat / 2) +
+            cos(
+                  _degreesToRadians(lat1),
+                ) *
+                cos(
+                  _degreesToRadians(lat2),
+                ) *
+                sin(dLon / 2) *
+                sin(dLon / 2);
 
     final c = 2 *
         atan2(
@@ -271,322 +855,7 @@ class _MapPageState extends State<MapPage> {
       return '${(distance * 1000).round()} m';
     }
 
-    return '${distance.toStringAsFixed(1)} km';
-  }
-
-  Future<SearchLocation?> _geocodeLocation(
-    String query,
-  ) async {
-    final encodedQuery =
-        Uri.encodeQueryComponent(
-      '$query, Nederland',
-    );
-
-    final uri = Uri.parse(
-      'https://nominatim.openstreetmap.org/search'
-      '?q=$encodedQuery'
-      '&format=json'
-      '&limit=1'
-      '&countrycodes=nl'
-      '&addressdetails=1',
-    );
-
-    final response = await http.get(
-      uri,
-      headers: {
-        'User-Agent':
-            'BierKompas/1.0 (Flutter app)',
-      },
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Nominatim fout: ${response.statusCode}',
-      );
-    }
-
-    final List<dynamic> data =
-        jsonDecode(response.body);
-
-    if (data.isEmpty) {
-      return null;
-    }
-
-    final result = data.first;
-
-    final latitude = double.tryParse(
-      result['lat'].toString(),
-    );
-
-    final longitude = double.tryParse(
-      result['lon'].toString(),
-    );
-
-    if (latitude == null ||
-        longitude == null) {
-      return null;
-    }
-
-    return SearchLocation(
-      displayName:
-          result['display_name'].toString(),
-      latitude: latitude,
-      longitude: longitude,
-    );
-  }
-
-  Future<List<Brewery>>
-      _getBreweriesFromOpenStreetMap() async {
-    const overpassQuery = '''
-[out:json][timeout:60];
-
-area["ISO3166-1"="NL"][admin_level=2]->.searchArea;
-
-(
-  nwr["craft"="brewery"](area.searchArea);
-  nwr["brewery"="yes"](area.searchArea);
-);
-
-out center tags;
-''';
-
-    final encodedQuery =
-        Uri.encodeQueryComponent(
-      overpassQuery,
-    );
-
-    final uri = Uri.parse(
-      'https://overpass-api.de/api/interpreter'
-      '?data=$encodedQuery',
-    );
-
-    final response = await http.get(
-      uri,
-      headers: {
-        'User-Agent':
-            'BierKompas/1.0 (Flutter app)',
-      },
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Overpass fout: ${response.statusCode}',
-      );
-    }
-
-    final data = jsonDecode(
-      response.body,
-    );
-
-    final elements =
-        data['elements'] as List<dynamic>;
-
-    final List<Brewery> result = [];
-
-    int idCounter = 100000;
-
-    for (final element in elements) {
-      final tags =
-          element['tags'] as Map<String, dynamic>?;
-
-      if (tags == null) continue;
-
-      double? latitude;
-      double? longitude;
-
-      if (element['lat'] != null &&
-          element['lon'] != null) {
-        latitude = double.tryParse(
-          element['lat'].toString(),
-        );
-
-        longitude = double.tryParse(
-          element['lon'].toString(),
-        );
-      } else if (element['center'] != null) {
-        latitude = double.tryParse(
-          element['center']['lat'].toString(),
-        );
-
-        longitude = double.tryParse(
-          element['center']['lon'].toString(),
-        );
-      }
-
-      if (latitude == null ||
-          longitude == null) {
-        continue;
-      }
-
-      final name =
-          tags['name']?.toString().trim();
-
-      if (name == null || name.isEmpty) {
-        continue;
-      }
-
-      final city =
-          tags['addr:city']?.toString() ??
-          tags['place']?.toString() ??
-          '';
-
-      final street =
-          tags['addr:street']?.toString() ??
-          '';
-
-      final location = street.isNotEmpty &&
-              city.isNotEmpty
-          ? '$street, $city'
-          : city.isNotEmpty
-              ? city
-              : 'Nederland';
-
-      final website =
-          tags['website']?.toString();
-
-      final founded =
-          tags['start_date']?.toString();
-
-      final about = website != null
-          ? 'Brouwerij gevonden via OpenStreetMap. Website: $website'
-          : 'Brouwerij gevonden via OpenStreetMap.';
-
-      result.add(
-        Brewery(
-          id: idCounter++,
-          title: name,
-          distance: '',
-          rating: '—',
-          tags: const [
-            'BROUWERIJ',
-          ],
-          location: location,
-          founded: founded,
-          about: about,
-          facts: const [],
-          latitude: latitude,
-          longitude: longitude,
-        ),
-      );
-    }
-
-    // Dubbele brouwerijen verwijderen.
-    final Map<String, Brewery> unique = {};
-
-    for (final brewery in result) {
-      final key =
-          '${brewery.title.toLowerCase()}'
-          '_${brewery.latitude.toStringAsFixed(4)}'
-          '_${brewery.longitude.toStringAsFixed(4)}';
-
-      unique[key] = brewery;
-    }
-
-    return unique.values.toList();
-  }
-
-  Future<void> _searchLocation() async {
-    final query =
-        _searchController.text.trim();
-
-    if (query.isEmpty) return;
-
-    FocusScope.of(context).unfocus();
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      final location =
-          await _geocodeLocation(query);
-
-      if (location == null) {
-        if (!mounted) return;
-
-        setState(() {
-          _isSearching = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Locatie niet gevonden. Probeer bijvoorbeeld Gouda, Utrecht, een postcode of straat.',
-            ),
-          ),
-        );
-
-        return;
-      }
-
-      final sortedResults =
-          _results.map((result) {
-        final distance =
-            _calculateDistance(
-          location.latitude,
-          location.longitude,
-          result.brewery.latitude,
-          result.brewery.longitude,
-        );
-
-        return BreweryResult(
-          brewery: result.brewery,
-          distance: distance,
-        );
-      }).toList();
-
-      sortedResults.sort(
-        (a, b) =>
-            a.distance.compareTo(
-          b.distance,
-        ),
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _searchedLocation =
-            _getShortLocationName(
-          location.displayName,
-          query,
-        );
-
-        _results = sortedResults;
-
-        _isSearching = false;
-      });
-
-      _mapController.move(
-        LatLng(
-          location.latitude,
-          location.longitude,
-        ),
-        10,
-      );
-
-      if (_pageController.hasClients &&
-          sortedResults.isNotEmpty) {
-        _pageController.jumpToPage(0);
-      }
-    } catch (e) {
-      debugPrint(
-        'Zoeken mislukt: $e',
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _isSearching = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Er ging iets mis tijdens het zoeken.',
-          ),
-        ),
-      );
-    }
+    return '${distance.toStringAsFixed(1).replaceAll('.', ',')} km';
   }
 
   String _getShortLocationName(
@@ -596,10 +865,10 @@ out center tags;
     final parts = displayName
         .split(',')
         .map(
-          (e) => e.trim(),
+          (part) => part.trim(),
         )
         .where(
-          (e) => e.isNotEmpty,
+          (part) => part.isNotEmpty,
         )
         .toList();
 
@@ -613,17 +882,19 @@ out center tags;
   void _resetSearch() {
     _searchController.clear();
 
+    final resetResults = breweries
+        .map(
+          (brewery) => BreweryResult(
+            brewery: brewery,
+            distance: 0,
+          ),
+        )
+        .toList();
+
     setState(() {
       _searchedLocation = '';
-
-      _results = _results
-          .map(
-            (result) => BreweryResult(
-              brewery: result.brewery,
-              distance: 0,
-            ),
-          )
-          .toList();
+      _suggestions = [];
+      _results = resetResults;
     });
 
     _mapController.move(
@@ -634,6 +905,10 @@ out center tags;
       8,
     );
   }
+
+  // ============================================================
+  // UI
+  // ============================================================
 
   @override
   Widget build(
@@ -660,7 +935,6 @@ out center tags;
                 userAgentPackageName:
                     'com.example.bierkompas',
               ),
-
               MarkerLayer(
                 markers: _results.map(
                   (result) {
@@ -738,7 +1012,6 @@ out center tags;
                             size: 30,
                           ),
                           const SizedBox(width: 8),
-
                           Expanded(
                             child: Text(
                               'Kaart',
@@ -753,23 +1026,19 @@ out center tags;
                               ),
                             ),
                           ),
-
-                          if (widget
-                                  .onProfileTap !=
+                          if (widget.onProfileTap !=
                               null)
                             ProfileAvatarButton(
-                              onTap: widget
-                                  .onProfileTap!,
+                              onTap:
+                                  widget.onProfileTap!,
                               avatarUrl:
                                   widget.avatarUrl,
                             ),
                         ],
                       ),
-
                       const SizedBox(height: 15),
-
                       Text(
-                        'Dichtstbijzijnde Brouwerij',
+                        'Brouwerijen in Nederland',
                         style:
                             GoogleFonts.playfairDisplay(
                           color: const Color(
@@ -780,13 +1049,11 @@ out center tags;
                               FontWeight.w600,
                         ),
                       ),
-
                       const SizedBox(height: 6),
-
                       Text(
                         _searchedLocation.isEmpty
-                            ? 'Ontdek brouwerijen in heel Nederland en zoek naar brouwerijen bij jou in de buurt.'
-                            : 'Brouwerijen vanaf $_searchedLocation, gesorteerd op afstand.',
+                            ? 'Zoek een stad, straat, postcode of provincie.'
+                            : 'Brouwerijen vanaf $_searchedLocation, dichtstbijzijnde eerst.',
                         maxLines: 2,
                         overflow:
                             TextOverflow.ellipsis,
@@ -805,199 +1072,389 @@ out center tags;
 
                 Padding(
                   padding:
-                      const EdgeInsets.all(16),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(
-                      horizontal: 12,
-                    ),
-                    height: 46,
-                    decoration:
-                        BoxDecoration(
-                      color: const Color(
-                        0xFF2C221C,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(
-                        25,
-                      ),
-                      border: Border.all(
-                        color: const Color(
-                          0xFF3E312A,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        if (_isSearching)
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child:
-                                CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(
-                                0xFFD4B28C,
-                              ),
-                            ),
-                          )
-                        else
-                          const Icon(
-                            Icons.search,
-                            color: Color(
-                              0xFF9E8A7D,
-                            ),
-                            size: 19,
-                          ),
-
-                        const SizedBox(width: 10),
-
-                        Expanded(
-                          child: TextField(
-                            controller:
-                                _searchController,
-                            onSubmitted: (_) =>
-                                _searchLocation(),
-                            style:
-                                GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 13,
-                            ),
-                            cursorColor:
-                                const Color(
-                              0xFFD4B28C,
-                            ),
-                            textInputAction:
-                                TextInputAction.search,
-                            decoration:
-                                InputDecoration(
-                              hintText:
-                                  'Zoek stad, straat, postcode...',
-                              hintStyle:
-                                  GoogleFonts.inter(
-                                color: const Color(
-                                  0xFF9E8A7D,
-                                ),
-                                fontSize: 13,
-                              ),
-                              border:
-                                  InputBorder.none,
-                              isDense: true,
-                              contentPadding:
-                                  EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-
-                        IconButton(
-                          onPressed:
-                              _isSearching
-                                  ? null
-                                  : _searchLocation,
-                          icon: const Icon(
-                            Icons.arrow_forward,
-                            color: Color(
-                              0xFFD4B28C,
-                            ),
-                            size: 20,
-                          ),
-                          padding:
-                              EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-
-                        if (_searchedLocation
-                            .isNotEmpty)
-                          GestureDetector(
-                            onTap:
-                                _resetSearch,
-                            child:
-                                const Icon(
-                              Icons.close,
-                              color: Color(
-                                0xFF9E8A7D,
-                              ),
-                              size: 18,
-                            ),
-                          )
-                        else
-                          const Icon(
-                            Icons.tune,
-                            color: Color(
-                              0xFF9E8A7D,
-                            ),
-                            size: 18,
-                          ),
-                      ],
-                    ),
+                      const EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    0,
                   ),
+                  child: _buildSearchBox(),
                 ),
 
-                if (_isLoadingBreweries)
-                  const Padding(
-                    padding:
-                        EdgeInsets.only(
-                      top: 10,
-                    ),
-                    child:
-                        CircularProgressIndicator(
-                      color: Color(
-                        0xFFD4B28C,
-                      ),
-                    ),
-                  ),
-
                 Expanded(
-                  child: _results.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Geen brouwerijen gevonden.',
-                            style:
-                                GoogleFonts.inter(
-                              color:
-                                  const Color(
-                                0xFF9E8A7D,
-                              ),
+                  child: _loadingBreweries
+                      ? const Center(
+                          child:
+                              CircularProgressIndicator(
+                            color: Color(
+                              0xFFD4B28C,
                             ),
                           ),
                         )
-                      : Center(
-                          child: SizedBox(
-                            height: 380,
-                            child: PageView(
-                              controller:
-                                  _pageController,
-                              children: [
-                                for (final result
-                                    in _results)
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets
-                                            .symmetric(
-                                      horizontal: 6,
-                                      vertical: 4,
-                                    ),
-                                    child:
-                                        _buildBreweryCard(
-                                      brewery:
-                                          result.brewery,
-                                      distance:
-                                          result.distance,
-                                    ),
+                      : _results.isEmpty
+                          ? Center(
+                              child: Text(
+                                'Geen brouwerijen gevonden.',
+                                style:
+                                    GoogleFonts.inter(
+                                  color:
+                                      const Color(
+                                    0xFF9E8A7D,
                                   ),
-                              ],
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: SizedBox(
+                                height: 380,
+                                child: PageView(
+                                  controller:
+                                      _pageController,
+                                  children: [
+                                    for (final result
+                                        in _results)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets
+                                                .symmetric(
+                                          horizontal: 6,
+                                          vertical: 4,
+                                        ),
+                                        child:
+                                            _buildBreweryCard(
+                                          brewery:
+                                              result.brewery,
+                                          distance:
+                                              result.distance,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                ),
+
+                const Padding(
+                  padding:
+                      EdgeInsets.only(
+                    bottom: 8,
+                  ),
+                  child: Text(
+                    '© OpenStreetMap contributors',
+                    style: TextStyle(
+                      color: Color(
+                        0xFF9E8A7D,
+                      ),
+                      fontSize: 10,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return Column(
+      children: [
+        Container(
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 12,
+          ),
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(
+              0xFF2C221C,
+            ),
+            borderRadius:
+                BorderRadius.circular(25),
+            border: Border.all(
+              color: const Color(
+                0xFF3E312A,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              if (_isSearching ||
+                  _isLoadingSuggestions)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child:
+                      CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(
+                      0xFFD4B28C,
+                    ),
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.search,
+                  color: Color(
+                    0xFF9E8A7D,
+                  ),
+                  size: 19,
+                ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: TextField(
+                  controller:
+                      _searchController,
+                  onSubmitted: (_) =>
+                      _searchLocation(),
+                  style:
+                      GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
+                  cursorColor:
+                      const Color(
+                    0xFFD4B28C,
+                  ),
+                  textInputAction:
+                      TextInputAction.search,
+                  decoration:
+                      InputDecoration(
+                    hintText:
+                        'Zoek stad, straat, postcode...',
+                    hintStyle:
+                        GoogleFonts.inter(
+                      color: const Color(
+                        0xFF9E8A7D,
+                      ),
+                      fontSize: 13,
+                    ),
+                    border:
+                        InputBorder.none,
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.zero,
+                  ),
+                ),
+              ),
+
+              IconButton(
+                onPressed: _isSearching
+                    ? null
+                    : _searchLocation,
+                icon: const Icon(
+                  Icons.arrow_forward,
+                  color: Color(
+                    0xFFD4B28C,
+                  ),
+                  size: 20,
+                ),
+                padding:
+                    EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+              ),
+
+              if (_searchController
+                  .text
+                  .isNotEmpty)
+                GestureDetector(
+                  onTap: _resetSearch,
+                  child: const Icon(
+                    Icons.close,
+                    color: Color(
+                      0xFF9E8A7D,
+                    ),
+                    size: 18,
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.tune,
+                  color: Color(
+                    0xFF9E8A7D,
+                  ),
+                  size: 18,
+                ),
+            ],
+          ),
+        ),
+
+        if (_suggestions.isNotEmpty)
+          Container(
+            margin:
+                const EdgeInsets.only(
+              top: 6,
+            ),
+            decoration:
+                BoxDecoration(
+              color: const Color(
+                0xFF2C221C,
+              ),
+              borderRadius:
+                  BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(
+                  0xFF3E312A,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      Colors.black.withOpacity(
+                    0.35,
+                  ),
+                  blurRadius: 12,
+                  offset:
+                      const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                for (int i = 0;
+                    i < _suggestions.length;
+                    i++)
+                  _buildSuggestion(
+                    _suggestions[i],
+                    i ==
+                        _suggestions.length -
+                            1,
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestion(
+    SearchSuggestion suggestion,
+    bool isLast,
+  ) {
+    final parts = suggestion.displayName
+        .split(',')
+        .map(
+          (part) => part.trim(),
+        )
+        .where(
+          (part) => part.isNotEmpty,
+        )
+        .toList();
+
+    final title = parts.isNotEmpty
+        ? parts.first
+        : suggestion.displayName;
+
+    final subtitle = parts.length > 1
+        ? parts
+            .skip(1)
+            .take(2)
+            .join(', ')
+        : '';
+
+    return InkWell(
+      onTap: () =>
+          _selectSuggestion(
+        suggestion,
+      ),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 11,
+        ),
+        decoration:
+            isLast
+                ? null
+                : const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Color(
+                          0xFF3E312A,
+                        ),
+                      ),
+                    ),
+                  ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration:
+                  const BoxDecoration(
+                color: Color(
+                  0xFF1E1712,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_on_outlined,
+                color: Color(
+                  0xFFD4B28C,
+                ),
+                size: 18,
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow:
+                        TextOverflow.ellipsis,
+                    style:
+                        GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight:
+                          FontWeight.w600,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty)
+                    const SizedBox(
+                      height: 3,
+                    ),
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style:
+                          GoogleFonts.inter(
+                        color:
+                            const Color(
+                          0xFF9E8A7D,
+                        ),
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            const Icon(
+              Icons.north_west,
+              color: Color(
+                0xFF7A6355,
+              ),
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1018,18 +1475,25 @@ out center tags;
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF2C221C),
+        color: const Color(
+          0xFF2C221C,
+        ),
         borderRadius:
             BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF3E312A),
+          color: const Color(
+            0xFF3E312A,
+          ),
         ),
         boxShadow: [
           BoxShadow(
             color:
-                Colors.black.withOpacity(0.4),
+                Colors.black.withOpacity(
+              0.4,
+            ),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset:
+                const Offset(0, 4),
           ),
         ],
       ),
@@ -1043,10 +1507,14 @@ out center tags;
                 height: 210,
                 decoration:
                     const BoxDecoration(
-                  color: Color(0xFF3E312A),
+                  color: Color(
+                    0xFF3E312A,
+                  ),
                   borderRadius:
                       BorderRadius.vertical(
-                    top: Radius.circular(15),
+                    top: Radius.circular(
+                      15,
+                    ),
                   ),
                 ),
                 child: const Center(
@@ -1070,11 +1538,15 @@ out center tags;
                   ),
                   child: Container(
                     padding:
-                        const EdgeInsets.all(8),
+                        const EdgeInsets.all(
+                      8,
+                    ),
                     decoration:
                         BoxDecoration(
                       color: Colors.black
-                          .withOpacity(0.5),
+                          .withOpacity(
+                        0.5,
+                      ),
                       shape:
                           BoxShape.circle,
                     ),
@@ -1126,7 +1598,8 @@ out center tags;
                       children: [
                         const Icon(
                           Icons.star,
-                          color: Colors.amber,
+                          color:
+                              Colors.amber,
                           size: 14,
                         ),
                         const SizedBox(
@@ -1136,7 +1609,8 @@ out center tags;
                           brewery.rating,
                           style:
                               GoogleFonts.inter(
-                            color: Colors.white,
+                            color:
+                                Colors.white,
                             fontSize: 13,
                             fontWeight:
                                 FontWeight.bold,
@@ -1147,7 +1621,9 @@ out center tags;
                   ],
                 ),
 
-                const SizedBox(height: 6),
+                const SizedBox(
+                  height: 6,
+                ),
 
                 Row(
                   children: [
@@ -1168,7 +1644,8 @@ out center tags;
                             TextOverflow.ellipsis,
                         style:
                             GoogleFonts.inter(
-                          color: const Color(
+                          color:
+                              const Color(
                             0xFF9E8A7D,
                           ),
                           fontSize: 12,
@@ -1178,7 +1655,9 @@ out center tags;
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(
+                  height: 12,
+                ),
 
                 Wrap(
                   spacing: 6,

@@ -1,26 +1,16 @@
-/// Waarde van `item_type` in de Supabase-tabel `favorites` voor brouwerijen.
+/// Waarde van `item_type` in de Supabase-tabel `favorites`.
 const breweryItemType = 'brewery';
 
-/// Vaste brouwerijen zolang er nog geen brouwerij-tabel in Supabase is.
-/// Het [id] wordt als `item_id` opgeslagen in de tabel `favorites`.
 class Brewery {
   final int id;
   final String title;
   final String distance;
   final String rating;
   final List<String> tags;
-
-  /// Plaats van de brouwerij.
   final String location;
-
-  /// Jaar van oprichting, of null als dat (nog) niet bekend is.
   final String? founded;
-
-  /// Korte beschrijving van de plek.
   final String about;
   final List<String> facts;
-
-  /// Coördinaten, gebruikt voor de kaartmarkers en de stad-zoekfunctie.
   final double latitude;
   final double longitude;
 
@@ -39,7 +29,7 @@ class Brewery {
   });
 }
 
-/// Partner op de Ontdek-pagina; te liken via het hartje daar en op de Kaart.
+/// Partner op de Ontdek-pagina.
 const grutePierProeflokaal = Brewery(
   id: 4,
   title: 'Grutte Pier Proeflokaal',
@@ -47,15 +37,18 @@ const grutePierProeflokaal = Brewery(
   rating: '4.8',
   tags: ['BIER & SPIJS', 'PARTNER'],
   location: 'Leeuwarden',
-  about: 'Een Friese brouwerij met proeflokaal, waar bier en eten samenkomen.',
+  about:
+      'Een Friese brouwerij met proeflokaal, waar bier en eten samenkomen.',
   facts: [
-    'Genoemd naar Grutte Pier (Pier Gerlofs Donia), een Friese volksheld uit de 16e eeuw.',
+    'Genoemd naar Grutte Pier, een Friese volksheld uit de 16e eeuw.',
     'Bier & spijs: probeer het Dubbel stoofvlees.',
   ],
   latitude: 53.2012,
   longitude: 5.7999,
 );
 
+/// Lokale brouwerijen die altijd beschikbaar blijven
+/// als de online kaart tijdelijk niet werkt.
 const breweries = [
   Brewery(
     id: 1,
@@ -64,7 +57,8 @@ const breweries = [
     rating: '4.8',
     tags: ['IPA', 'PROEFLOKAAL'],
     location: 'Zaandijk',
-    about: 'Een brouwerij met eigen proeflokaal, waar je de bieren vers van de tap proeft.',
+    about:
+        'Een brouwerij met eigen proeflokaal, waar je de bieren vers van de tap proeft.',
     facts: [
       "Staat vooral bekend om hoppige bieren zoals IPA's.",
       'Je kunt er terecht in het eigen proeflokaal.',
@@ -81,11 +75,10 @@ const breweries = [
     location: 'Westvleteren, België',
     founded: '1831',
     about:
-        'De Sint-Sixtusabdij is een trappistenabdij in West-Vlaanderen. De monniken brouwen er sinds 1838 bier.',
+        'De Sint-Sixtusabdij is een trappistenabdij in West-Vlaanderen.',
     facts: [
-      'Het bier wordt gebrouwen door trappistenmonniken en is vrijwel alleen bij de abdij te koop.',
-      'De Westvleteren 12 geldt als een van de meest gezochte bieren ter wereld.',
-      'De flesjes hebben geen etiket; welk bier het is, zie je aan de kleur van de dop.',
+      'Het bier wordt gebrouwen door trappistenmonniken.',
+      'Westvleteren 12 is wereldwijd bekend.',
     ],
     latitude: 50.9020,
     longitude: 2.7150,
@@ -99,9 +92,9 @@ const breweries = [
     location: 'Bodegraven',
     founded: '2004',
     about:
-        'Brouwerij De Molen begon in de historische korenmolen De Arkduif in Bodegraven en groeide uit tot een van de bekendste Nederlandse craftbrouwerijen.',
+        'Brouwerij De Molen begon in de historische korenmolen De Arkduif in Bodegraven.',
     facts: [
-      'Bekend om zware stouts en op houten vaten gerijpte bieren.',
+      'Bekend om zware stouts.',
       'Organiseert jaarlijks het bierfestival Borefts.',
     ],
     latitude: 52.0850,
