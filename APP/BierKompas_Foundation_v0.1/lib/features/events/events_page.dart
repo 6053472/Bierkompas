@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../profile/chat_service.dart';
+import '../profile/friends_service.dart';
+import 'admin_events_page.dart';
 import 'event_create.dart';
 import '../../shared/profile_avatar_button.dart';
 
@@ -16,6 +20,8 @@ class EventsPage extends StatefulWidget {
 
 class _EventsPageState extends State<EventsPage> {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final _chatService = ChatService();
+  final _friendsService = FriendsService();
 
   static const Color backgroundColor = Color(0xFF1E1712);
   static const Color cardColor = Color(0xFF2C221C);
@@ -23,6 +29,26 @@ class _EventsPageState extends State<EventsPage> {
   static const Color beigeColor = Color(0xFFD4B28C);
   static const Color textColor = Color(0xFFEFE6DD);
   static const Color secondaryTextColor = Color(0xFF9E8A7D);
+
+  bool _isAdmin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    try {
+      final profile = await _supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+      if (!mounted) return;
+      setState(() => _isAdmin = profile?['is_admin'] == true);
+    } catch (_) {
+      // Geen beheerder: gewoon negeren, knop blijft verborgen.
+    }
+  }
 
   Future<List<Map<String, dynamic>>> _fetchEvents() async {
     try {
@@ -125,6 +151,181 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
+  // Een al gepubliceerd (goedgekeurd) evenement laat de maker vervallen
+  // i.p.v. het te verwijderen: het blijft zichtbaar met een "Vervallen"-stempel.
+  Future<void> _cancelEvent(int eventId, String eventName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: cardColor,
+        title: Text(
+          'Evenement laten vervallen?',
+          style: GoogleFonts.playfairDisplay(color: textColor, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          '"$eventName" blijft zichtbaar in de agenda, maar met een "Vervallen"-stempel.',
+          style: GoogleFonts.inter(color: textColor, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Annuleren', style: GoogleFonts.inter(color: secondaryTextColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Laten vervallen', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _supabase.rpc('cancel_event', params: {'p_event_id': eventId});
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Laten vervallen mislukt: $e')),
+      );
+    }
+  }
+
+  void _openShareSheet(Map<String, dynamic> event) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: secondaryTextColor, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.person, color: beigeColor),
+              title: Text('Deel met een Biervriend', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _shareWithFriend(event);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.ios_share, color: beigeColor),
+              title: Text('Deel extern (Facebook, Instagram, TikTok, ...)', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _shareExternally(event);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _shareExternally(Map<String, dynamic> event) async {
+    final name = event['name']?.toString() ?? 'Evenement';
+    final location = event['location_name']?.toString() ?? '';
+    final city = event['city']?.toString() ?? '';
+    final text = 'Kom je ook naar "$name"${location.isNotEmpty ? ' bij $location' : ''}'
+        '${city.isNotEmpty ? ' in $city' : ''}? Bekijk het in BierKompas! 🍻';
+    await Share.share(text, subject: name);
+  }
+
+  Future<void> _shareWithFriend(Map<String, dynamic> event) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    List<Friend> friends;
+    try {
+      friends = await _friendsService.listFriends(user.id);
+    } on FriendsException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vrienden ophalen mislukt: $e')));
+      return;
+    }
+
+    if (!mounted) return;
+    if (friends.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Je hebt nog geen Bier-vrienden om mee te delen.')),
+      );
+      return;
+    }
+
+    final picked = await showModalBottomSheet<Friend>(
+      context: context,
+      backgroundColor: cardColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.6,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: friends.length,
+            itemBuilder: (context, index) {
+              final friend = friends[index];
+              return ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    shape: BoxShape.circle,
+                    image: friend.avatarUrl != null
+                        ? DecorationImage(image: NetworkImage(friend.avatarUrl!), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: friend.avatarUrl == null
+                      ? const Icon(Icons.person, color: secondaryTextColor, size: 18)
+                      : null,
+                ),
+                title: Text(friend.name, style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+                onTap: () => Navigator.pop(sheetContext, friend),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+
+    try {
+      await _chatService.sendMessage(
+        receiverId: picked.id,
+        body: 'Zullen we hier samen naartoe gaan?',
+        type: MessageType.eventInvite,
+        metadata: {
+          'id': event['id'],
+          'name': event['name'],
+          'start_date': event['start_date'],
+          'location_name': event['location_name'],
+        },
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Evenement gedeeld met ${picked.name}!')),
+      );
+    } on ChatException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delen mislukt: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = _supabase.auth.currentUser;
@@ -165,6 +366,18 @@ class _EventsPageState extends State<EventsPage> {
                           ),
                         ),
                       ),
+                      if (_isAdmin)
+                        IconButton(
+                          tooltip: 'Evenementen goedkeuren',
+                          icon: const Icon(Icons.admin_panel_settings_outlined, color: beigeColor),
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const AdminEventsPage()),
+                            );
+                            if (mounted) setState(() {});
+                          },
+                        ),
                       if (widget.onProfileTap != null)
                         ProfileAvatarButton(
                           onTap: widget.onProfileTap!,
@@ -270,6 +483,10 @@ class _EventsPageState extends State<EventsPage> {
                     currentUser != null &&
                     eventUserId == currentUser.id;
 
+                final status = event['status']?.toString() ?? 'approved';
+                final isPending = status == 'pending';
+                final isCancelled = status == 'cancelled';
+
                 final name = event['name'] ?? 'Naamloos';
                 final eventType = event['event_type'] ?? 'Festival';
                 final city = event['city'] ?? '';
@@ -343,7 +560,8 @@ class _EventsPageState extends State<EventsPage> {
                             ),
                           ),
 
-                        // VERWIJDERKNOP RECHTSBOVEN
+                        // ACTIEKNOPPEN RECHTSBOVEN: verwijderen (nog niet
+                        // goedgekeurd) of laten vervallen (al gepubliceerd).
                         if (isOwner && eventId.isNotEmpty)
                           Positioned(
                             top: 10,
@@ -356,18 +574,60 @@ class _EventsPageState extends State<EventsPage> {
                               child: IconButton(
                                 padding: const EdgeInsets.all(7),
                                 constraints: const BoxConstraints(),
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.redAccent,
-                                  size: 21,
+                                icon: isPending
+                                    ? const Icon(Icons.delete_outline, color: Colors.redAccent, size: 21)
+                                    : const Icon(Icons.event_busy_outlined, color: Colors.redAccent, size: 21),
+                                onPressed: isCancelled
+                                    ? null
+                                    : () {
+                                        if (isPending) {
+                                          _confirmDelete(context, eventId, name.toString());
+                                        } else {
+                                          _cancelEvent(int.parse(eventId), name.toString());
+                                        }
+                                      },
+                              ),
+                            ),
+                          ),
+
+                        // DEELKNOP LINKSBOVEN: alleen voor gepubliceerde evenementen.
+                        if (status == 'approved' && eventId.isNotEmpty)
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: backgroundColor.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: IconButton(
+                                padding: const EdgeInsets.all(7),
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.ios_share, color: beigeColor, size: 19),
+                                onPressed: () => _openShareSheet(event),
+                              ),
+                            ),
+                          ),
+
+                        // "VERVALLEN"-STEMPEL
+                        if (isCancelled)
+                          Positioned(
+                            top: 44,
+                            right: -32,
+                            child: Transform.rotate(
+                              angle: 0.5,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 4),
+                                color: Colors.redAccent.withOpacity(0.9),
+                                child: Text(
+                                  'VERVALLEN',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
                                 ),
-                                onPressed: () {
-                                  _confirmDelete(
-                                    context,
-                                    eventId,
-                                    name.toString(),
-                                  );
-                                },
                               ),
                             ),
                           ),
@@ -436,6 +696,22 @@ class _EventsPageState extends State<EventsPage> {
                                     ),
                                 ],
                               ),
+
+                              if (isPending) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: beigeColor.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: beigeColor.withOpacity(0.5)),
+                                  ),
+                                  child: Text(
+                                    'IN AFWACHTING VAN GOEDKEURING',
+                                    style: GoogleFonts.inter(color: beigeColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
 
                               const SizedBox(height: 12),
 
