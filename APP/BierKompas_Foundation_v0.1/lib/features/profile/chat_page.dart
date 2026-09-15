@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../favorites/beers.dart';
+import '../../shared/image_utils.dart';
 import 'chat_service.dart';
 import 'friends_service.dart';
 
@@ -143,9 +144,9 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() => _sendingPhoto = true);
     try {
-      final bytes = await picked.readAsBytes();
-      final fileExt = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : 'jpg';
-      final url = await _chatService.uploadImage(bytes: bytes, fileExt: fileExt);
+      final rawBytes = await picked.readAsBytes();
+      final bytes = normalizeToJpeg(rawBytes);
+      final url = await _chatService.uploadImage(bytes: bytes, fileExt: 'jpg');
       await _chatService.sendMessage(
         receiverId: widget.friend.id,
         body: '',

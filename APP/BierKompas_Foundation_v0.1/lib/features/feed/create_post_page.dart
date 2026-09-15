@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../shared/image_utils.dart';
 import 'feed_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -46,12 +47,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
         imageQuality: 85,
       );
       if (picked == null) return;
-      final bytes = await picked.readAsBytes();
-      final ext = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : 'jpg';
+      final rawBytes = await picked.readAsBytes();
+      // Altijd naar JPEG omzetten: sommige galerij-apps leveren WebP met een
+      // kleurprofiel dat Flutter niet kan tekenen, wat een lege/zwarte foto oplevert.
+      final bytes = normalizeToJpeg(rawBytes);
       if (!mounted) return;
       setState(() {
         _imageBytes = bytes;
-        _imageExt = ext;
+        _imageExt = 'jpg';
       });
     } finally {
       if (mounted) setState(() => _pickingImage = false);
