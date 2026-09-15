@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
@@ -193,7 +194,56 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
+  // Op een echte iOS/Android-app toont het systeemdeelmenu (Share.share)
+  // zelf al Facebook/Instagram/TikTok/WhatsApp e.d. — daar hoeven we geen
+  // eigen weblinks voor te bouwen. Die handmatige links zijn alleen een
+  // noodgreep voor web, waar Share.share() geen bruikbaar menu heeft.
   void _openShareSheet(Map<String, dynamic> event) {
+    if (!kIsWeb) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: cardColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: secondaryTextColor, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.person, color: beigeColor),
+                title: Text('Deel met een Biervriend', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _shareWithFriend(event);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share, color: beigeColor),
+                title: Text(
+                  'Meer opties (Facebook, Instagram, TikTok, ...)',
+                  style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Share.share(_shareText(event), subject: event['name']?.toString());
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: cardColor,
