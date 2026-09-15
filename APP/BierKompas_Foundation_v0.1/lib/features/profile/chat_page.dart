@@ -327,6 +327,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         backgroundColor: _card,
         elevation: 0,
+        iconTheme: const IconThemeData(color: _cream),
         titleSpacing: 0,
         title: Row(
           children: [
