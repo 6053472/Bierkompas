@@ -474,16 +474,40 @@ class _EventsPageState extends State<EventsPage> {
                         ),
                       ),
                       if (_isAdmin)
-                        IconButton(
-                          tooltip: 'Evenementen goedkeuren',
-                          icon: const Icon(Icons.admin_panel_settings_outlined, color: beigeColor),
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const AdminEventsPage()),
-                            );
-                            if (mounted) setState(() {});
-                          },
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Material(
+                            color: const Color(0xFFD4A340),
+                            borderRadius: BorderRadius.circular(20),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const AdminEventsPage()),
+                                );
+                                if (mounted) setState(() {});
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.admin_panel_settings, color: Color(0xFF1E1712), size: 18),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Beheer',
+                                      style: TextStyle(
+                                        color: Color(0xFF1E1712),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       if (widget.onProfileTap != null)
                         ProfileAvatarButton(
