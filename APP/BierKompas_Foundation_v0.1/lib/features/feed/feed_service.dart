@@ -1,10 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../favorites/beers.dart' show beerItemType;
 import '../map/breweries.dart' show breweryItemType;
 import 'feed_samples.dart';
 
 /// Soort content in de feed; komt uit de kolom `item_type` van de view `feed`.
-enum FeedItemType { review, tip, weetje, brouwerij, evenement }
+enum FeedItemType { review, tip, weetje, brouwerij, evenement, post }
 
 class FeedItem {
   /// Uniek over alle bronnen van de feed, bijv. `item-12` of `event-3`.
@@ -25,6 +27,10 @@ class FeedItem {
   /// De brouwerij waar deze post over gaat (id uit breweries.dart), of null.
   final int? breweryId;
 
+  /// Wie deze post plaatste (alleen gezet bij `type == post`), voor "eigen post" checks.
+  final String? authorId;
+  final String? authorAvatarUrl;
+
   const FeedItem({
     required this.key,
     required this.type,
@@ -38,6 +44,8 @@ class FeedItem {
     this.eventLocation,
     this.beerId,
     this.breweryId,
+    this.authorId,
+    this.authorAvatarUrl,
   });
 
   factory FeedItem.fromJson(Map<String, dynamic> json) => FeedItem(
@@ -55,6 +63,8 @@ class FeedItem {
         eventLocation: json['event_location'] as String?,
         beerId: (json['beer_id'] as num?)?.toInt(),
         breweryId: (json['brewery_id'] as num?)?.toInt(),
+        authorId: json['user_id'] as String?,
+        authorAvatarUrl: json['avatar_url'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
       );
 
@@ -121,6 +131,76 @@ class FeedService {
       return rows.map(FeedItem.fromJson).toList();
     } on PostgrestException catch (e) {
       if (_isMissingView(e)) return sampleFeedItems.where((i) => keys.contains(i.key)).toList();
+      throw FeedException(e.message);
+    }
+  }
+
+  /// Plaatst een eigen post in de feed. [title] mag leeg zijn (dan wordt de
+  /// tekst zelf als titel gebruikt); de post verschijnt bovenaan bij `Sanne`/
+  /// andere gebruikers omdat de feed op `created_at` sorteert.
+  Future<FeedItem> createPost({
+    required String body,
+    String? title,
+    String? imageUrl,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw FeedException('Je bent niet ingelogd.');
+    try {
+      final profile = await _client
+          .from('profiles')
+          .select('name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+      final authorName = profile?['name'] as String? ?? 'Bierliefhebber';
+      final avatarUrl = profile?['avatar_url'] as String?;
+      final row = await _client
+          .from('feed_items')
+          .insert({
+            'item_type': 'post',
+            'title': (title == null || title.trim().isEmpty)
+                ? (body.length > 60 ? '${body.substring(0, 60)}…' : body)
+                : title.trim(),
+            'body': body,
+            'image_url': imageUrl,
+            'author': authorName,
+            'user_id': user.id,
+            'avatar_url': avatarUrl,
+          })
+          .select()
+          .single();
+      // De insert leest uit feed_items, niet uit de view `feed`; feed_key
+      // hier zelf samenstellen zodat het resultaat meteen bruikbaar is.
+      return FeedItem.fromJson({...row, 'feed_key': 'item-${row['id']}'});
+    } on PostgrestException catch (e) {
+      throw FeedException(e.message);
+    }
+  }
+
+  /// Verwijdert een eigen post. [feedKey] is bijv. `item-42`; RLS zorgt dat
+  /// dit alleen lukt als de post ook echt van de ingelogde gebruiker is.
+  Future<void> deletePost(String feedKey) async {
+    final id = int.tryParse(feedKey.split('-').last);
+    if (id == null) throw FeedException('Ongeldige post.');
+    try {
+      await _client.from('feed_items').delete().eq('id', id);
+    } on PostgrestException catch (e) {
+      throw FeedException(e.message);
+    }
+  }
+
+  /// Upload een foto bij een post naar Supabase Storage en geeft de publieke URL terug.
+  Future<String> uploadImage({required Uint8List bytes, required String fileExt}) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw FeedException('Je bent niet ingelogd.');
+    try {
+      final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      await _client.storage.from('feed-images').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: 'image/$fileExt'),
+          );
+      return _client.storage.from('feed-images').getPublicUrl(path);
+    } on StorageException catch (e) {
       throw FeedException(e.message);
     }
   }

@@ -20,6 +20,7 @@ import '../profile/stats_service.dart';
 import '../events/events_page.dart';
 import '../../shared/profile_avatar_button.dart';
 import 'social_page.dart';
+import '../feed/create_post_page.dart';
 
 // Tab-indexen van de onderste navigatiebalk.
 const _tabAgenda = 1;
@@ -348,6 +349,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         if (feedIndex == _feedItems.length) return _buildFeedFooter();
         if (feedIndex >= _feedItems.length - _feedPrefetchDistance) _scheduleNextFeedPage();
         final item = _feedItems[feedIndex];
+        final isOwnPost = item.type == FeedItemType.post &&
+            item.authorId != null &&
+            item.authorId == Supabase.instance.client.auth.currentUser?.id;
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: FeedCard(
@@ -359,6 +363,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             },
             isFavorite: _isLiked(item.favoriteType, item.favoriteId),
             onFavoriteTap: () => _toggleLike(item.favoriteType, item.favoriteId),
+            onDeleteTap: isOwnPost ? () => _deletePost(item) : null,
           ),
         );
       },
@@ -401,6 +406,29 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   }
 
   void _goTo(int tab) => widget.onNavigate?.call(tab);
+
+  Future<void> _openCreatePost() async {
+    final post = await Navigator.of(context).push<FeedItem>(
+      MaterialPageRoute(builder: (context) => const CreatePostPage()),
+    );
+    if (post == null || !mounted) return;
+    setState(() => _feedItems.insert(0, post));
+  }
+
+  Future<void> _deletePost(FeedItem item) async {
+    final index = _feedItems.indexWhere((f) => f.key == item.key);
+    if (index == -1) return;
+    setState(() => _feedItems.removeAt(index));
+    try {
+      await _feedService.deletePost(item.key);
+    } on FeedException catch (e) {
+      if (!mounted) return;
+      setState(() => _feedItems.insert(index, item));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verwijderen mislukt: $e')),
+      );
+    }
+  }
 
   void _openSocial() {
     Navigator.of(context).push(
@@ -460,6 +488,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                   _buildShortcut(Icons.restaurant_outlined, 'Tafeltje Reserveren', () => _goTo(_tabFavorites)),
                   const SizedBox(height: 48),
                   _sectionLabel('Bierfeed'),
+                  const SizedBox(height: 12),
+                  _buildNewPostButton(),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -785,6 +816,37 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             ),
             if (topRight != null) Positioned(top: 12, right: 12, child: topRight),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewPostButton() {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: _primary.withOpacity(0.4)),
+    );
+    return Material(
+      color: _primary.withOpacity(0.08),
+      shape: shape,
+      child: InkWell(
+        customBorder: shape,
+        onTap: _openCreatePost,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.add_circle_outline, color: _primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Deel iets met de gemeenschap',
+                  style: GoogleFonts.openSans(color: _onSurface, fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: _primary),
+            ],
+          ),
         ),
       ),
     );

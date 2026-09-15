@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'feed_service.dart';
 
-// Kleuren uit het "Artisanal Draught" design system (DESIGN.md).
-const _primary = Color(0xFFFBB97B);
-const _surfaceContainerLow = Color(0xFF251911);
-const _surfaceContainer = Color(0xFF291D15);
-const _onSurface = Color(0xFFF6DED1);
-const _onSurfaceVariant = Color(0xFFD6C3B5);
+// Zelfde kleurenpalet als de rest van de app.
+const _primary = Color(0xFFD4B28C);
+const _surfaceContainerLow = Color(0xFF2C221C);
+const _surfaceContainer = Color(0xFF2C221C);
+const _onSurface = Color(0xFFEFE6DD);
+const _onSurfaceVariant = Color(0xFF9E8A7D);
 
 const _months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
@@ -22,12 +22,16 @@ class FeedCard extends StatelessWidget {
   /// Toont een hartje rechtsboven als deze is meegegeven.
   final VoidCallback? onFavoriteTap;
 
+  /// Toont een prullenbak rechtsboven (voor je eigen posts) als deze is meegegeven.
+  final VoidCallback? onDeleteTap;
+
   const FeedCard({
     super.key,
     required this.item,
     this.onTap,
     this.isFavorite = false,
     this.onFavoriteTap,
+    this.onDeleteTap,
   });
 
   @override
@@ -38,6 +42,7 @@ class FeedCard extends StatelessWidget {
       FeedItemType.weetje => ('WEETJE', Icons.auto_stories_outlined),
       FeedItemType.brouwerij => ('BROUWERIJ', Icons.factory_outlined),
       FeedItemType.evenement => ('EVENEMENT', Icons.event_outlined),
+      FeedItemType.post => ('POST', Icons.chat_bubble_outline),
     };
     final imageUrl = item.imageUrl;
     final footer = _buildFooter();
@@ -75,6 +80,15 @@ class FeedCard extends StatelessWidget {
                   children: [
                     _buildLabel(label, icon),
                     const Spacer(),
+                    if (onDeleteTap != null)
+                      GestureDetector(
+                        onTap: onDeleteTap,
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.delete_outline, color: _onSurfaceVariant, size: 20),
+                        ),
+                      ),
                     if (onFavoriteTap != null)
                       GestureDetector(
                         onTap: onFavoriteTap,
@@ -181,6 +195,7 @@ class FeedCard extends StatelessWidget {
       case FeedItemType.tip:
       case FeedItemType.weetje:
       case FeedItemType.brouwerij:
+      case FeedItemType.post:
         final author = item.author;
         return author == null ? null : Text(author, style: metaStyle);
     }
