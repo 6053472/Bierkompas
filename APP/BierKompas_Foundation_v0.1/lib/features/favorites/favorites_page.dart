@@ -9,12 +9,14 @@ import 'beers.dart';
 import 'favorites_service.dart';
 import '../../shared/profile_avatar_button.dart';
 
-// Kleuren uit het "Artisanal Draught" design system (DESIGN.md).
-const _background = Color(0xFF1C110A);
-const _primary = Color(0xFFFBB97B);
-const _onSurface = Color(0xFFF6DED1);
-const _onSurfaceVariant = Color(0xFFD6C3B5);
-const _outlineVariant = Color(0xFF51443A);
+// Zelfde kleurenpalet als de rest van de app (Profiel, Kaart, Agenda, Ontdek, ...).
+const _background = Color(0xFF1E1712);
+const _cardColor = Color(0xFF2C221C);
+const _primary = Color(0xFFD4B28C);
+const _onPrimary = Color(0xFF1E1712);
+const _onSurface = Color(0xFFEFE6DD);
+const _onSurfaceVariant = Color(0xFF9E8A7D);
+const _outlineVariant = Color(0xFF3E312A);
 
 /// Je favorieten in drie containers: bier, brouwerijen en gelikete posts.
 /// Een like op een post over een bier of brouwerij komt bij dat bier of die brouwerij;
@@ -132,7 +134,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         bottom: false,
         child: Column(
           children: [
-            _buildTopBar(),
+            _buildHeader(),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -150,31 +152,38 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildHeader() {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: _background,
-        border: Border(bottom: BorderSide(color: _outlineVariant.withOpacity(0.2))),
+        color: _cardColor,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
       ),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       child: Row(
         children: [
+          const Icon(Icons.favorite, color: _primary, size: 28),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              'Artisanal Draught',
-              style: GoogleFonts.playfairDisplay(
-                color: _primary,
-                fontSize: 16,
-                letterSpacing: -0.4,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mijn Favorieten',
+                  style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 26, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Alles wat je hebt geliked, op één plek.',
+                  style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13),
+                ),
+              ],
             ),
           ),
-          const Icon(Icons.search, color: _onSurfaceVariant),
-          if (widget.onProfileTap != null) ...[
-            const SizedBox(width: 12),
-            ProfileAvatarButton(onTap: widget.onProfileTap!, avatarUrl: widget.avatarUrl, size: 32),
-          ],
+          if (widget.onProfileTap != null)
+            ProfileAvatarButton(onTap: widget.onProfileTap!, avatarUrl: widget.avatarUrl, size: 36),
         ],
       ),
     );
@@ -187,16 +196,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Mijn Favorieten',
-          style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 36, height: 40 / 36),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Alles wat je met een hartje hebt geliked. Tik op een bier of brouwerij voor meer info.',
-          style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 16, height: 1.5),
-        ),
-        const SizedBox(height: 24),
         if (_loading)
           const Center(child: CircularProgressIndicator(color: _primary))
         else if (_error != null)
@@ -265,9 +264,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C1810),
+        color: _cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _primary.withOpacity(0.3)),
+        border: Border.all(color: _outlineVariant.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -278,24 +277,27 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: _primary.withOpacity(0.1),
+                  color: _primary.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: _primary),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 24)),
+                child: Text(
+                  title,
+                  style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w600),
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _primary.withOpacity(0.1),
+                  color: _primary,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '$count',
-                  style: GoogleFonts.openSans(color: _primary, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.openSans(color: _onPrimary, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -380,7 +382,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       decoration: BoxDecoration(
         color: _background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _outlineVariant.withOpacity(0.3)),
+        border: Border.all(color: _outlineVariant.withOpacity(0.6)),
       ),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
