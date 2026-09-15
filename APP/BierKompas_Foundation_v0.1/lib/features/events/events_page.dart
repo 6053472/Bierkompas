@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../profile/chat_service.dart';
 import '../profile/friends_service.dart';
 import 'admin_events_page.dart';
@@ -218,11 +220,57 @@ class _EventsPageState extends State<EventsPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.ios_share, color: beigeColor),
-              title: Text('Deel extern (Facebook, Instagram, TikTok, ...)', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
+              title: Text('WhatsApp', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _shareExternally(event);
+                _shareViaUrl('https://wa.me/?text=${Uri.encodeComponent(_shareText(event))}');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
+              title: Text('Facebook', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _shareViaUrl(
+                  'https://www.facebook.com/sharer/sharer.php?quote=${Uri.encodeComponent(_shareText(event))}',
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.tag, color: beigeColor),
+              title: Text('X (Twitter)', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _shareViaUrl('https://twitter.com/intent/tweet?text=${Uri.encodeComponent(_shareText(event))}');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_all_outlined, color: beigeColor),
+              title: Text('Kopieer tekst (voor Instagram/TikTok)', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                'Instagram en TikTok bieden geen kant-en-klare deel-link; plak de tekst zelf in je verhaal of bio.',
+                style: GoogleFonts.inter(color: secondaryTextColor, fontSize: 11),
+              ),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await Clipboard.setData(ClipboardData(text: _shareText(event)));
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tekst gekopieerd naar klembord.')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.ios_share, color: beigeColor),
+              title: Text('Systeemdeelmenu', style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                'Op een telefoon (iOS/Android) opent dit alle geïnstalleerde apps; in een desktopbrowser is dit vaak beperkt.',
+                style: GoogleFonts.inter(color: secondaryTextColor, fontSize: 11),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Share.share(_shareText(event), subject: event['name']?.toString());
               },
             ),
             const SizedBox(height: 8),
@@ -232,13 +280,22 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Future<void> _shareExternally(Map<String, dynamic> event) async {
+  String _shareText(Map<String, dynamic> event) {
     final name = event['name']?.toString() ?? 'Evenement';
     final location = event['location_name']?.toString() ?? '';
     final city = event['city']?.toString() ?? '';
-    final text = 'Kom je ook naar "$name"${location.isNotEmpty ? ' bij $location' : ''}'
+    return 'Kom je ook naar "$name"${location.isNotEmpty ? ' bij $location' : ''}'
         '${city.isNotEmpty ? ' in $city' : ''}? Bekijk het in BierKompas! 🍻';
-    await Share.share(text, subject: name);
+  }
+
+  Future<void> _shareViaUrl(String url) async {
+    final uri = Uri.parse(url);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kon geen deelvenster openen.')),
+      );
+    }
   }
 
   Future<void> _shareWithFriend(Map<String, dynamic> event) async {
