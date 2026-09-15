@@ -34,6 +34,15 @@ class FriendSearchResult {
   });
 }
 
+/// Voorgestelde nieuwe vriend (nog geen vriend, geen openstaand verzoek).
+class FriendSuggestion {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+
+  const FriendSuggestion({required this.id, required this.name, this.avatarUrl});
+}
+
 class FriendsException implements Exception {
   final String message;
   FriendsException(this.message);
@@ -153,6 +162,23 @@ class FriendsService {
         'p_requester_id': requesterId,
         'p_accept': accept,
       });
+    } on PostgrestException catch (e) {
+      throw FriendsException(e.message);
+    }
+  }
+
+  /// Willekeurige suggesties voor nieuwe vrienden (Snapchat-achtige "Snel
+  /// toevoegen"-lijst): geen vrienden, geen openstaand verzoek, niet jezelf.
+  Future<List<FriendSuggestion>> suggestFriends({int limit = 12}) async {
+    try {
+      final rows = await _client.rpc('suggest_friends', params: {'p_limit': limit});
+      return (rows as List).map((row) {
+        return FriendSuggestion(
+          id: row['id'] as String,
+          name: row['name'] as String? ?? 'Onbekend',
+          avatarUrl: row['avatar_url'] as String?,
+        );
+      }).toList();
     } on PostgrestException catch (e) {
       throw FriendsException(e.message);
     }

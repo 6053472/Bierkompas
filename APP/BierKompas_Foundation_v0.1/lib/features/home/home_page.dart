@@ -223,6 +223,14 @@ class DiscoveryContentPage extends StatefulWidget {
 
 class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   final _favoritesService = FavoritesService();
+  final _friendsService = FriendsService();
+
+  // Bovenste tabblad: 0 = Ontdek (feed), 1 = Vrienden (suggesties).
+  int _topTab = 0;
+  List<FriendSuggestion> _suggestions = [];
+  bool _suggestionsLoading = false;
+  String? _suggestionsError;
+  final Set<String> _sentSuggestionIds = {};
 
   /// Alles wat de gebruiker heeft geliked, als `type:id` (zie [FeedItem.favoriteKeyOf]).
   final Set<String> _likedKeys = {};
@@ -257,6 +265,47 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       });
     } on FavoritesException catch (e) {
       debugPrint('Fout bij ophalen favorieten: $e');
+    }
+  }
+
+  void _selectTopTab(int index) {
+    setState(() => _topTab = index);
+    if (index == 1 && _suggestions.isEmpty && !_suggestionsLoading) {
+      _loadSuggestions();
+    }
+  }
+
+  Future<void> _loadSuggestions() async {
+    setState(() {
+      _suggestionsLoading = true;
+      _suggestionsError = null;
+    });
+    try {
+      final suggestions = await _friendsService.suggestFriends();
+      if (!mounted) return;
+      setState(() {
+        _suggestions = suggestions;
+        _suggestionsLoading = false;
+      });
+    } on FriendsException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _suggestionsError = e.message;
+        _suggestionsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addSuggestedFriend(FriendSuggestion suggestion) async {
+    setState(() => _sentSuggestionIds.add(suggestion.id));
+    try {
+      await _friendsService.sendRequest(suggestion.id);
+    } on FriendsException catch (e) {
+      if (!mounted) return;
+      setState(() => _sentSuggestionIds.remove(suggestion.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verzoek versturen mislukt: $e')),
+      );
     }
   }
 
@@ -416,8 +465,11 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         child: Column(
           children: [
             _buildHeader(),
+            _buildTopTabs(),
             Expanded(
-              child: _buildFeedList(
+              child: _topTab == 1
+                  ? _buildFriendsTab()
+                  : _buildFeedList(
                 header: [
                   _buildWelcome(),
                   const SizedBox(height: 48),
@@ -533,6 +585,178 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             avatarUrl: widget.avatarUrl,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTopTabs() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _outlineVariant.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: _buildTopTabButton('Ontdek', Icons.explore_outlined, 0)),
+            Expanded(child: _buildTopTabButton('Vrienden', Icons.group_outlined, 1)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopTabButton(String label, IconData icon, int index) {
+    final selected = _topTab == index;
+    return GestureDetector(
+      onTap: () => _selectTopTab(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? _primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: selected ? _onPrimary : _onSurfaceVariant),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.openSans(
+                color: selected ? _onPrimary : _onSurfaceVariant,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Vrienden-tabblad: suggesties in Snapchat-stijl ("Snel toevoegen").
+  Widget _buildFriendsTab() {
+    if (_suggestionsLoading && _suggestions.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: _primary));
+    }
+    if (_suggestionsError != null && _suggestions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Kon suggesties niet laden: $_suggestionsError',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.openSans(color: _onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _loadSuggestions,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primary,
+                  side: const BorderSide(color: _primary),
+                ),
+                child: const Text('Opnieuw proberen'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_suggestions.isEmpty) {
+      return Center(
+        child: Text(
+          'Geen suggesties op dit moment.',
+          style: GoogleFonts.openSans(color: _onSurfaceVariant),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: _primary,
+      onRefresh: _loadSuggestions,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        itemCount: _suggestions.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _sectionLabel('Snel toevoegen'),
+            );
+          }
+          final suggestion = _suggestions[index - 1];
+          return _buildSuggestionTile(suggestion);
+        },
+      ),
+    );
+  }
+
+  Widget _buildSuggestionTile(FriendSuggestion suggestion) {
+    final sent = _sentSuggestionIds.contains(suggestion.id);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: _secondaryContainer,
+                backgroundImage:
+                    suggestion.avatarUrl != null ? CachedNetworkImageProvider(suggestion.avatarUrl!) : null,
+                child: suggestion.avatarUrl == null
+                    ? Text(
+                        suggestion.name.isNotEmpty ? suggestion.name[0].toUpperCase() : '?',
+                        style: GoogleFonts.playfairDisplay(color: _primary, fontWeight: FontWeight.bold),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  suggestion.name,
+                  style: GoogleFonts.openSans(color: _onSurface, fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+              sent
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _secondaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Verzonden',
+                        style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () => _addSuggestedFriend(suggestion),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Toevoegen',
+                          style: GoogleFonts.openSans(color: _onPrimary, fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+            ],
+          ),
+        ),
       ),
     );
   }
