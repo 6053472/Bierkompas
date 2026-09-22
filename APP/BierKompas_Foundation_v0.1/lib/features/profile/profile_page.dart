@@ -120,6 +120,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (created == null || !mounted) return;
     setState(() => _tastingNotes = [created, ...?_tastingNotes]);
+    // Een proefnotitie kan de Bier Streak en badges bijwerken.
+    _loadStats();
   }
 
   Future<void> _openAllTastingNotes() async {
@@ -128,6 +130,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (updated == null || !mounted) return;
     setState(() => _tastingNotes = updated);
+    _loadStats();
   }
 
   Future<void> _loadFriends() async {

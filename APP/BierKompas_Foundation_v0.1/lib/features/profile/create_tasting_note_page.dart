@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../favorites/beers.dart';
+import 'stats_service.dart';
 import 'tasting_notes_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -48,6 +51,7 @@ class _CreateTastingNotePageState extends State<CreateTastingNotePage> {
         rating: _rating,
         beerId: _selectedBeer?.name == beerName ? _selectedBeer?.id : null,
       );
+      await _recordStreakActivity();
       if (!mounted) return;
       Navigator.of(context).pop(created);
     } on TastingNoteException catch (e) {
@@ -56,6 +60,18 @@ class _CreateTastingNotePageState extends State<CreateTastingNotePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Opslaan mislukt: $e')),
       );
+    }
+  }
+
+  // Een proefnotitie is een "bier beoordelen"-actie voor de Bier Streak.
+  // Mislukt dit (bijv. geen netwerk), dan mag dat de opgeslagen notitie niet blokkeren.
+  Future<void> _recordStreakActivity() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      await StatsService().recordDailyActivity(user.id);
+    } catch (_) {
+      // Stilzwijgend negeren: de streak is secundair aan het opslaan van de notitie.
     }
   }
 

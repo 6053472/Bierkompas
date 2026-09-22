@@ -51,15 +51,50 @@ const _iconsByName = {
   'bookmark': Icons.bookmark,
 };
 
+/// Resultaat van [StatsService.recordDailyActivity]: de bijgewerkte streak en
+/// eventuele badges die net ontgrendeld zijn (leeg als er geen nieuwe zijn).
+class DailyActivityResult {
+  final int currentStreak;
+  final int longestStreak;
+  final List<String> newlyEarnedBadgeTitles;
+
+  const DailyActivityResult({
+    required this.currentStreak,
+    required this.longestStreak,
+    required this.newlyEarnedBadgeTitles,
+  });
+}
+
 /// Praat met de Supabase-tabellen `badges`/`user_badges` en de
 /// `record_daily_activity`-functie die de Bier Streak bijhoudt.
 class StatsService {
   SupabaseClient get _client => Supabase.instance.client;
 
-  /// Moet 1x per relevante gebruikersactie (o.a. bij het openen van de app)
-  /// aangeroepen worden. Werkt de streak bij en kent nieuwe badges toe.
-  Future<void> recordDailyActivity(String userId) async {
-    await _client.rpc('record_daily_activity', params: {'p_user_id': userId});
+  /// Moet aangeroepen worden bij een relevante gebruikersactie (een bier
+  /// beoordelen, een post plaatsen, een bier/brouwerij favorieten...). Werkt
+  /// de streak bij en kent automatisch nieuwe streak-badges toe (7/30/100
+  /// dagen), zie supabase/add_stats_and_badges.sql.
+  Future<DailyActivityResult> recordDailyActivity(String userId) async {
+    final rows = await _client.rpc('record_daily_activity', params: {'p_user_id': userId}) as List;
+    final row = rows.first as Map<String, dynamic>;
+    final newlyEarnedIds = (row['newly_earned_badges'] as List).cast<String>();
+
+    var newlyEarnedTitles = <String>[];
+    if (newlyEarnedIds.isNotEmpty) {
+      final badgeRows = await _client.from('badges').select('title').inFilter('id', newlyEarnedIds);
+      newlyEarnedTitles = (badgeRows as List).map((r) => r['title'] as String).toList();
+    }
+
+    return DailyActivityResult(
+      currentStreak: row['current_streak'] as int,
+      longestStreak: row['longest_streak'] as int,
+      newlyEarnedBadgeTitles: newlyEarnedTitles,
+    );
+  }
+
+  Future<int> fetchCurrentStreak(String userId) async {
+    final profile = await _client.from('profiles').select('current_streak').eq('id', userId).maybeSingle();
+    return profile?['current_streak'] as int? ?? 0;
   }
 
   Future<ProfileStats> fetchStats(String userId) async {
