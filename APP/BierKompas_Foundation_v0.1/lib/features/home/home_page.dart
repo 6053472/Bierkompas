@@ -467,8 +467,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           ),
         );
       }
-    } catch (_) {
-      // Stilzwijgend negeren: de streak is secundair aan de eigenlijke actie.
+    } catch (e) {
+      debugPrint('Fout bij bijwerken Bier Streak: $e');
     }
   }
 

@@ -78,9 +78,15 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadStats() async {
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser == null) return;
-    final stats = await _statsService.fetchStats(authUser.id);
-    if (!mounted) return;
-    setState(() => _stats = stats);
+    try {
+      final stats = await _statsService.fetchStats(authUser.id);
+      if (!mounted) return;
+      setState(() => _stats = stats);
+    } catch (e) {
+      // Zonder deze try/catch bleef _stats bij een fout stil op null staan
+      // (streak/badges tonen dan altijd 0), zonder enige foutmelding.
+      debugPrint('Fout bij ophalen stats/streak: $e');
+    }
   }
 
   Future<void> _loadFavoriteBreweries() async {

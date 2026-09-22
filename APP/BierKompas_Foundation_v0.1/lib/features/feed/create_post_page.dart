@@ -98,8 +98,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
     if (user == null) return;
     try {
       await StatsService().recordDailyActivity(user.id);
-    } catch (_) {
-      // Stilzwijgend negeren: de streak is secundair aan het plaatsen van de post.
+    } catch (e) {
+      debugPrint('Fout bij bijwerken Bier Streak: $e');
     }
   }
 

@@ -70,8 +70,10 @@ class _CreateTastingNotePageState extends State<CreateTastingNotePage> {
     if (user == null) return;
     try {
       await StatsService().recordDailyActivity(user.id);
-    } catch (_) {
-      // Stilzwijgend negeren: de streak is secundair aan het opslaan van de notitie.
+    } catch (e) {
+      // De streak is secundair aan het opslaan van de notitie, dus geen
+      // SnackBar hier — wel loggen zodat een mislukte streak-update opvalt.
+      debugPrint('Fout bij bijwerken Bier Streak: $e');
     }
   }
 
