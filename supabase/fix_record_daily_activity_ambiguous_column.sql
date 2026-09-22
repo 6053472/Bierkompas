@@ -1,8 +1,13 @@
--- BierKompas: debug-hulpje voor de Bier Streak.
+-- BierKompas: echte fix voor de Bier Streak.
 -- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit bestand -> Run.
--- Vervangt record_daily_activity door een versie die duidelijk faalt (in plaats
--- van stil niets te doen) als er geen profielrij bestaat voor de gebruiker.
--- Verder identiek aan de versie in add_stats_and_badges.sql.
+--
+-- record_daily_activity gaf altijd de fout "column reference current_streak
+-- is ambiguous", omdat de functie een tabel met kolom current_streak/
+-- longest_streak teruggeeft (RETURNS TABLE), en in de functie zelf ook
+-- current_streak/longest_streak uit public.profiles las zonder tabel-alias.
+-- Postgres kon dan niet weten of "current_streak" de returnwaarde of de
+-- profielkolom bedoelde. Hierdoor werd de streak dus nog nooit bijgewerkt.
+-- Fix: de select uit profiles krijgt een expliciete tabel-alias (p.*).
 
 create or replace function public.record_daily_activity(p_user_id uuid)
 returns table(current_streak integer, longest_streak integer, newly_earned_badges text[])

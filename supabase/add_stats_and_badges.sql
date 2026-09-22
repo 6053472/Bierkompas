@@ -67,10 +67,10 @@ declare
     v_today date := current_date;
     v_newly_earned text[];
 begin
-    select last_activity_date, current_streak, longest_streak
+    select p.last_activity_date, p.current_streak, p.longest_streak
         into v_last_date, v_current_streak, v_longest_streak
-        from public.profiles
-        where id = p_user_id
+        from public.profiles p
+        where p.id = p_user_id
         for update;
 
     if v_last_date = v_today then
