@@ -107,7 +107,7 @@ class _HomePageState extends State<HomePage> {
   // pop-up, ongeacht welk tabblad open staat.
   void _subscribeToCheers() {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) return;   
     _cheersChannel = Supabase.instance.client
         .channel('cheers_${user.id}')
         .onPostgresChanges(

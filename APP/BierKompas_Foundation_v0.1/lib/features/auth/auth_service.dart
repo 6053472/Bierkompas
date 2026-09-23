@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppUser {
@@ -7,18 +8,29 @@ class AppUser {
   final String email;
   final String? avatarUrl;
 
-  const AppUser({required this.id, required this.name, required this.email, this.avatarUrl});
+  const AppUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.avatarUrl,
+  });
 
-  AppUser copyWith({String? name, String? avatarUrl}) => AppUser(
-        id: id,
-        name: name ?? this.name,
-        email: email,
-        avatarUrl: avatarUrl ?? this.avatarUrl,
-      );
+  AppUser copyWith({
+    String? name,
+    String? avatarUrl,
+  }) {
+    return AppUser(
+      id: id,
+      name: name ?? this.name,
+      email: email,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+    );
+  }
 }
 
 class AuthException implements Exception {
   final String message;
+
   AuthException(this.message);
 
   @override
@@ -29,7 +41,10 @@ class RegisterResult {
   final AppUser user;
   final bool needsEmailConfirmation;
 
-  const RegisterResult({required this.user, required this.needsEmailConfirmation});
+  const RegisterResult({
+    required this.user,
+    required this.needsEmailConfirmation,
+  });
 }
 
 const String termsVersion = '1.0';
@@ -38,17 +53,52 @@ const String privacyVersion = '1.0';
 class AuthService {
   SupabaseClient get _client => Supabase.instance.client;
 
-  Future<AppUser> login({required String email, required String password}) async {
+  Future<AppUser> login({
+    required String email,
+    required String password,
+  }) async {
     try {
       final response = await _client.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
       final user = response.user;
-      if (user == null) throw AuthException('Inloggen mislukt.');
+
+      if (user == null) {
+        throw AuthException('Inloggen mislukt.');
+      }
+
       return _appUserFromAuth(user);
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    try {
+      await _client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'bierkompas://login-callback',
+      );
+    } on AuthApiException catch (e) {
+      throw AuthException(_translateAuthError(e));
+    } catch (e) {
+      throw AuthException('Google-login mislukt.');
+    }
+  }
+
+  Future<void> loginWithOutlook() async {
+    try {
+      await _client.auth.signInWithOAuth(
+        OAuthProvider.azure,
+        scopes: 'email',
+        redirectTo: 'bierkompas://login-callback',
+      );
+    } on AuthApiException catch (e) {
+      throw AuthException(_translateAuthError(e));
+    } catch (e) {
+      throw AuthException('Outlook-login mislukt.');
     }
   }
 
@@ -61,12 +111,23 @@ class AuthService {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {'name': name},
+        data: {
+          'name': name,
+        },
       );
+
       final user = response.user;
-      if (user == null) throw AuthException('Registreren mislukt.');
+
+      if (user == null) {
+        throw AuthException('Registreren mislukt.');
+      }
+
       return RegisterResult(
-        user: AppUser(id: user.id, name: name, email: email),
+        user: AppUser(
+          id: user.id,
+          name: name,
+          email: email,
+        ),
         needsEmailConfirmation: response.session == null,
       );
     } on AuthApiException catch (e) {
@@ -76,7 +137,10 @@ class AuthService {
 
   Future<void> resendConfirmationEmail(String email) async {
     try {
-      await _client.auth.resend(type: OtpType.signup, email: email);
+      await _client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
     }
@@ -89,14 +153,23 @@ class AuthService {
   }) async {
     try {
       final currentEmail = _client.auth.currentUser?.email;
+
       if (email != currentEmail) {
-        await _client.auth.updateUser(UserAttributes(email: email));
+        await _client.auth.updateUser(
+          UserAttributes(email: email),
+        );
       }
+
       await _client.from('profiles').update({
         'name': name,
         'email': email,
       }).eq('id', userId);
-      return AppUser(id: userId, name: name, email: email);
+
+      return AppUser(
+        id: userId,
+        name: name,
+        email: email,
+      );
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
     } on PostgrestException catch (e) {
@@ -104,20 +177,25 @@ class AuthService {
     }
   }
 
-  Future<void> saveConsent({required String userId}) async {
+  Future<void> saveConsent({
+    required String userId,
+  }) async {
     try {
-      await _client.from('user_consents').upsert({
-        'user_id': userId,
-        'terms_version': termsVersion,
-        'privacy_version': privacyVersion,
-        'accepted_at': DateTime.now().toIso8601String(),
-        'age_confirmed': true,
-        'lawful_alcohol_use': true,
-        'accurate_account_data': true,
-        'personal_account': true,
-        'credentials_secure': true,
-        'no_impersonation': true,
-      }, onConflict: 'user_id,terms_version,privacy_version');
+      await _client.from('user_consents').upsert(
+        {
+          'user_id': userId,
+          'terms_version': termsVersion,
+          'privacy_version': privacyVersion,
+          'accepted_at': DateTime.now().toIso8601String(),
+          'age_confirmed': true,
+          'lawful_alcohol_use': true,
+          'accurate_account_data': true,
+          'personal_account': true,
+          'credentials_secure': true,
+          'no_impersonation': true,
+        },
+        onConflict: 'user_id,terms_version,privacy_version',
+      );
     } on PostgrestException catch (e) {
       throw AuthException(e.message);
     }
@@ -129,6 +207,7 @@ class AuthService {
         .select('name, email, avatar_url')
         .eq('id', user.id)
         .maybeSingle();
+
     return AppUser(
       id: user.id,
       name: profile?['name'] as String? ?? '',
@@ -137,8 +216,16 @@ class AuthService {
     );
   }
 
-  /// Upload een profielfoto naar Supabase Storage en slaat de publieke URL op
-  /// in de profiles-tabel. Geeft de nieuwe URL terug.
+  Future<AppUser> getCurrentUser() async {
+    final user = _client.auth.currentUser;
+
+    if (user == null) {
+      throw AuthException('Geen gebruiker gevonden.');
+    }
+
+    return _appUserFromAuth(user);
+  }
+
   Future<String> uploadAvatar({
     required String userId,
     required Uint8List bytes,
@@ -146,14 +233,25 @@ class AuthService {
   }) async {
     try {
       final path = '$userId/avatar.$fileExt';
+
       await _client.storage.from('avatars').uploadBinary(
-            path,
-            bytes,
-            fileOptions: FileOptions(upsert: true, contentType: 'image/$fileExt'),
-          );
+        path,
+        bytes,
+        fileOptions: FileOptions(
+          upsert: true,
+          contentType: 'image/$fileExt',
+        ),
+      );
+
       final url = _client.storage.from('avatars').getPublicUrl(path);
-      final bustedUrl = '$url?t=${DateTime.now().millisecondsSinceEpoch}';
-      await _client.from('profiles').update({'avatar_url': bustedUrl}).eq('id', userId);
+
+      final bustedUrl =
+          '$url?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      await _client.from('profiles').update({
+        'avatar_url': bustedUrl,
+      }).eq('id', userId);
+
       return bustedUrl;
     } on StorageException catch (e) {
       throw AuthException(e.message);
