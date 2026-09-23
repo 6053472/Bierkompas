@@ -19,6 +19,8 @@ import '../profile/profile_page.dart';
 import '../profile/stats_service.dart';
 import '../events/events_page.dart';
 import '../../shared/profile_avatar_button.dart';
+import 'social_page.dart';
+import '../feed/create_post_page.dart';
 
 // Tab-indexen van de onderste navigatiebalk.
 const _tabAgenda = 1;
@@ -48,10 +50,26 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadAvatar();
+    _loadStreak();
     _checkPendingCheers();
     _subscribeToCheers();
     _friendsService.touchPresence();
     _presenceTimer = Timer.periodic(const Duration(seconds: 60), (_) => _friendsService.touchPresence());
+  }
+
+  // Ververst na elke tabwissel, zodat een streak/badge bijgewerkt door een
+  // actie op een ander tabblad (bijv. een proefnotitie in Profiel) hier
+  // zichtbaar wordt zonder de hele app opnieuw te starten.
+  Future<void> _loadStreak() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final streak = await _statsService.fetchCurrentStreak(user.id);
+      if (!mounted) return;
+      setState(() => _currentStreak = streak);
+    } catch (e) {
+      debugPrint('Fout bij ophalen streak: $e');
+    }
   }
 
   @override
@@ -124,13 +142,21 @@ class _HomePageState extends State<HomePage> {
         .subscribe();
   }
 
-  void _goToTab(int index) => setState(() => _currentIndex = index);
+  void _goToTab(int index) {
+    setState(() => _currentIndex = index);
+    _loadStreak();
+  }
 
   @override
   Widget build(BuildContext context) {
     final goToProfile = () => _goToTab(_tabProfile);
     final pages = [
-      DiscoveryContentPage(onNavigate: _goToTab, avatarUrl: _avatarUrl), // Index 0: Ontdek
+      DiscoveryContentPage(
+        onNavigate: _goToTab,
+        avatarUrl: _avatarUrl,
+        streak: _currentStreak,
+        onActivityRecorded: _loadStreak,
+      ), // Index 0: Ontdek
       EventsPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile), // Index 1: Agenda
       FavoritesPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile),
       MapPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile),
@@ -153,31 +179,31 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.explore,
                   label: 'ONTDEK',
                   isSelected: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
+                  onTap: () => _goToTab(0),
                 ),
                 _BottomNavItem(
                   icon: Icons.calendar_today,
                   label: 'AGENDA',
                   isSelected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
+                  onTap: () => _goToTab(1),
                 ),
                 _BottomNavItem(
                   icon: Icons.favorite_border,
                   label: 'FAVORIETEN',
                   isSelected: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
+                  onTap: () => _goToTab(2),
                 ),
                 _BottomNavItem(
                   icon: Icons.map_outlined,
                   label: 'KAART',
                   isSelected: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
+                  onTap: () => _goToTab(3),
                 ),
                 _BottomNavItem(
                   icon: Icons.person_outline,
                   label: 'PROFIEL',
                   isSelected: _currentIndex == 4,
-                  onTap: () => setState(() => _currentIndex = 4),
+                  onTap: () => _goToTab(4),
                 ),
               ],
             ),
@@ -215,7 +241,17 @@ class DiscoveryContentPage extends StatefulWidget {
   /// Springt naar een tab in de onderste navigatiebalk van [HomePage].
   final ValueChanged<int>? onNavigate;
 
-  const DiscoveryContentPage({super.key, this.streak = 0, this.onNavigate, this.avatarUrl});
+  /// Aangeroepen na een activiteit die de Bier Streak kan bijwerken (liken,
+  /// posten), zodat [HomePage] de streak-indicator kan verversen.
+  final VoidCallback? onActivityRecorded;
+
+  const DiscoveryContentPage({
+    super.key,
+    this.streak = 0,
+    this.onNavigate,
+    this.avatarUrl,
+    this.onActivityRecorded,
+  });
 
   @override
   State<DiscoveryContentPage> createState() => _DiscoveryContentPageState();
@@ -223,6 +259,7 @@ class DiscoveryContentPage extends StatefulWidget {
 
 class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   final _favoritesService = FavoritesService();
+  final _statsService = StatsService();
 
   /// Alles wat de gebruiker heeft geliked, als `type:id` (zie [FeedItem.favoriteKeyOf]).
   final Set<String> _likedKeys = {};
@@ -281,6 +318,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         await _favoritesService.remove(userId: user.id, itemType: itemType, itemId: itemId);
       } else {
         await _favoritesService.add(userId: user.id, itemType: itemType, itemId: itemId);
+        await _recordStreakActivity();
       }
     } on FavoritesException catch (e) {
       if (!mounted) return;
@@ -347,6 +385,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         if (feedIndex == _feedItems.length) return _buildFeedFooter();
         if (feedIndex >= _feedItems.length - _feedPrefetchDistance) _scheduleNextFeedPage();
         final item = _feedItems[feedIndex];
+        final isOwnPost = item.type == FeedItemType.post &&
+            item.authorId != null &&
+            item.authorId == Supabase.instance.client.auth.currentUser?.id;
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: FeedCard(
@@ -358,6 +399,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             },
             isFavorite: _isLiked(item.favoriteType, item.favoriteId),
             onFavoriteTap: () => _toggleLike(item.favoriteType, item.favoriteId),
+            onDeleteTap: isOwnPost ? () => _deletePost(item) : null,
           ),
         );
       },
@@ -401,9 +443,53 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
   void _goTo(int tab) => widget.onNavigate?.call(tab);
 
-  void _showComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Gezelligheid & Social komt binnenkort.')),
+  Future<void> _openCreatePost() async {
+    final post = await Navigator.of(context).push<FeedItem>(
+      MaterialPageRoute(builder: (context) => const CreatePostPage()),
+    );
+    if (post == null || !mounted) return;
+    setState(() => _feedItems.insert(0, post));
+    await _recordStreakActivity();
+  }
+
+  // Liken en posten zijn activiteiten voor de Bier Streak. Mislukt dit (bijv.
+  // geen netwerk), dan mag dat de eigenlijke actie niet blokkeren.
+  Future<void> _recordStreakActivity() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final result = await _statsService.recordDailyActivity(user.id);
+      widget.onActivityRecorded?.call();
+      if (result.newlyEarnedBadgeTitles.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Nieuwe badge ontgrendeld: ${result.newlyEarnedBadgeTitles.join(", ")} 🏅'),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Fout bij bijwerken Bier Streak: $e');
+    }
+  }
+
+  Future<void> _deletePost(FeedItem item) async {
+    final index = _feedItems.indexWhere((f) => f.key == item.key);
+    if (index == -1) return;
+    setState(() => _feedItems.removeAt(index));
+    try {
+      await _feedService.deletePost(item.key);
+    } on FeedException catch (e) {
+      if (!mounted) return;
+      setState(() => _feedItems.insert(index, item));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verwijderen mislukt: $e')),
+      );
+    }
+  }
+
+  void _openSocial() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const SocialPage()),
     );
   }
 
@@ -459,6 +545,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                   _buildShortcut(Icons.restaurant_outlined, 'Tafeltje Reserveren', () => _goTo(_tabFavorites)),
                   const SizedBox(height: 48),
                   _sectionLabel('Bierfeed'),
+                  const SizedBox(height: 12),
+                  _buildNewPostButton(),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -596,7 +685,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       _buildActionTile(Icons.event_outlined, Icons.celebration_outlined, 'Feestjes & Agenda',
           'BIER AGENDA', () => _goTo(_tabAgenda)),
       _buildActionTile(Icons.group_outlined, Icons.forum_outlined, 'Gezelligheid & Social',
-          'GEMEENSCHAP', _showComingSoon),
+          'GEMEENSCHAP', _openSocial),
     ];
 
     return Column(
@@ -784,6 +873,37 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             ),
             if (topRight != null) Positioned(top: 12, right: 12, child: topRight),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewPostButton() {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: _primary.withOpacity(0.4)),
+    );
+    return Material(
+      color: _primary.withOpacity(0.08),
+      shape: shape,
+      child: InkWell(
+        customBorder: shape,
+        onTap: _openCreatePost,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.add_circle_outline, color: _primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Deel iets met de gemeenschap',
+                  style: GoogleFonts.openSans(color: _onSurface, fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: _primary),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../shared/image_utils.dart';
 import '../auth/auth_service.dart';
 
 class ProfileEditPage extends StatefulWidget {
@@ -49,12 +50,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     setState(() => _isUploadingAvatar = true);
     try {
-      final bytes = await picked.readAsBytes();
-      final fileExt = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : 'jpg';
+      final rawBytes = await picked.readAsBytes();
+      final bytes = normalizeToJpeg(rawBytes);
       final url = await _authService.uploadAvatar(
         userId: widget.user!.id,
         bytes: bytes,
-        fileExt: fileExt,
+        fileExt: 'jpg',
       );
       if (!mounted) return;
       setState(() => _avatarUrl = url);

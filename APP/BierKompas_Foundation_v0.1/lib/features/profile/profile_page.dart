@@ -8,12 +8,15 @@ import '../favorites/favorites_service.dart';
 import '../map/breweries.dart';
 import 'add_friend_page.dart';
 import 'all_badges_page.dart';
+import 'all_tasting_notes_page.dart';
 import 'chat_page.dart';
 import 'cheers_service.dart';
+import 'create_tasting_note_page.dart';
 import 'friends_service.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
+import 'tasting_notes_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,9 +30,11 @@ class _ProfilePageState extends State<ProfilePage> {
   final _friendsService = FriendsService();
   final _cheersService = CheersService();
   final _favoritesService = FavoritesService();
+  final _tastingNotesService = TastingNotesService();
   AppUser? _user;
   ProfileStats? _stats;
   List<Brewery>? _favoriteBreweries;
+  List<TastingNote>? _tastingNotes;
   List<Friend>? _friends;
   List<FriendRequest>? _incomingRequests;
   final Set<String> _pendingRequestActions = {};
@@ -42,6 +47,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUser();
     _loadStats();
     _loadFavoriteBreweries();
+    _loadTastingNotes();
     _loadFriends();
     _subscribeToFriendUpdates();
   }
@@ -72,9 +78,15 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadStats() async {
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser == null) return;
-    final stats = await _statsService.fetchStats(authUser.id);
-    if (!mounted) return;
-    setState(() => _stats = stats);
+    try {
+      final stats = await _statsService.fetchStats(authUser.id);
+      if (!mounted) return;
+      setState(() => _stats = stats);
+    } catch (e) {
+      // Zonder deze try/catch bleef _stats bij een fout stil op null staan
+      // (streak/badges tonen dan altijd 0), zonder enige foutmelding.
+      debugPrint('Fout bij ophalen stats/streak: $e');
+    }
   }
 
   Future<void> _loadFavoriteBreweries() async {
@@ -92,6 +104,39 @@ class _ProfilePageState extends State<ProfilePage> {
     } on FavoritesException catch (e) {
       debugPrint('Fout bij ophalen favoriete brouwerijen: $e');
     }
+  }
+
+  Future<void> _loadTastingNotes() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+    try {
+      final notes = await _tastingNotesService.fetchAll(authUser.id);
+      if (!mounted) return;
+      setState(() => _tastingNotes = notes);
+    } on TastingNoteException catch (e) {
+      debugPrint('Fout bij ophalen proefnotities: $e');
+      if (!mounted) return;
+      setState(() => _tastingNotes = []);
+    }
+  }
+
+  Future<void> _addTastingNote() async {
+    final created = await Navigator.of(context).push<TastingNote>(
+      MaterialPageRoute(builder: (_) => const CreateTastingNotePage()),
+    );
+    if (created == null || !mounted) return;
+    setState(() => _tastingNotes = [created, ...?_tastingNotes]);
+    // Een proefnotitie kan de Bier Streak en badges bijwerken.
+    _loadStats();
+  }
+
+  Future<void> _openAllTastingNotes() async {
+    final updated = await Navigator.of(context).push<List<TastingNote>>(
+      MaterialPageRoute(builder: (_) => AllTastingNotesPage(notes: _tastingNotes ?? [])),
+    );
+    if (updated == null || !mounted) return;
+    setState(() => _tastingNotes = updated);
+    _loadStats();
   }
 
   Future<void> _loadFriends() async {
@@ -504,29 +549,60 @@ class _ProfilePageState extends State<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        'Bekijk alle',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFD4B28C),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _addTastingNote,
+                            child: const Padding(
+                              padding: EdgeInsets.only(right: 12),
+                              child: Icon(Icons.add_circle_outline, color: Color(0xFFD4B28C), size: 20),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _tastingNotes == null ? null : _openAllTastingNotes,
+                            child: Text(
+                              'Bekijk alle',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFD4B28C),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  _buildTastingNoteCard(
-                    title: 'Zundert 8 Trappist',
-                    note: 'Prachtige kastanjebruine kleur met een stevige...',
-                    rating: 5,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTastingNoteCard(
-                    title: 'La Chouffe',
-                    note: 'Fris en fruitig met een aangename hint van...',
-                    rating: 4,
-                  ),
+                  if (_tastingNotes == null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
+                      ),
+                    )
+                  else if (_tastingNotes!.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C221C),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Nog geen proefnotities. Tik op + om je eerste bier te noteren.',
+                        style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 13),
+                      ),
+                    )
+                  else
+                    for (final note in _tastingNotes!.take(2)) ...[
+                      _buildTastingNoteCard(
+                        title: note.beerName,
+                        note: note.note,
+                        rating: note.rating,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   const SizedBox(height: 24),
 
                   Align(
