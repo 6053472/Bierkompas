@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../favorites/beers.dart';
+
 /// Resultaat van het loggen van een gescand bier: bijgewerkte stats en de
 /// badges die net (opnieuw) vrijgespeeld zijn.
 class BeerScanLogResult {
@@ -23,6 +25,27 @@ class BeerScanException implements Exception {
 /// aan het Bier-paspoort van de gebruiker (zie supabase/add_beer_scan.sql).
 class BeerScanService {
   SupabaseClient get _client => Supabase.instance.client;
+
+  /// Zoekt welk bier bij deze gescande barcode hoort. De koppeling
+  /// barcode -> bier-id staat in Supabase (tabel `bieren`, beheerd via de
+  /// admin-pagina), zodat een beheerder barcodes kan instellen zonder dat de
+  /// app opnieuw gebouwd hoeft te worden. De bierinhoud zelf (naam, stijl,
+  /// foto, ...) komt nog uit de statische lijst in beers.dart.
+  /// Geeft null terug als de barcode bij geen enkel bier hoort -- er wordt
+  /// nooit teruggevallen op een andere bron, dus nooit een ander product.
+  Future<Beer?> findBeerByBarcode(String barcode) async {
+    try {
+      final row = await _client.from('bieren').select('id').eq('barcode', barcode).maybeSingle();
+      if (row == null) return null;
+      final id = row['id'] as int;
+      for (final beer in beers) {
+        if (beer.id == id) return beer;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<BeerScanLogResult> logScan({
     required String userId,

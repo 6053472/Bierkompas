@@ -22,10 +22,6 @@ class Beer {
   /// Wat voor soort bier het is.
   final String styleInfo;
 
-  /// EAN-13-barcode van het flesje/blikje, voor "Bier scannen". Niet elk bier
-  /// heeft er een (bv. alleen van de tap verkrijgbaar), dan is dit null.
-  final String? barcode;
-
   const Beer({
     required this.id,
     required this.name,
@@ -36,18 +32,7 @@ class Beer {
     required this.styleInfo,
     this.imageUrl,
     this.brewery,
-    this.barcode,
   });
-}
-
-/// Zoekt het bier dat bij deze gescande barcode hoort. Geeft null terug als de
-/// code niet bij een bier uit Bierkompas hoort (dus: nooit een ander soort
-/// product tonen, alleen onze eigen bieren).
-Beer? findBeerByBarcode(String barcode) {
-  for (final beer in beers) {
-    if (beer.barcode == barcode) return beer;
-  }
-  return null;
 }
 
 // Uitleg per bierstijl, gedeeld door bieren van dezelfde stijl.
@@ -82,7 +67,6 @@ const koperenNachtTripel = Beer(
   description: 'Een goudkoperkleurige tripel met een romige schuimkraag, kruidig met tonen van karamel.',
   howMade: _tripelHowMade,
   styleInfo: _tripelStyle,
-  barcode: '8710400005',
 );
 
 const beers = [
@@ -98,7 +82,6 @@ const beers = [
         "Een blonde tripel van Brouwerij 't IJ uit Amsterdam. Zatte was het allereerste bier dat 't IJ brouwde.",
     howMade: _tripelHowMade,
     styleInfo: _tripelStyle,
-    barcode: '8710400001',
   ),
   Beer(
     id: 2,
@@ -111,7 +94,6 @@ const beers = [
     description: "Een donkere dubbel van Brouwerij 't IJ uit Amsterdam, met 6,5% alcohol.",
     howMade: _dubbelHowMade,
     styleInfo: _dubbelStyle,
-    barcode: '8710400002',
   ),
   Beer(
     id: 3,
@@ -124,7 +106,6 @@ const beers = [
         "Een troebel witbier van Brouwerij 't IJ uit Amsterdam. Met 6,5% is het steviger dan de meeste witbieren.",
     howMade: _witbierHowMade,
     styleInfo: _witbierStyle,
-    barcode: '8710400003',
   ),
   Beer(
     id: 4,
@@ -137,7 +118,6 @@ const beers = [
     howMade:
         'Gebrouwen met karamelmout, die het bier zijn koperen kleur en zachte moutzoetheid geeft, en vergist met bovengistende gist. De hop zorgt voor een bittere tegenhanger.',
     styleInfo: 'Amber: koperkleurig en moutig met een lichte bitterheid. Met 9% hoort deze bij de zware bieren.',
-    barcode: '8710400004',
   ),
   koperenNachtTripel,
   Beer(
@@ -149,7 +129,6 @@ const beers = [
     howMade:
         "Gebrouwen met lichte mout en veel hop, die zowel tijdens het koken als daarna (dry hopping) wordt toegevoegd. Dat geeft bitterheid en aroma's van citrus, dennen of tropisch fruit.",
     styleInfo: 'IPA (India Pale Ale): een hoppig, bitter bier, meestal 5,5 tot 7,5%. Een van de populairste craftbierstijlen.',
-    barcode: '8710400006',
   ),
   Beer(
     id: 7,
@@ -161,7 +140,6 @@ const beers = [
         'Gebrouwen met sterk geroosterde mout of gerst, die het bier zijn zwarte kleur en tonen van koffie en chocolade geeft.',
     styleInfo:
         'Stout: donker tot zwart, met een volle, romige mondvulling. Varieert van licht (rond 4%) tot heel zwaar (imperial stout, 8% of meer).',
-    barcode: '8710400007',
   ),
   Beer(
     id: 8,
@@ -172,7 +150,6 @@ const beers = [
     description: 'Een troebel witbier met citrus en koriander, op zijn best bij warm weer.',
     howMade: _witbierHowMade,
     styleInfo: _witbierStyle,
-    barcode: '8710400008',
   ),
   Beer(
     id: 9,
@@ -182,7 +159,6 @@ const beers = [
     description: 'Een klassieke dubbel met rozijnen, bruine suiker en een vleugje drop.',
     howMade: _dubbelHowMade,
     styleInfo: _dubbelStyle,
-    barcode: '8710400009',
   ),
   Beer(
     id: 10,
@@ -193,7 +169,6 @@ const beers = [
     howMade:
         'Vergist met een speciale saisongist die de suikers bijna volledig omzet. Daardoor wordt het bier droog en krijgt het peperige en fruitige tonen.',
     styleInfo: 'Saison: een oorspronkelijk Belgisch boerenbier, droog en dorstlessend, meestal 5 tot 7%.',
-    barcode: '8710400010',
   ),
   Beer(
     id: 11,
@@ -204,7 +179,6 @@ const beers = [
     howMade:
         'Gebrouwen met lichte mout en bovengistende gist, met een bescheiden hoeveelheid hop voor een zachte bitterheid.',
     styleInfo: 'Blond: goudgeel, zacht en toegankelijk, meestal 6 tot 7%.',
-    barcode: '8710400011',
   ),
   Beer(
     id: 12,
@@ -215,7 +189,6 @@ const beers = [
     howMade: 'Gebrouwen met donkere mouten en karamelmout voor een volle, moutige smaak.',
     styleInfo:
         'Bock: een stevig, moutig bier. In Nederland vooral bekend als herfstbok, meestal 6,5 tot 8%.',
-    barcode: '8710400012',
   ),
   Beer(
     id: 13,
@@ -226,7 +199,6 @@ const beers = [
     description: 'Een heldere pale ale met bloemige hop en een droge afdronk.',
     howMade: 'Gebrouwen met lichte mout en een flinke dosis aromatische hop, en vergist met bovengistende gist.',
     styleInfo: 'Pale ale: goudblond tot amber, fris en hoppig maar minder bitter dan een IPA, meestal 4,5 tot 6%.',
-    barcode: '8710400013',
   ),
   Beer(
     id: 14,
@@ -237,6 +209,5 @@ const beers = [
     howMade:
         'Een traditionele kriek ontstaat door zure kersen (krieken) op lambiek te laten nagisten. De spontane vergisting van de lambiek geeft het bier zijn zure karakter.',
     styleInfo: 'Kriek: een fruitbier op basis van lambiek; zuur, fris en kersenrood.',
-    barcode: '8710400014',
   ),
 ];

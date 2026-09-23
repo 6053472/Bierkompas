@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html class="dark" lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bierkompas Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&amp;family=Open+Sans:wght@400;600&amp;family=Hanken+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#1c110a",
+          "surface": "#1c110a",
+          "surface-container-lowest": "#160c06",
+          "surface-container-low": "#251911",
+          "surface-container": "#291d15",
+          "surface-container-high": "#35271f",
+          "surface-container-highest": "#403229",
+          "on-surface": "#f6ded1",
+          "on-surface-variant": "#d6c3b5",
+          "outline": "#9e8e81",
+          "outline-variant": "#51443a",
+          "primary": "#fbb97b",
+          "on-primary": "#4b2800",
+          "primary-container": "#d4975c",
+          "on-primary-container": "#583000",
+          "secondary": "#e3bfb2",
+          "error": "#ffb4ab",
+          "error-container": "#93000a",
+          "on-error": "#690005",
+          "on-error-container": "#ffdad6",
+        },
+        fontFamily: {
+          "display": ["\"Playfair Display\""],
+          "body": ["\"Open Sans\""],
+          "label": ["\"Hanken Grotesk\""],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { background-color: #1c110a; color: #f6ded1; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  .copper-glow { box-shadow: 0px 4px 20px rgba(251, 185, 123, 0.15); }
+  .copper-border { border-color: rgba(251, 185, 123, 0.2); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body class="font-body antialiased min-h-screen">
+
+<!-- ===================== LOGIN VIEW ===================== -->
+<main id="login-view" class="min-h-screen flex items-center justify-center px-6">
+  <div class="w-full max-w-sm flex flex-col items-center">
+    <div class="w-24 h-24 mb-6 rounded-full bg-surface-container flex items-center justify-center border border-primary/20 shadow-2xl">
+      <span class="material-symbols-outlined text-primary text-5xl" style="font-variation-settings: 'FILL' 1;">shield_lock</span>
+    </div>
+    <h1 class="font-display text-3xl text-primary tracking-tight mb-1">BEVEILIGDE TOEGANG</h1>
+    <h2 class="font-label text-xs text-on-surface-variant tracking-widest uppercase mb-6">Bierkompas &middot; Geautoriseerde zone</h2>
+
+    <div class="w-full bg-primary text-on-primary py-2 px-4 rounded-lg mb-6 flex items-center justify-center gap-2 shadow-lg">
+      <span class="material-symbols-outlined text-[20px]">lock</span>
+      <span class="font-label text-xs tracking-widest uppercase">Secure Zone</span>
+    </div>
+
+    <form id="login-form" class="w-full bg-surface-container/60 border border-primary/20 rounded-xl p-6 flex flex-col gap-4 backdrop-blur-md shadow-2xl">
+      <div class="flex flex-col gap-1">
+        <label class="font-label text-xs text-on-surface-variant uppercase tracking-wide" for="email">E-mailadres</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">mail</span>
+          <input id="email" type="email" required autocomplete="username"
+            class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-12 pr-4 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors"/>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label text-xs text-on-surface-variant uppercase tracking-wide" for="password">Wachtwoord</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">dialpad</span>
+          <input id="password" type="password" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+            class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-12 pr-4 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors"/>
+        </div>
+      </div>
+      <p id="login-error" class="hidden text-error text-sm"></p>
+      <button type="submit" id="login-button"
+        class="w-full mt-2 bg-primary text-on-primary font-label text-xs py-4 rounded-lg hover:opacity-90 transition-colors copper-glow uppercase tracking-widest">
+        Toegang verlenen
+      </button>
+    </form>
+    <div class="mt-8 flex items-center gap-2 text-on-surface-variant/50 font-label text-[11px]">
+      <span class="material-symbols-outlined text-[16px]">verified_user</span>
+      <span>Alleen voor beheerders met is_admin-rechten</span>
+    </div>
+  </div>
+</main>
+
+<!-- ===================== DASHBOARD VIEW ===================== -->
+<div id="dashboard-view" class="hidden flex flex-col md:flex-row min-h-screen">
+  <!-- Sidebar (horizontale balk op mobiel, verticale zijbalk vanaf md) -->
+  <aside class="flex md:flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-4 shrink-0 items-center md:items-stretch gap-2 md:gap-1">
+    <div class="mb-0 md:mb-10 px-2 mr-auto md:mr-0">
+      <h1 class="font-display text-lg md:text-xl text-primary">Bierkompas</h1>
+      <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Admin</p>
+    </div>
+    <nav class="flex md:flex-col gap-1">
+      <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface transition-colors">
+        <span class="material-symbols-outlined">event</span>
+        <span class="font-body text-sm hidden sm:inline">Evenementen</span>
+      </button>
+      <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface transition-colors">
+        <span class="material-symbols-outlined">sports_bar</span>
+        <span class="font-body text-sm hidden sm:inline">Bieren &amp; barcodes</span>
+      </button>
+    </nav>
+    <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error transition-colors">
+      <span class="material-symbols-outlined">logout</span>
+      <span class="font-body text-sm hidden sm:inline">Uitloggen</span>
+    </button>
+  </aside>
+
+  <div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+    <div class="w-full bg-primary text-on-primary py-2 px-6 flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">lock</span>
+      <span class="font-label text-xs uppercase tracking-widest">Secure Admin Zone</span>
+      <span id="admin-email" class="ml-auto text-xs opacity-80"></span>
+    </div>
+
+    <!-- Events panel -->
+    <section id="panel-events" class="panel p-6 md:p-10">
+      <h2 class="font-display text-2xl text-on-surface mb-1">Evenement aanmeldingen</h2>
+      <p class="text-on-surface-variant text-sm mb-6">Controleer nieuwe evenementen voordat ze zichtbaar worden in de agenda.</p>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div id="events-list" class="lg:col-span-5 flex flex-col gap-3"></div>
+        <div id="events-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[240px] flex items-center justify-center text-on-surface-variant text-sm">
+          Selecteer een evenement om details te bekijken.
+        </div>
+      </div>
+    </section>
+
+    <!-- Bieren panel -->
+    <section id="panel-bieren" class="panel p-6 md:p-10 hidden">
+      <h2 class="font-display text-2xl text-on-surface mb-1">Bieren &amp; barcodes</h2>
+      <p class="text-on-surface-variant text-sm mb-6">Stel de barcode van een bier in zodat gebruikers het kunnen scannen in de app. Laat leeg om scannen voor dat bier uit te schakelen.</p>
+      <div id="bieren-list" class="flex flex-col gap-3"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // Zelfde publieke Supabase-project als de Flutter-app (lib/core/config/supabase_config.dart).
+  const SUPABASE_URL = "https://dxuyftojqavpnfnvwhvt.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_htSvs_sOUI7uVbQknHpg1Q_U4L9Hej_";
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginView = document.getElementById("login-view");
+  const dashboardView = document.getElementById("dashboard-view");
+  const loginForm = document.getElementById("login-form");
+  const loginError = document.getElementById("login-error");
+  const loginButton = document.getElementById("login-button");
+  const adminEmailLabel = document.getElementById("admin-email");
+
+  function showLoginError(message) {
+    loginError.textContent = message;
+    loginError.classList.remove("hidden");
+  }
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    loginError.classList.add("hidden");
+    loginButton.disabled = true;
+    loginButton.textContent = "Bezig...";
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      showLoginError("Inloggen mislukt: onjuiste combinatie van e-mail en wachtwoord.");
+      loginButton.disabled = false;
+      loginButton.textContent = "Toegang verlenen";
+      return;
+    }
+
+    const { data: profile, error: profileError } = await client
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.is_admin !== true) {
+      await client.auth.signOut();
+      showLoginError("Dit account heeft geen beheerdersrechten.");
+      loginButton.disabled = false;
+      loginButton.textContent = "Toegang verlenen";
+      return;
+    }
+
+    adminEmailLabel.textContent = email;
+    loginView.classList.add("hidden");
+    dashboardView.classList.remove("hidden");
+    loadEvents();
+    loadBieren();
+  });
+
+  document.getElementById("logout-button").addEventListener("click", async () => {
+    await client.auth.signOut();
+    dashboardView.classList.add("hidden");
+    loginView.classList.remove("hidden");
+    loginForm.reset();
+  });
+
+  // ---------- Navigatie tussen panelen ----------
+  const navItems = document.querySelectorAll(".nav-item");
+  const panels = { events: document.getElementById("panel-events"), bieren: document.getElementById("panel-bieren") };
+
+  function setActivePanel(name) {
+    Object.entries(panels).forEach(([key, el]) => el.classList.toggle("hidden", key !== name));
+    navItems.forEach((btn) => {
+      const active = btn.dataset.panel === name;
+      btn.classList.toggle("bg-primary-container", active);
+      btn.classList.toggle("text-on-primary-container", active);
+      btn.classList.toggle("text-on-surface-variant", !active);
+    });
+  }
+  navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
+  setActivePanel("events");
+
+  // ---------- Evenementen goedkeuren ----------
+  const eventsListEl = document.getElementById("events-list");
+  const eventsDetailEl = document.getElementById("events-detail");
+
+  async function loadEvents() {
+    eventsListEl.innerHTML = '<p class="text-on-surface-variant text-sm px-2">Laden...</p>';
+    const { data, error } = await client
+      .from("events")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at");
+
+    if (error) {
+      eventsListEl.innerHTML = `<p class="text-error text-sm px-2">Kon evenementen niet laden: ${error.message}</p>`;
+      return;
+    }
+
+    if (!data.length) {
+      eventsListEl.innerHTML = '<p class="text-on-surface-variant text-sm px-2">Geen evenementen die wachten op goedkeuring.</p>';
+      eventsDetailEl.innerHTML = 'Selecteer een evenement om details te bekijken.';
+      return;
+    }
+
+    eventsListEl.innerHTML = "";
+    data.forEach((event) => {
+      const card = document.createElement("div");
+      card.className = "bg-surface-container p-4 rounded-xl border border-outline-variant/20 cursor-pointer hover:bg-surface-container-high transition-colors";
+      card.innerHTML = `
+        <h4 class="font-display text-lg text-on-surface mb-1">${escapeHtml(event.name || "Naamloos")}</h4>
+        <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(event.event_type || "")}</p>
+        <div class="flex items-center gap-4 text-on-surface-variant text-xs">
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_today</span>${formatDate(event.start_date)}</span>
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span>${escapeHtml(event.city || "")}</span>
+        </div>`;
+      card.addEventListener("click", () => showEventDetail(event));
+      eventsListEl.appendChild(card);
+    });
+
+    showEventDetail(data[0]);
+  }
+
+  function showEventDetail(event) {
+    eventsDetailEl.innerHTML = `
+      <div class="w-full">
+        <h3 class="font-display text-2xl text-on-surface mb-2">${escapeHtml(event.name || "Naamloos")}</h3>
+        <p class="text-on-surface-variant text-sm mb-4">${escapeHtml(event.event_type || "")} &middot; door gebruiker ${escapeHtml(event.user_id || "")}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm">
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Locatie</span>
+            <p class="text-on-surface mt-1">${escapeHtml(event.street || "")} ${escapeHtml(event.house_number || "")}, ${escapeHtml(event.postal_code || "")} ${escapeHtml(event.city || "")}</p>
+            <p class="text-on-surface-variant mt-1">${escapeHtml(event.location_name || "")}</p>
+          </div>
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Datum &amp; tijd</span>
+            <p class="text-on-surface mt-1">${formatDate(event.start_date)} &ndash; ${formatDate(event.end_date)}</p>
+            <p class="text-on-surface-variant mt-1">${escapeHtml(event.opening_hours || "")}</p>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <button class="reject-btn flex-1 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors font-label text-xs uppercase tracking-widest">
+            Afwijzen
+          </button>
+          <button class="approve-btn flex-1 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest">
+            Goedkeuren
+          </button>
+        </div>
+      </div>`;
+
+    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", () => moderateEvent(event.id, "approve"));
+    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", () => moderateEvent(event.id, "reject"));
+  }
+
+  async function moderateEvent(eventId, action) {
+    const rpcName = action === "approve" ? "approve_event" : "reject_event";
+    const { error } = await client.rpc(rpcName, { p_event_id: eventId });
+    if (error) {
+      alert(`Actie mislukt: ${error.message}`);
+      return;
+    }
+    loadEvents();
+  }
+
+  // ---------- Bieren & barcodes ----------
+  const bierenListEl = document.getElementById("bieren-list");
+
+  async function loadBieren() {
+    bierenListEl.innerHTML = '<p class="text-on-surface-variant text-sm">Laden...</p>';
+    const { data, error } = await client.from("bieren").select("*").order("id");
+
+    if (error) {
+      bierenListEl.innerHTML = `<p class="text-error text-sm">Kon bieren niet laden: ${error.message}</p>`;
+      return;
+    }
+
+    bierenListEl.innerHTML = "";
+    data.forEach((bier) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6";
+      row.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <p class="font-display text-lg text-on-surface truncate">${escapeHtml(bier.naam)}</p>
+          <p class="text-on-surface-variant text-xs">${escapeHtml(bier.stijl || "")}${bier.brouwerij ? " &middot; " + escapeHtml(bier.brouwerij) : ""}</p>
+        </div>
+        <div class="flex items-center gap-2 flex-1">
+          <input type="text" value="${escapeHtml(bier.barcode || "")}" placeholder="Nog geen barcode"
+            class="barcode-input flex-1 bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm font-mono"/>
+          <button class="save-btn px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-label uppercase tracking-wide hover:opacity-90 transition-opacity">
+            Opslaan
+          </button>
+          <span class="save-status text-xs text-on-surface-variant"></span>
+        </div>`;
+
+      const input = row.querySelector(".barcode-input");
+      const status = row.querySelector(".save-status");
+      row.querySelector(".save-btn").addEventListener("click", async () => {
+        status.textContent = "Opslaan...";
+        const value = input.value.trim() || null;
+        const { error: saveError } = await client.from("bieren").update({ barcode: value, updated_at: new Date().toISOString() }).eq("id", bier.id);
+        status.textContent = saveError ? `Fout: ${saveError.message}` : "Opgeslagen ✓";
+        setTimeout(() => (status.textContent = ""), 3000);
+      });
+
+      bierenListEl.appendChild(row);
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    try {
+      return new Date(value).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+    } catch (_e) {
+      return value;
+    }
+  }
+
+  // Al ingelogd? (bv. na een refresh) -- meteen doorschakelen als het een beheerder is.
+  (async () => {
+    const { data } = await client.auth.getSession();
+    if (!data.session) return;
+    const { data: profile } = await client.from("profiles").select("is_admin").eq("id", data.session.user.id).maybeSingle();
+    if (profile && profile.is_admin === true) {
+      adminEmailLabel.textContent = data.session.user.email || "";
+      loginView.classList.add("hidden");
+      dashboardView.classList.remove("hidden");
+      loadEvents();
+      loadBieren();
+    }
+  })();
+</script>
+</body>
+</html>

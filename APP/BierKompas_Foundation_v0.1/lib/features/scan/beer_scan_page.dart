@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../favorites/beers.dart';
@@ -32,20 +33,44 @@ class _BeerScanPageState extends State<BeerScanPage> {
   bool _handled = false;
   bool _torchOn = false;
 
+  // null = nog aan het checken, true/false = resultaat van de permissiecheck.
+  // Nodig omdat we anders alleen het generieke "!"-icoon van mobile_scanner
+  // zien zonder duidelijke uitleg of een manier om het op te lossen.
+  bool? _cameraPermissionGranted;
+  bool _permanentlyDenied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkCameraPermission();
+  }
+
+  Future<void> _checkCameraPermission() async {
+    final status = await Permission.camera.request();
+    if (!mounted) return;
+    setState(() {
+      _cameraPermissionGranted = status.isGranted;
+      _permanentlyDenied = status.isPermanentlyDenied;
+    });
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
+  Future<void> _onDetect(BarcodeCapture capture) async {
     if (_handled) return;
     final code = capture.barcodes.isEmpty ? null : capture.barcodes.first.rawValue;
     if (code == null) return;
     _handled = true;
     _controller.stop();
 
-    final beer = findBeerByBarcode(code);
+    // De barcode-koppeling staat in Supabase (tabel `bieren`, door een
+    // beheerder ingesteld), niet meer hardcoded in de app.
+    final beer = await _scanService.findBeerByBarcode(code);
+    if (!mounted) return;
     if (beer == null) {
       _showNotABeerSheet();
     } else {
@@ -102,12 +127,28 @@ class _BeerScanPageState extends State<BeerScanPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Nog aan het checken of camera-toestemming er is.
+    if (_cameraPermissionGranted == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: _primary)),
+      );
+    }
+
+    if (_cameraPermissionGranted == false) {
+      return _buildPermissionDenied(context);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MobileScanner(controller: _controller, onDetect: _onDetect),
+          MobileScanner(
+            controller: _controller,
+            onDetect: _onDetect,
+            errorBuilder: (context, error) => _buildCameraError(context, error),
+          ),
           // Donkere overlay met uitgesneden zoekvenster.
           _ViewfinderOverlay(),
           SafeArea(
@@ -121,6 +162,88 @@ class _BeerScanPageState extends State<BeerScanPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionDenied(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.no_photography_outlined, color: _primary, size: 56),
+              const SizedBox(height: 20),
+              Text(
+                'Geen cameratoegang',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _permanentlyDenied
+                    ? 'Bierkompas heeft geen toestemming voor de camera. Zet dit aan bij Instellingen om bieren te kunnen scannen.'
+                    : 'Bierkompas heeft toegang tot je camera nodig om een barcode te kunnen scannen.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _permanentlyDenied ? openAppSettings : _checkCameraPermission,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: _onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    _permanentlyDenied ? 'Open instellingen' : 'Toestemming geven',
+                    style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Sluiten', style: GoogleFonts.openSans(color: _onSurfaceVariant)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraError(BuildContext context, MobileScannerException error) {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: _primary, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                'Camera kon niet starten',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error.errorDetails?.message ?? error.errorCode.name,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.openSans(color: Colors.white70, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
