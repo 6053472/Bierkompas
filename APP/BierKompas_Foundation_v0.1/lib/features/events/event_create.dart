@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -37,13 +36,12 @@ class _EventCreatePageState extends State<EventCreatePage> {
   bool _isVipChecked = false;
   bool _isLoading = false;
 
-  File? _imageFile;
-  Uint8List? _webImageBytes;
+  Uint8List? _imageBytes;
 
   static const Color backgroundColor = Color(0xFF1E1712);
   static const Color cardColor = Color(0xFF2C221C);
-  static const Color inputColor = Color(0xFF1E1712);
-  static const Color borderColor = Color(0xFF3C3028);
+  static const Color inputColor = Color(0xFF17110D);
+  static const Color borderColor = Color(0xFF46372D);
   static const Color beigeColor = Color(0xFFD4B28C);
   static const Color textColor = Color(0xFFEFE6DD);
   static const Color secondaryTextColor = Color(0xFF9E8A7D);
@@ -80,106 +78,78 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
       if (image == null) return;
 
-      if (kIsWeb) {
-        final bytes = await image.readAsBytes();
+      final Uint8List bytes = await image.readAsBytes();
 
-        setState(() {
-          _webImageBytes = bytes;
-          _imageFile = null;
-        });
-      } else {
-        setState(() {
-          _imageFile = File(image.path);
-          _webImageBytes = null;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _imageBytes = bytes;
+      });
     } catch (e) {
       debugPrint('Fout bij kiezen afbeelding: $e');
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kon afbeelding niet kiezen: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      _showMessage(
+        'Kon afbeelding niet kiezen.',
+        isError: true,
+      );
     }
   }
 
   Future<String?> _uploadImageToSupabase() async {
+    if (_imageBytes == null) {
+      return null;
+    }
+
     try {
       final supabase = Supabase.instance.client;
 
-      final fileName =
+      final String fileName =
           'event_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      final filePath = 'events/$fileName';
+      final String filePath = 'events/$fileName';
 
-      debugPrint(
-        'Afbeelding uploaden naar event-images/$filePath',
-      );
+      await supabase.storage.from('event-images').uploadBinary(
+            filePath,
+            _imageBytes!,
+            fileOptions: const FileOptions(
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
+          );
 
-      if (kIsWeb && _webImageBytes != null) {
-        await supabase.storage.from('event-images').uploadBinary(
-          filePath,
-          _webImageBytes!,
-          fileOptions: const FileOptions(
-            upsert: true,
-            contentType: 'image/jpeg',
-          ),
-        );
-      } else if (_imageFile != null) {
-        await supabase.storage.from('event-images').upload(
-          filePath,
-          _imageFile!,
-          fileOptions: const FileOptions(
-            upsert: true,
-            contentType: 'image/jpeg',
-          ),
-        );
-      } else {
-        debugPrint('Geen afbeelding geselecteerd.');
-        return null;
-      }
-
-      final String publicUrl = supabase.storage
+      return supabase.storage
           .from('event-images')
           .getPublicUrl(filePath);
-
-      debugPrint('Afbeelding URL: $publicUrl');
-
-      return publicUrl;
     } catch (e) {
-      debugPrint('FOUT BIJ AFBEELDING UPLOAD: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Afbeelding kon niet worden geüpload: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-
+      debugPrint('Fout bij afbeelding uploaden: $e');
       return null;
     }
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    final DateTime today = DateTime.now();
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: _selectedDate ?? today,
+      firstDate: DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ),
       lastDate: DateTime(2100),
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
+            scaffoldBackgroundColor: backgroundColor,
+            dialogBackgroundColor: cardColor,
             colorScheme: const ColorScheme.dark(
               primary: beigeColor,
               onPrimary: backgroundColor,
+              secondary: beigeColor,
+              onSecondary: backgroundColor,
               surface: cardColor,
               onSurface: textColor,
             ),
@@ -189,7 +159,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
       },
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _selectedDate = picked;
       });
@@ -203,9 +173,13 @@ class _EventCreatePageState extends State<EventCreatePage> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
+            scaffoldBackgroundColor: backgroundColor,
+            dialogBackgroundColor: cardColor,
             colorScheme: const ColorScheme.dark(
               primary: beigeColor,
               onPrimary: backgroundColor,
+              secondary: beigeColor,
+              onSecondary: backgroundColor,
               surface: cardColor,
               onSurface: textColor,
             ),
@@ -215,7 +189,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
       },
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _selectedTime = picked;
       });
@@ -224,28 +198,18 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
   Future<void> _saveEventToSupabase() async {
     if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Vul alle verplichte velden correct in.',
-          ),
-          backgroundColor: Colors.orange,
-        ),
+      _showMessage(
+        'Vul alle verplichte velden correct in.',
+        isError: true,
       );
-
       return;
     }
 
     if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Selecteer alstublieft een datum en tijd.',
-          ),
-          backgroundColor: Colors.orange,
-        ),
+      _showMessage(
+        'Selecteer een datum en tijd.',
+        isError: true,
       );
-
       return;
     }
 
@@ -255,20 +219,23 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
     try {
       final supabase = Supabase.instance.client;
-
       final user = supabase.auth.currentUser;
 
       if (user == null) {
-        throw 'Je moet ingelogd zijn om een evenement toe te voegen.';
+        throw Exception(
+          'Je moet ingelogd zijn om een evenement toe te voegen.',
+        );
       }
 
       String? imageUrl;
 
-      if (_imageFile != null || _webImageBytes != null) {
+      if (_imageBytes != null) {
         imageUrl = await _uploadImageToSupabase();
 
         if (imageUrl == null) {
-          throw 'De afbeelding kon niet worden geüpload.';
+          throw Exception(
+            'De afbeelding kon niet worden geüpload.',
+          );
         }
       }
 
@@ -287,9 +254,6 @@ class _EventCreatePageState extends State<EventCreatePage> {
           '${_selectedTime!.hour.toString().padLeft(2, '0')}:'
           '${_selectedTime!.minute.toString().padLeft(2, '0')}';
 
-      debugPrint('Evenement opslaan...');
-      debugPrint('Afbeelding: $imageUrl');
-
       await supabase.from('events').insert({
         'user_id': user.id,
         'name': _nameController.text.trim(),
@@ -303,48 +267,32 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'city': _cityController.text.trim(),
         'location_name': _locationNameController.text.trim(),
         'description': _descriptionController.text.trim(),
-
-        // URL van de geüploade foto
         'image_asset': imageUrl,
-
         'ticket_regular': _isRegularChecked,
         'ticket_beer': _isBierTicketChecked,
         'ticket_vip': _isVipChecked,
         'price': 0.00,
         'price_incl_btw': true,
         'price_excl_btw': false,
+        'status': 'pending',
       });
 
-      debugPrint('Evenement succesvol opgeslagen.');
+      if (!mounted) return;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Evenement succesvol opgeslagen!',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        Navigator.pop(context);
-      }
-    } catch (error) {
-      debugPrint(
-        'Fout bij opslaan evenement: $error',
+      _showMessage(
+        'Evenement ingediend. Het wacht nu op goedkeuring.',
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Fout bij opslaan: $error',
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
+      Navigator.pop(context);
+    } catch (error) {
+      debugPrint('Fout bij opslaan evenement: $error');
+
+      if (!mounted) return;
+
+      _showMessage(
+        'Fout bij opslaan: $error',
+        isError: true,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -354,497 +302,286 @@ class _EventCreatePageState extends State<EventCreatePage> {
     }
   }
 
+  void _showMessage(
+    String message, {
+    bool isError = false,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor:
+            isError ? Colors.redAccent : const Color(0xFF4E7655),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+    );
+  }
+
+  bool get _hasImage => _imageBytes != null;
+
+  String get _selectedDateText {
+    if (_selectedDate == null) {
+      return 'Selecteer datum';
+    }
+
+    return '${_selectedDate!.day.toString().padLeft(2, '0')}-'
+        '${_selectedDate!.month.toString().padLeft(2, '0')}-'
+        '${_selectedDate!.year}';
+  }
+
+  String get _selectedTimeText {
+    if (_selectedTime == null) {
+      return 'Selecteer tijd';
+    }
+
+    return _selectedTime!.format(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(
-          kToolbarHeight,
-        ),
-        child: Container(
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(24),
-            ),
-            color: cardColor,
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.close,
-                color: textColor,
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            title: Text(
-              'Evenement Toevoegen',
-              style: GoogleFonts.playfairDisplay(
-                color: textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
+      appBar: _buildAppBar(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              18,
+              16,
+              40,
+            ),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Evenement Toevoegen',
-                  style: GoogleFonts.playfairDisplay(
-                    color: beigeColor,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  'Deel een smaakvolle proeverij of festival met de community van ambachtelijke liefhebbers.',
-                  style: GoogleFonts.inter(
-                    color: secondaryTextColor,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-
+                _buildIntro(),
                 const SizedBox(height: 24),
 
-                _buildSectionHeader(
-                  Icons.info_outline,
-                  'BASIS INFORMATIE',
-                ),
-
-                const SizedBox(height: 12),
-
-                _buildTextFieldLabel(
-                  'NAAM VAN HET EVENEMENT',
-                ),
-
-                const SizedBox(height: 6),
-
-                _buildCustomTextField(
-                  controller: _nameController,
-                  hintText:
-                      'Bijv. Herfst Bokbier Festival 2026',
+                _buildSection(
+                  icon: Icons.info_outline_rounded,
+                  title: 'Basisinformatie',
+                  subtitle: 'Vertel iets over je evenement.',
+                  child: Column(
+                    children: [
+                      _buildLabel('Naam van het evenement'),
+                      const SizedBox(height: 7),
+                      _buildTextField(
+                        controller: _nameController,
+                        hintText: 'Bijv. Herfst Bokbier Festival',
+                        icon: Icons.celebration_outlined,
+                      ),
+                      const SizedBox(height: 18),
+                      _buildLabel('Type evenement'),
+                      const SizedBox(height: 7),
+                      _buildDropdownField(),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 16),
 
-                _buildTextFieldLabel(
-                  'TYPE EVENEMENT',
+                _buildSection(
+                  icon: Icons.event_outlined,
+                  title: 'Datum & tijd',
+                  subtitle: 'Wanneer vindt het evenement plaats?',
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildSelectionCard(
+                          icon: Icons.calendar_month_outlined,
+                          title: 'Datum',
+                          value: _selectedDateText,
+                          selected: _selectedDate != null,
+                          onTap: () => _selectDate(context),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSelectionCard(
+                          icon: Icons.schedule_outlined,
+                          title: 'Starttijd',
+                          value: _selectedTimeText,
+                          selected: _selectedTime != null,
+                          onTap: () => _selectTime(context),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 6),
+                const SizedBox(height: 16),
 
-                _buildDropdownField(),
-
-                const SizedBox(height: 24),
-
-                _buildSectionHeader(
-                  Icons.calendar_today_outlined,
-                  'DATUM & TIJD',
+                _buildSection(
+                  icon: Icons.photo_camera_outlined,
+                  title: 'Afbeelding',
+                  subtitle:
+                      'Een goede afbeelding maakt je evenement aantrekkelijker.',
+                  child: _buildImagePicker(),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                _buildSection(
+                  icon: Icons.location_on_outlined,
+                  title: 'Locatie',
+                  subtitle:
+                      'Waar kunnen bezoekers je evenement vinden?',
+                  child: Column(
+                    children: [
+                      _buildLabel('Locatienaam'),
+                      const SizedBox(height: 7),
+                      _buildTextField(
+                        controller: _locationNameController,
+                        hintText: 'Bijv. De Oude Brouwerij',
+                        icon: Icons.storefront_outlined,
+                      ),
+                      const SizedBox(height: 18),
+                      _buildLabel('Straatnaam'),
+                      const SizedBox(height: 7),
+                      _buildTextField(
+                        controller: _streetController,
+                        hintText: 'Bijv. Dorpsstraat',
+                        icon: Icons.signpost_outlined,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
                         children: [
-                          _buildTextFieldLabel(
-                            'DATUM',
-                          ),
-
-                          const SizedBox(height: 6),
-
-                          InkWell(
-                            onTap: () =>
-                                _selectDate(context),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: inputColor,
-                                borderRadius:
-                                    BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: borderColor,
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Huisnummer'),
+                                const SizedBox(height: 7),
+                                _buildTextField(
+                                  controller:
+                                      _houseNumberController,
+                                  hintText: '42 A',
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
-                                children: [
-                                  Text(
-                                    _selectedDate == null
-                                        ? 'Kies datum'
-                                        : '${_selectedDate!.day}-'
-                                            '${_selectedDate!.month}-'
-                                            '${_selectedDate!.year}',
-                                    style:
-                                        GoogleFonts.inter(
-                                      color:
-                                          _selectedDate ==
-                                                  null
-                                              ? secondaryTextColor
-                                                  .withOpacity(
-                                                  0.6,
-                                                )
-                                              : textColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.calendar_month,
-                                    color: beigeColor,
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Postcode'),
+                                const SizedBox(height: 7),
+                                _buildTextField(
+                                  controller:
+                                      _postalCodeController,
+                                  hintText: '1234 AB',
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          _buildTextFieldLabel(
-                            'TIJD',
-                          ),
-
-                          const SizedBox(height: 6),
-
-                          InkWell(
-                            onTap: () =>
-                                _selectTime(context),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: inputColor,
-                                borderRadius:
-                                    BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: borderColor,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
-                                children: [
-                                  Text(
-                                    _selectedTime == null
-                                        ? 'Kies tijd'
-                                        : _selectedTime!
-                                            .format(context),
-                                    style:
-                                        GoogleFonts.inter(
-                                      color:
-                                          _selectedTime ==
-                                                  null
-                                              ? secondaryTextColor
-                                                  .withOpacity(
-                                                  0.6,
-                                                )
-                                              : textColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.access_time,
-                                    color: beigeColor,
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 18),
+                      _buildLabel('Stad / plaats'),
+                      const SizedBox(height: 7),
+                      _buildTextField(
+                        controller: _cityController,
+                        hintText: 'Bijv. Utrecht',
+                        icon: Icons.location_city_outlined,
                       ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                _buildSectionHeader(
-                  Icons.image_outlined,
-                  'AFBEELDING & FLYER',
-                ),
-
-                const SizedBox(height: 12),
-
-                _buildTextFieldLabel(
-                  'KIES AFBEELDING (ACHTERGROND)',
-                ),
-
-                const SizedBox(height: 6),
-
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 160,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: inputColor,
-                      borderRadius:
-                          BorderRadius.circular(8),
-                      border: Border.all(
-                        color: borderColor,
-                      ),
-                    ),
-                    child: _imageFile != null
-                        ? ClipRRect(
-                            borderRadius:
-                                BorderRadius.circular(8),
-                            child: Image.file(
-                              _imageFile!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                            ),
-                          )
-                        : _webImageBytes != null
-                            ? ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(8),
-                                child: Image.memory(
-                                  _webImageBytes!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              )
-                            : Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.add_a_photo,
-                                    color: beigeColor,
-                                    size: 32,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Klik om een achtergrondfoto te selecteren',
-                                    style:
-                                        GoogleFonts.inter(
-                                      color:
-                                          secondaryTextColor,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                    ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                _buildSectionHeader(
-                  Icons.location_on_outlined,
-                  'LOCATIE & GEGEVENS',
-                ),
-
-                const SizedBox(height: 12),
-
-                _buildTextFieldLabel(
-                  'STRAATNAAM',
-                ),
-
-                const SizedBox(height: 6),
-
-                _buildCustomTextField(
-                  controller: _streetController,
-                  hintText: 'Dorpsstraat',
+                _buildSection(
+                  icon: Icons.description_outlined,
+                  title: 'Beschrijving',
+                  subtitle:
+                      'Geef bezoekers wat meer informatie over het evenement.',
+                  child: _buildTextArea(),
                 ),
 
                 const SizedBox(height: 16),
 
-                _buildTextFieldLabel(
-                  'HUISNUMMER',
-                ),
-
-                const SizedBox(height: 6),
-
-                _buildCustomTextField(
-                  controller: _houseNumberController,
-                  hintText: '42 A',
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildTextFieldLabel(
-                  'POSTCODE',
-                ),
-
-                const SizedBox(height: 6),
-
-                _buildCustomTextField(
-                  controller: _postalCodeController,
-                  hintText: '1234 AB',
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildTextFieldLabel(
-                  'STAD',
-                ),
-
-                const SizedBox(height: 6),
-
-                _buildCustomTextField(
-                  controller: _cityController,
-                  hintText: 'Utrecht',
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildTextFieldLabel(
-                  'ZAAL / LOCATIE NAAM',
-                ),
-
-                const SizedBox(height: 6),
-
-                _buildCustomTextField(
-                  controller: _locationNameController,
-                  hintText: 'De Oude Brouwerij',
-                ),
-
-                const SizedBox(height: 24),
-
-                _buildSectionHeader(
-                  Icons.description_outlined,
-                  'OMSCHRIJVING & PROGRAMMA',
-                ),
-
-                const SizedBox(height: 12),
-
-                _buildTextArea(
-                  controller: _descriptionController,
-                  hintText:
-                      'Licht hier de smaakvolle brouwerij en speciaalbieren toe...',
-                ),
-
-                const SizedBox(height: 24),
-
-                _buildSectionHeader(
-                  Icons.confirmation_number_outlined,
-                  'TICKETS & PRIJZEN',
-                ),
-
-                const SizedBox(height: 12),
-
-                _buildTextFieldLabel(
-                  'TICKET TYPE',
-                ),
-
-                const SizedBox(height: 8),
-
-                _buildCheckboxOption(
-                  'Regulier',
-                  _isRegularChecked,
-                  (value) {
-                    setState(() {
-                      _isRegularChecked =
-                          value ?? false;
-                    });
-                  },
-                ),
-
-                _buildCheckboxOption(
-                  'Bier-ticket',
-                  _isBierTicketChecked,
-                  (value) {
-                    setState(() {
-                      _isBierTicketChecked =
-                          value ?? false;
-                    });
-                  },
-                ),
-
-                _buildCheckboxOption(
-                  'VIP-arrangement',
-                  _isVipChecked,
-                  (value) {
-                    setState(() {
-                      _isVipChecked =
-                          value ?? false;
-                    });
-                  },
-                ),
-
-                const SizedBox(height: 32),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: beigeColor,
-                      foregroundColor: backgroundColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(8),
+                _buildSection(
+                  icon: Icons.confirmation_number_outlined,
+                  title: 'Tickets',
+                  subtitle:
+                      'Welke soorten tickets zijn beschikbaar?',
+                  child: Column(
+                    children: [
+                      _buildTicketOption(
+                        icon: Icons.confirmation_num_outlined,
+                        title: 'Regulier',
+                        description: 'Standaard toegang',
+                        value: _isRegularChecked,
+                        onChanged: (value) {
+                          setState(() {
+                            _isRegularChecked = value;
+                          });
+                        },
                       ),
-                    ),
-                    onPressed: _isLoading
-                        ? null
-                        : _saveEventToSupabase,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(
-                              color: backgroundColor,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            'Evenement publiceren',
-                            style: GoogleFonts.inter(
-                              fontWeight:
-                                  FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
+                      const SizedBox(height: 10),
+                      _buildTicketOption(
+                        icon: Icons.local_drink_outlined,
+                        title: 'Bier-ticket',
+                        description: 'Toegang inclusief bier',
+                        value: _isBierTicketChecked,
+                        onChanged: (value) {
+                          setState(() {
+                            _isBierTicketChecked = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      _buildTicketOption(
+                        icon: Icons.workspace_premium_outlined,
+                        title: 'VIP-arrangement',
+                        description: 'Extra speciale ervaring',
+                        value: _isVipChecked,
+                        onChanged: (value) {
+                          setState(() {
+                            _isVipChecked = value;
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
+
+                _buildApprovalNotice(),
+
+                const SizedBox(height: 18),
+
+                _buildPublishButton(),
+
+                const SizedBox(height: 12),
+
+                Center(
+                  child: Text(
+                    'Je evenement wordt eerst gecontroleerd door een beheerder.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: secondaryTextColor,
+                      fontSize: 11,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -853,35 +590,119 @@ class _EventCreatePageState extends State<EventCreatePage> {
     );
   }
 
-  Widget _buildSectionHeader(
-    IconData icon,
-    String title,
-  ) {
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(95),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 10,
+            ),
+            child: Row(
+              children: [
+                Material(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => Navigator.pop(context),
+                    child: const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: textColor,
+                        size: 19,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Evenement toevoegen',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.playfairDisplay(
+                      color: textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 48),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIntro() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF3A2B21),
+            Color(0xFF292019),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: borderColor,
+        ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: beigeColor,
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: GoogleFonts.inter(
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: beigeColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(
+              Icons.sports_bar_outlined,
               color: beigeColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-              letterSpacing: 1.0,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Organiseer je evenement',
+                  style: GoogleFonts.playfairDisplay(
+                    color: textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Voeg een bierfestival, proeverij of ander evenement toe aan BierKompas.',
+                  style: GoogleFonts.inter(
+                    color: secondaryTextColor,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -889,29 +710,94 @@ class _EventCreatePageState extends State<EventCreatePage> {
     );
   }
 
-  Widget _buildTextFieldLabel(String label) {
-    return Text(
-      label,
-      style: GoogleFonts.inter(
-        color: secondaryTextColor,
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.8,
+  Widget _buildSection({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  icon,
+                  color: beigeColor,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        color: textColor,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        color: secondaryTextColor,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          child,
+        ],
       ),
     );
   }
 
-  Widget _buildCustomTextField({
-    TextEditingController? controller,
+  Widget _buildLabel(String label) {
+    return Text(
+      label,
+      style: GoogleFonts.inter(
+        color: secondaryTextColor,
+        fontSize: 10.5,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
     required String hintText,
-    IconData? suffixIcon,
-    String? prefixText,
+    IconData? icon,
   }) {
     return TextFormField(
       controller: controller,
       validator: (value) {
-        if (value == null ||
-            value.trim().isEmpty) {
+        if (value == null || value.trim().isEmpty) {
           return 'Dit veld is verplicht';
         }
 
@@ -919,59 +805,61 @@ class _EventCreatePageState extends State<EventCreatePage> {
       },
       style: GoogleFonts.inter(
         color: textColor,
-        fontSize: 14,
+        fontSize: 13.5,
       ),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: GoogleFonts.inter(
-          color: secondaryTextColor.withOpacity(0.6),
+          color: secondaryTextColor.withOpacity(0.55),
           fontSize: 13,
         ),
-        prefixText: prefixText,
-        prefixStyle: GoogleFonts.inter(
-          color: beigeColor,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-        ),
-        suffixIcon: suffixIcon != null
+        prefixIcon: icon != null
             ? Icon(
-                suffixIcon,
-                color: beigeColor,
-                size: 20,
+                icon,
+                color: secondaryTextColor,
+                size: 19,
               )
             : null,
         filled: true,
         fillColor: inputColor,
-        contentPadding:
-            const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 14,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 15,
         ),
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
             color: borderColor,
           ),
         ),
-        enabledBorder:
-            OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
             color: borderColor,
           ),
         ),
-        focusedBorder:
-            OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
             color: beigeColor,
+            width: 1.3,
           ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+          ),
+        ),
+        errorStyle: GoogleFonts.inter(
+          color: Colors.redAccent,
+          fontSize: 10,
         ),
       ),
     );
@@ -979,14 +867,10 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
   Widget _buildDropdownField() {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 13),
       decoration: BoxDecoration(
         color: inputColor,
-        borderRadius:
-            BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(13),
         border: Border.all(
           color: borderColor,
         ),
@@ -997,27 +881,36 @@ class _EventCreatePageState extends State<EventCreatePage> {
           isExpanded: true,
           dropdownColor: cardColor,
           icon: const Icon(
-            Icons.arrow_drop_down,
+            Icons.keyboard_arrow_down_rounded,
             color: beigeColor,
           ),
           style: GoogleFonts.inter(
             color: textColor,
-            fontSize: 14,
+            fontSize: 13.5,
           ),
-          items: _eventTypeOptions
-              .map<DropdownMenuItem<String>>(
-            (String value) {
+          items: _eventTypeOptions.map(
+            (value) {
               return DropdownMenuItem<String>(
                 value: value,
-                child: Text(value),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.local_bar_outlined,
+                      color: beigeColor,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(value),
+                  ],
+                ),
               );
             },
           ).toList(),
-          onChanged: (String? newValue) {
-            if (newValue == null) return;
+          onChanged: (value) {
+            if (value == null) return;
 
             setState(() {
-              _selectedEventType = newValue;
+              _selectedEventType = value;
             });
           },
         ),
@@ -1025,16 +918,207 @@ class _EventCreatePageState extends State<EventCreatePage> {
     );
   }
 
-  Widget _buildTextArea({
-    TextEditingController? controller,
-    required String hintText,
+  Widget _buildSelectionCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required bool selected,
+    required VoidCallback onTap,
   }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: inputColor,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: selected ? beigeColor : borderColor,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: beigeColor,
+                    size: 19,
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: secondaryTextColor,
+                    size: 18,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 11),
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 10,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  color: selected ? textColor : secondaryTextColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePicker() {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 205,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: inputColor,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(
+            color: _hasImage ? beigeColor : borderColor,
+          ),
+        ),
+        child: _hasImage
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.memory(
+                      _imageBytes!,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.05),
+                            Colors.black.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 14,
+                    bottom: 13,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: backgroundColor.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: beigeColor,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Afbeelding geselecteerd',
+                            style: GoogleFonts.inter(
+                              color: textColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: backgroundColor.withOpacity(0.88),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(
+                        Icons.edit_outlined,
+                        color: beigeColor,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: beigeColor.withOpacity(0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: beigeColor,
+                      size: 27,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Voeg een evenementfoto toe',
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tik om een afbeelding uit je galerij te kiezen',
+                    style: GoogleFonts.inter(
+                      color: secondaryTextColor,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildTextArea() {
     return TextFormField(
-      controller: controller,
-      maxLines: 4,
+      controller: _descriptionController,
+      maxLines: 6,
       validator: (value) {
-        if (value == null ||
-            value.trim().isEmpty) {
+        if (value == null || value.trim().isEmpty) {
           return 'Dit veld is verplicht';
         }
 
@@ -1042,78 +1126,236 @@ class _EventCreatePageState extends State<EventCreatePage> {
       },
       style: GoogleFonts.inter(
         color: textColor,
-        fontSize: 14,
+        fontSize: 13.5,
+        height: 1.5,
       ),
       decoration: InputDecoration(
-        hintText: hintText,
+        hintText:
+            'Vertel bezoekers wat ze kunnen verwachten...',
         hintStyle: GoogleFonts.inter(
-          color:
-              secondaryTextColor.withOpacity(0.6),
+          color: secondaryTextColor.withOpacity(0.55),
           fontSize: 13,
         ),
         filled: true,
         fillColor: inputColor,
-        contentPadding:
-            const EdgeInsets.all(12),
+        contentPadding: const EdgeInsets.all(15),
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
             color: borderColor,
           ),
         ),
-        enabledBorder:
-            OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
             color: borderColor,
           ),
         ),
-        focusedBorder:
-            OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
             color: beigeColor,
+            width: 1.3,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+          ),
+        ),
+        errorStyle: GoogleFonts.inter(
+          color: Colors.redAccent,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTicketOption({
+    required IconData icon,
+    required String title,
+    required String description,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: value
+                ? beigeColor.withOpacity(0.09)
+                : inputColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: value ? beigeColor : borderColor,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  icon,
+                  color: value
+                      ? beigeColor
+                      : secondaryTextColor,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        color: textColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: GoogleFonts.inter(
+                        color: secondaryTextColor,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Checkbox(
+                value: value,
+                onChanged: (newValue) {
+                  onChanged(newValue ?? false);
+                },
+                activeColor: beigeColor,
+                checkColor: backgroundColor,
+                side: const BorderSide(
+                  color: secondaryTextColor,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCheckboxOption(
-    String title,
-    bool value,
-    ValueChanged<bool?> onChanged,
-  ) {
-    return Row(
-      children: [
-        SizedBox(
-          height: 24,
-          width: 24,
-          child: Checkbox(
-            value: value,
-            onChanged: onChanged,
-            activeColor: beigeColor,
-            checkColor: backgroundColor,
-            side: const BorderSide(
-              color: secondaryTextColor,
+  Widget _buildApprovalNotice() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: beigeColor.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: beigeColor.withOpacity(0.22),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: beigeColor,
+            size: 20,
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Goedkeuring',
+                  style: GoogleFonts.inter(
+                    color: textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Na het indienen wordt je evenement gecontroleerd. Daarna kan het openbaar in de agenda verschijnen.',
+                  style: GoogleFonts.inter(
+                    color: secondaryTextColor,
+                    fontSize: 10.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            color: textColor,
-            fontSize: 13,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublishButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _saveEventToSupabase,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: beigeColor,
+          foregroundColor: backgroundColor,
+          disabledBackgroundColor: beigeColor.withOpacity(0.5),
+          disabledForegroundColor: backgroundColor.withOpacity(0.6),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-      ],
+        child: _isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: backgroundColor,
+                  strokeWidth: 2.3,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.send_rounded,
+                    size: 19,
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    'Evenement indienen',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
