@@ -17,6 +17,7 @@ import '../profile/cheers_service.dart';
 import '../profile/friends_service.dart';
 import '../profile/profile_page.dart';
 import '../profile/stats_service.dart';
+import '../scan/beer_scan_page.dart';
 import '../events/events_page.dart';
 import '../../shared/profile_avatar_button.dart';
 import 'social_page.dart';
@@ -621,8 +622,14 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
   Widget _buildActionGrid() {
     final tiles = [
-      _buildActionTile(Icons.explore_outlined, Icons.local_drink_outlined, 'Vinden & Proeven',
-          'ONTDEK BIEREN', () => _goTo(_tabFavorites)),
+      _buildActionTile(
+        Icons.explore_outlined,
+        Icons.local_drink_outlined,
+        'Vinden & Proeven',
+        'ONTDEK BIEREN',
+        () => _goTo(_tabFavorites),
+        cornerAction: _buildScanButton(),
+      ),
       _buildActionTile(Icons.map_outlined, Icons.location_on_outlined, 'Kaart & Locaties',
           'BROUWERIJ KAART', () => _goTo(_tabMap)),
       _buildActionTile(Icons.event_outlined, Icons.celebration_outlined, 'Feestjes & Agenda',
@@ -652,13 +659,31 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
+  /// Knop bovenop de "Vinden & Proeven"-tegel om direct een bier te scannen,
+  /// zonder eerst naar die tegel als geheel te hoeven navigeren.
+  Widget _buildScanButton() {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BeerScanPage())),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _background.withOpacity(0.6),
+          shape: BoxShape.circle,
+          border: Border.all(color: _primary.withOpacity(0.3)),
+        ),
+        child: const Icon(Icons.qr_code_scanner, color: _primary, size: 18),
+      ),
+    );
+  }
+
   Widget _buildActionTile(
     IconData icon,
     IconData backgroundIcon,
     String title,
     String subtitle,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    Widget? cornerAction,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: AspectRatio(
@@ -674,6 +699,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 bottom: -16,
                 child: Icon(backgroundIcon, size: 96, color: _onSurface.withOpacity(0.1)),
               ),
+              if (cornerAction != null) Positioned(top: 8, right: 8, child: cornerAction),
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(

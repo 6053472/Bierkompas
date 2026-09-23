@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../feed/feed_card.dart';
 import '../feed/feed_service.dart';
 import '../map/breweries.dart';
+import '../scan/beer_scan_page.dart';
 import 'beers.dart';
 import 'favorites_service.dart';
 import '../../shared/profile_avatar_button.dart';
@@ -181,6 +182,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            tooltip: 'Bier scannen',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BeerScanPage())),
+            icon: const Icon(Icons.qr_code_scanner, color: _primary),
           ),
           if (widget.onProfileTap != null)
             ProfileAvatarButton(onTap: widget.onProfileTap!, avatarUrl: widget.avatarUrl, size: 36),
