@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../home/home_page.dart';
 import 'auth_service.dart';
 import 'auth_storage.dart';
@@ -16,8 +17,10 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _error;
@@ -30,29 +33,75 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
       _error = null;
     });
+
     try {
       final user = await _authService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
       final hasConsent = await AuthStorage.hasCurrentConsent();
+
       if (!mounted) return;
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => hasConsent ? const HomePage() : ConsentPage(user: user),
+          builder: (_) => hasConsent
+              ? const HomePage()
+              : ConsentPage(user: user),
         ),
         (route) => false,
       );
-    } on AuthException catch (e) {
-      setState(() => _error = e.message);
+    } on Exception catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _googleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _authService.loginWithGoogle();
+    } on Exception catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _outlookLogin() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _authService.loginWithOutlook();
+    } on Exception catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -69,9 +118,14 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 32,
+            ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(
+                maxWidth: 400,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -89,9 +143,15 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.sports_bar, color: gold, size: 34),
+                    child: const Icon(
+                      Icons.sports_bar,
+                      color: gold,
+                      size: 34,
+                    ),
                   ),
+
                   const SizedBox(height: 16),
+
                   Text(
                     'Bierkompas',
                     style: GoogleFonts.playfairDisplay(
@@ -100,13 +160,20 @@ class _LoginPageState extends State<LoginPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
                     'Welkom terug. Log in om verder te ontdekken.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(color: muted, fontSize: 13),
+                    style: GoogleFonts.inter(
+                      color: muted,
+                      fontSize: 13,
+                    ),
                   ),
+
                   const SizedBox(height: 28),
+
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -123,72 +190,116 @@ class _LoginPageState extends State<LoginPage> {
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.stretch,
                         children: [
-                          _buildEmailField(field, cream, muted),
+                          _buildEmailField(
+                            field,
+                            cream,
+                            muted,
+                          ),
+
                           const SizedBox(height: 14),
-                          _buildPasswordField(field, cream, muted),
+
+                          _buildPasswordField(
+                            field,
+                            cream,
+                            muted,
+                          ),
+
                           if (_error != null) ...[
                             const SizedBox(height: 14),
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
-                              ),
-                              child: Text(
-                                _error!,
-                                style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                            _buildError(_error!),
                           ],
+
                           const SizedBox(height: 20),
+
                           SizedBox(
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _submit,
+                              onPressed:
+                                  _isLoading ? null : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: gold,
-                                foregroundColor: const Color(0xFF1E1712),
+                                foregroundColor:
+                                    const Color(0xFF1E1712),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
                                 ),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
                                       height: 20,
                                       width: 20,
-                                      child: CircularProgressIndicator(
+                                      child:
+                                          CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Color(0xFF1E1712),
+                                        color:
+                                            Color(0xFF1E1712),
                                       ),
                                     )
                                   : Text(
                                       'Inloggen',
                                       style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight:
+                                            FontWeight.bold,
                                         fontSize: 15,
                                       ),
                                     ),
                             ),
                           ),
+
+                          const SizedBox(height: 20),
+
+                          _buildDivider(muted),
+
+                          const SizedBox(height: 20),
+
+                          _buildSocialButton(
+                            text: 'Doorgaan met Google',
+                            icon: Icons.g_mobiledata,
+                            onPressed:
+                                _isLoading ? null : _googleLogin,
+                            cream: cream,
+                            field: field,
+                            muted: muted,
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          _buildSocialButton(
+                            text: 'Doorgaan met Outlook',
+                            icon: Icons.mail_outline,
+                            onPressed:
+                                _isLoading ? null : _outlookLogin,
+                            cream: cream,
+                            field: field,
+                            muted: muted,
+                          ),
                         ],
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const RegisterPage()),
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterPage(),
+                        ),
                       );
                     },
                     child: Text(
                       'Nog geen account? Registreren',
-                      style: GoogleFonts.inter(color: gold, fontWeight: FontWeight.w600, fontSize: 13),
+                      style: GoogleFonts.inter(
+                        color: gold,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -200,61 +311,190 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildEmailField(Color field, Color cream, Color muted) {
+  Widget _buildDivider(Color muted) {
+    return Row(
+      children: [
+        Expanded(
+          child: Divider(
+            color: muted.withOpacity(0.3),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'OF',
+            style: GoogleFonts.inter(
+              color: muted,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Divider(
+            color: muted.withOpacity(0.3),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required Color cream,
+    required Color field,
+    required Color muted,
+  }) {
+    return SizedBox(
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          color: cream,
+          size: 22,
+        ),
+        label: Text(
+          text,
+          style: GoogleFonts.inter(
+            color: cream,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: field,
+          side: BorderSide(
+            color: muted.withOpacity(0.25),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError(String error) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Colors.redAccent.withOpacity(0.4),
+        ),
+      ),
+      child: Text(
+        error,
+        style: GoogleFonts.inter(
+          color: Colors.redAccent,
+          fontSize: 13,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildEmailField(
+    Color field,
+    Color cream,
+    Color muted,
+  ) {
     return TextFormField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
-      style: GoogleFonts.inter(color: cream),
+      style: GoogleFonts.inter(
+        color: cream,
+      ),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) return 'Vul je e-mailadres in.';
+        if (value == null || value.trim().isEmpty) {
+          return 'Vul je e-mailadres in.';
+        }
+
         return null;
       },
       decoration: InputDecoration(
         labelText: 'E-mail',
-        prefixIcon: Icon(Icons.mail_outline, color: muted, size: 20),
-        labelStyle: GoogleFonts.inter(color: muted),
+        prefixIcon: Icon(
+          Icons.mail_outline,
+          color: muted,
+          size: 20,
+        ),
+        labelStyle: GoogleFonts.inter(
+          color: muted,
+        ),
         filled: true,
         fillColor: field,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        errorStyle: GoogleFonts.inter(color: Colors.redAccent, fontSize: 11),
+        errorStyle: GoogleFonts.inter(
+          color: Colors.redAccent,
+          fontSize: 11,
+        ),
       ),
     );
   }
 
-  Widget _buildPasswordField(Color field, Color cream, Color muted) {
+  Widget _buildPasswordField(
+    Color field,
+    Color cream,
+    Color muted,
+  ) {
     return TextFormField(
       controller: _passwordController,
       obscureText: _obscurePassword,
       textInputAction: TextInputAction.done,
       onFieldSubmitted: (_) => _submit(),
-      style: GoogleFonts.inter(color: cream),
+      style: GoogleFonts.inter(
+        color: cream,
+      ),
       validator: (value) {
-        if (value == null || value.isEmpty) return 'Vul je wachtwoord in.';
+        if (value == null || value.isEmpty) {
+          return 'Vul je wachtwoord in.';
+        }
+
         return null;
       },
       decoration: InputDecoration(
         labelText: 'Wachtwoord',
-        prefixIcon: Icon(Icons.lock_outline, color: muted, size: 20),
+        prefixIcon: Icon(
+          Icons.lock_outline,
+          color: muted,
+          size: 20,
+        ),
         suffixIcon: IconButton(
           icon: Icon(
-            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            _obscurePassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
             color: muted,
             size: 20,
           ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
         ),
-        labelStyle: GoogleFonts.inter(color: muted),
+        labelStyle: GoogleFonts.inter(
+          color: muted,
+        ),
         filled: true,
         fillColor: field,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        errorStyle: GoogleFonts.inter(color: Colors.redAccent, fontSize: 11),
+        errorStyle: GoogleFonts.inter(
+          color: Colors.redAccent,
+          fontSize: 11,
+        ),
       ),
     );
   }
