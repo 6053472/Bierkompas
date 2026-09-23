@@ -7,11 +7,15 @@ import '../favorites/beers.dart';
 class BeerScanLogResult {
   final int beersTasted;
   final int breweriesExplored;
+  final int currentStreak;
+  final int longestStreak;
   final List<String> newlyEarnedBadgeIds;
 
   const BeerScanLogResult({
     required this.beersTasted,
     required this.breweriesExplored,
+    required this.currentStreak,
+    required this.longestStreak,
     required this.newlyEarnedBadgeIds,
   });
 }
@@ -62,6 +66,8 @@ class BeerScanService {
       return BeerScanLogResult(
         beersTasted: row['beers_tasted'] as int? ?? 0,
         breweriesExplored: row['breweries_explored'] as int? ?? 0,
+        currentStreak: row['current_streak'] as int? ?? 0,
+        longestStreak: row['longest_streak'] as int? ?? 0,
         newlyEarnedBadgeIds: (row['newly_earned_badges'] as List? ?? const [])
             .map((b) => b as String)
             .toList(),

@@ -221,6 +221,27 @@ class _BadgeCard extends StatelessWidget {
               ),
             ),
           ),
+          if (!earned && badge.progress != null) ...[
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: badge.progress,
+                minHeight: 5,
+                backgroundColor: const Color(0xFF3C3028),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFFD4B28C)),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${badge.currentValue} / ${badge.requirementValue}',
+              style: GoogleFonts.inter(
+                color: const Color(0xFF9E8A7D),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

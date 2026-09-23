@@ -454,6 +454,14 @@ class _BeerFoundSheet extends StatelessWidget {
                 text: 'Gelogd! Je hebt nu ${result!.beersTasted} bieren geproefd.',
                 color: Colors.greenAccent.shade400,
               ),
+              if (result!.currentStreak > 0) ...[
+                const SizedBox(height: 12),
+                _statusBanner(
+                  icon: Icons.local_fire_department_outlined,
+                  text: 'Bier Streak: ${result!.currentStreak} dag${result!.currentStreak == 1 ? '' : 'en'} op rij!',
+                  color: Colors.orangeAccent,
+                ),
+              ],
               if (result!.newlyEarnedBadgeIds.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _statusBanner(

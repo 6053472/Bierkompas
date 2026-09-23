@@ -32,6 +32,7 @@
           "primary-container": "#d4975c",
           "on-primary-container": "#583000",
           "secondary": "#e3bfb2",
+          "success": "#8bc98b",
           "error": "#ffb4ab",
           "error-container": "#93000a",
           "on-error": "#690005",
@@ -47,11 +48,25 @@
   };
 </script>
 <style>
-  body { background-color: #1c110a; color: #f6ded1; }
+  body {
+    background: radial-gradient(ellipse at top, #251911 0%, #1c110a 55%) fixed;
+    color: #f6ded1;
+  }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   .copper-glow { box-shadow: 0px 4px 20px rgba(251, 185, 123, 0.15); }
-  .copper-border { border-color: rgba(251, 185, 123, 0.2); }
   .hidden { display: none !important; }
+  .nav-item.active { background-color: #d4975c22; color: #fbb97b; font-weight: 600; }
+  .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #403229; border-radius: 999px; }
+  .spinner {
+    width: 16px; height: 16px; border-radius: 999px;
+    border: 2px solid rgba(251,185,123,0.25); border-top-color: #fbb97b;
+    animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fade-in { animation: fadeIn 0.2s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body class="font-body antialiased min-h-screen">
@@ -62,15 +77,15 @@
     <div class="w-24 h-24 mb-6 rounded-full bg-surface-container flex items-center justify-center border border-primary/20 shadow-2xl">
       <span class="material-symbols-outlined text-primary text-5xl" style="font-variation-settings: 'FILL' 1;">shield_lock</span>
     </div>
-    <h1 class="font-display text-3xl text-primary tracking-tight mb-1">BEVEILIGDE TOEGANG</h1>
-    <h2 class="font-label text-xs text-on-surface-variant tracking-widest uppercase mb-6">Bierkompas &middot; Geautoriseerde zone</h2>
+    <h1 class="font-display text-3xl text-primary tracking-tight mb-1 text-center">BEVEILIGDE TOEGANG</h1>
+    <h2 class="font-label text-xs text-on-surface-variant tracking-widest uppercase mb-6 text-center">Bierkompas &middot; Geautoriseerde zone</h2>
 
     <div class="w-full bg-primary text-on-primary py-2 px-4 rounded-lg mb-6 flex items-center justify-center gap-2 shadow-lg">
       <span class="material-symbols-outlined text-[20px]">lock</span>
       <span class="font-label text-xs tracking-widest uppercase">Secure Zone</span>
     </div>
 
-    <form id="login-form" class="w-full bg-surface-container/60 border border-primary/20 rounded-xl p-6 flex flex-col gap-4 backdrop-blur-md shadow-2xl">
+    <form id="login-form" class="w-full bg-surface-container/70 border border-primary/20 rounded-xl p-6 flex flex-col gap-4 backdrop-blur-md shadow-2xl">
       <div class="flex flex-col gap-1">
         <label class="font-label text-xs text-on-surface-variant uppercase tracking-wide" for="email">E-mailadres</label>
         <div class="relative">
@@ -87,10 +102,10 @@
             class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-12 pr-4 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors"/>
         </div>
       </div>
-      <p id="login-error" class="hidden text-error text-sm"></p>
+      <p id="login-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2"></p>
       <button type="submit" id="login-button"
-        class="w-full mt-2 bg-primary text-on-primary font-label text-xs py-4 rounded-lg hover:opacity-90 transition-colors copper-glow uppercase tracking-widest">
-        Toegang verlenen
+        class="w-full mt-2 bg-primary text-on-primary font-label text-xs py-4 rounded-lg hover:opacity-90 transition-colors copper-glow uppercase tracking-widest flex items-center justify-center gap-2">
+        <span id="login-button-label">Toegang verlenen</span>
       </button>
     </form>
     <div class="mt-8 flex items-center gap-2 text-on-surface-variant/50 font-label text-[11px]">
@@ -103,22 +118,27 @@
 <!-- ===================== DASHBOARD VIEW ===================== -->
 <div id="dashboard-view" class="hidden flex flex-col md:flex-row min-h-screen">
   <!-- Sidebar (horizontale balk op mobiel, verticale zijbalk vanaf md) -->
-  <aside class="flex md:flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-4 shrink-0 items-center md:items-stretch gap-2 md:gap-1">
-    <div class="mb-0 md:mb-10 px-2 mr-auto md:mr-0">
-      <h1 class="font-display text-lg md:text-xl text-primary">Bierkompas</h1>
-      <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Admin</p>
+  <aside class="flex md:flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 items-center md:items-stretch gap-2 md:gap-1 z-10">
+    <div class="mb-0 md:mb-8 px-2 mr-auto md:mr-0 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary text-2xl hidden md:inline">sports_bar</span>
+      <div>
+        <h1 class="font-display text-lg md:text-xl text-primary leading-tight">Bierkompas</h1>
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Beheer</p>
+      </div>
     </div>
-    <nav class="flex md:flex-col gap-1">
-      <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface transition-colors">
+    <nav class="flex md:flex-col gap-1 md:flex-1">
+      <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
         <span class="material-symbols-outlined">event</span>
         <span class="font-body text-sm hidden sm:inline">Evenementen</span>
+        <span id="events-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
-      <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface transition-colors">
+      <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
         <span class="material-symbols-outlined">sports_bar</span>
         <span class="font-body text-sm hidden sm:inline">Bieren &amp; barcodes</span>
+        <span id="bieren-count-badge" class="hidden ml-auto bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
     </nav>
-    <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error transition-colors">
+    <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
       <span class="material-symbols-outlined">logout</span>
       <span class="font-body text-sm hidden sm:inline">Uitloggen</span>
     </button>
@@ -132,22 +152,49 @@
     </div>
 
     <!-- Events panel -->
-    <section id="panel-events" class="panel p-6 md:p-10">
-      <h2 class="font-display text-2xl text-on-surface mb-1">Evenement aanmeldingen</h2>
-      <p class="text-on-surface-variant text-sm mb-6">Controleer nieuwe evenementen voordat ze zichtbaar worden in de agenda.</p>
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div id="events-list" class="lg:col-span-5 flex flex-col gap-3"></div>
-        <div id="events-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[240px] flex items-center justify-center text-on-surface-variant text-sm">
-          Selecteer een evenement om details te bekijken.
+    <section id="panel-events" class="panel p-6 md:p-10 fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Evenement aanmeldingen</h2>
+            <p class="text-on-surface-variant text-sm">Controleer nieuwe evenementen voordat ze zichtbaar worden in de agenda.</p>
+          </div>
+          <button id="events-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div id="events-list" class="lg:col-span-5 flex flex-col gap-3"></div>
+          <div id="events-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[280px] flex items-center justify-center text-on-surface-variant text-sm text-center">
+            Selecteer een evenement om details te bekijken.
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Bieren panel -->
-    <section id="panel-bieren" class="panel p-6 md:p-10 hidden">
-      <h2 class="font-display text-2xl text-on-surface mb-1">Bieren &amp; barcodes</h2>
-      <p class="text-on-surface-variant text-sm mb-6">Stel de barcode van een bier in zodat gebruikers het kunnen scannen in de app. Laat leeg om scannen voor dat bier uit te schakelen.</p>
-      <div id="bieren-list" class="flex flex-col gap-3"></div>
+    <section id="panel-bieren" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Bieren &amp; barcodes</h2>
+            <p class="text-on-surface-variant text-sm">Stel de barcode van een bier in zodat gebruikers het kunnen scannen in de app. Laat leeg om scannen voor dat bier uit te schakelen.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mb-6 mt-4 flex-wrap">
+          <div class="relative flex-1 min-w-[200px] max-w-sm">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+            <input id="bieren-search" type="text" placeholder="Zoek op biernaam..."
+              class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-10 pr-4 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm"/>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
+            <input id="bieren-filter-missing" type="checkbox" class="rounded accent-primary"/>
+            Alleen zonder barcode
+          </label>
+          <span id="bieren-summary" class="ml-auto text-xs text-on-surface-variant"></span>
+        </div>
+        <div id="bieren-list" class="flex flex-col gap-2"></div>
+      </div>
     </section>
   </div>
 </div>
@@ -163,6 +210,7 @@
   const loginForm = document.getElementById("login-form");
   const loginError = document.getElementById("login-error");
   const loginButton = document.getElementById("login-button");
+  const loginButtonLabel = document.getElementById("login-button-label");
   const adminEmailLabel = document.getElementById("admin-email");
 
   function showLoginError(message) {
@@ -170,11 +218,15 @@
     loginError.classList.remove("hidden");
   }
 
+  function setLoginBusy(busy) {
+    loginButton.disabled = busy;
+    loginButtonLabel.innerHTML = busy ? '<span class="spinner"></span> Bezig...' : "Toegang verlenen";
+  }
+
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     loginError.classList.add("hidden");
-    loginButton.disabled = true;
-    loginButton.textContent = "Bezig...";
+    setLoginBusy(true);
 
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
@@ -182,8 +234,7 @@
     const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
       showLoginError("Inloggen mislukt: onjuiste combinatie van e-mail en wachtwoord.");
-      loginButton.disabled = false;
-      loginButton.textContent = "Toegang verlenen";
+      setLoginBusy(false);
       return;
     }
 
@@ -196,23 +247,27 @@
     if (profileError || !profile || profile.is_admin !== true) {
       await client.auth.signOut();
       showLoginError("Dit account heeft geen beheerdersrechten.");
-      loginButton.disabled = false;
-      loginButton.textContent = "Toegang verlenen";
+      setLoginBusy(false);
       return;
     }
 
+    enterDashboard(email);
+  });
+
+  function enterDashboard(email) {
     adminEmailLabel.textContent = email;
     loginView.classList.add("hidden");
     dashboardView.classList.remove("hidden");
     loadEvents();
     loadBieren();
-  });
+  }
 
   document.getElementById("logout-button").addEventListener("click", async () => {
     await client.auth.signOut();
     dashboardView.classList.add("hidden");
     loginView.classList.remove("hidden");
     loginForm.reset();
+    setLoginBusy(false);
   });
 
   // ---------- Navigatie tussen panelen ----------
@@ -221,12 +276,7 @@
 
   function setActivePanel(name) {
     Object.entries(panels).forEach(([key, el]) => el.classList.toggle("hidden", key !== name));
-    navItems.forEach((btn) => {
-      const active = btn.dataset.panel === name;
-      btn.classList.toggle("bg-primary-container", active);
-      btn.classList.toggle("text-on-primary-container", active);
-      btn.classList.toggle("text-on-surface-variant", !active);
-    });
+    navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.panel === name));
   }
   navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
   setActivePanel("events");
@@ -234,9 +284,23 @@
   // ---------- Evenementen goedkeuren ----------
   const eventsListEl = document.getElementById("events-list");
   const eventsDetailEl = document.getElementById("events-detail");
+  const eventsCountBadge = document.getElementById("events-count-badge");
+  document.getElementById("events-refresh").addEventListener("click", loadEvents);
+
+  function setBadge(el, count, tone) {
+    if (count > 0) {
+      el.textContent = count;
+      el.classList.remove("hidden");
+      el.classList.add("flex");
+      if (tone) el.className = el.className.replace(/bg-\S+/, tone);
+    } else {
+      el.classList.add("hidden");
+      el.classList.remove("flex");
+    }
+  }
 
   async function loadEvents() {
-    eventsListEl.innerHTML = '<p class="text-on-surface-variant text-sm px-2">Laden...</p>';
+    eventsListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm px-2 py-4"><span class="spinner"></span> Laden...</div>';
     const { data, error } = await client
       .from("events")
       .select("*")
@@ -244,28 +308,41 @@
       .order("created_at");
 
     if (error) {
-      eventsListEl.innerHTML = `<p class="text-error text-sm px-2">Kon evenementen niet laden: ${error.message}</p>`;
+      eventsListEl.innerHTML = `<p class="text-error text-sm px-2">Kon evenementen niet laden: ${escapeHtml(error.message)}</p>`;
       return;
     }
 
+    setBadge(eventsCountBadge, data.length);
+
     if (!data.length) {
-      eventsListEl.innerHTML = '<p class="text-on-surface-variant text-sm px-2">Geen evenementen die wachten op goedkeuring.</p>';
+      eventsListEl.innerHTML = '<div class="flex flex-col items-center text-center gap-2 py-10 text-on-surface-variant"><span class="material-symbols-outlined text-3xl opacity-50">task_alt</span><p class="text-sm">Geen evenementen die wachten op goedkeuring.</p></div>';
       eventsDetailEl.innerHTML = 'Selecteer een evenement om details te bekijken.';
       return;
     }
 
     eventsListEl.innerHTML = "";
-    data.forEach((event) => {
+    data.forEach((event, index) => {
       const card = document.createElement("div");
-      card.className = "bg-surface-container p-4 rounded-xl border border-outline-variant/20 cursor-pointer hover:bg-surface-container-high transition-colors";
+      card.dataset.eventCard = event.id;
+      card.className = "bg-surface-container p-4 rounded-xl border cursor-pointer transition-colors " + (index === 0 ? "border-primary/40 bg-surface-container-high" : "border-outline-variant/20 hover:bg-surface-container-high");
       card.innerHTML = `
-        <h4 class="font-display text-lg text-on-surface mb-1">${escapeHtml(event.name || "Naamloos")}</h4>
-        <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(event.event_type || "")}</p>
-        <div class="flex items-center gap-4 text-on-surface-variant text-xs">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <h4 class="font-display text-lg text-on-surface">${escapeHtml(event.name || "Naamloos")}</h4>
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-surface-container-highest text-on-surface-variant">${escapeHtml(event.event_type || "")}</span>
+        </div>
+        <div class="flex items-center gap-4 text-on-surface-variant text-xs mt-2">
           <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_today</span>${formatDate(event.start_date)}</span>
           <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span>${escapeHtml(event.city || "")}</span>
         </div>`;
-      card.addEventListener("click", () => showEventDetail(event));
+      card.addEventListener("click", () => {
+        eventsListEl.querySelectorAll("[data-event-card]").forEach((el) => {
+          el.classList.remove("border-primary/40", "bg-surface-container-high");
+          el.classList.add("border-outline-variant/20");
+        });
+        card.classList.remove("border-outline-variant/20");
+        card.classList.add("border-primary/40", "bg-surface-container-high");
+        showEventDetail(event);
+      });
       eventsListEl.appendChild(card);
     });
 
@@ -273,11 +350,14 @@
   }
 
   function showEventDetail(event) {
+    eventsDetailEl.classList.remove("items-center", "justify-center", "text-center");
     eventsDetailEl.innerHTML = `
-      <div class="w-full">
-        <h3 class="font-display text-2xl text-on-surface mb-2">${escapeHtml(event.name || "Naamloos")}</h3>
-        <p class="text-on-surface-variant text-sm mb-4">${escapeHtml(event.event_type || "")} &middot; door gebruiker ${escapeHtml(event.user_id || "")}</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm">
+      <div class="w-full fade-in">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-[10px] uppercase tracking-widest font-label px-2 py-1 rounded-full bg-primary-container/20 text-primary border border-primary/20">${escapeHtml(event.event_type || "Evenement")}</span>
+        </div>
+        <h3 class="font-display text-2xl text-on-surface mb-4">${escapeHtml(event.name || "Naamloos")}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 text-sm">
           <div>
             <span class="text-primary uppercase tracking-widest text-xs font-label">Locatie</span>
             <p class="text-on-surface mt-1">${escapeHtml(event.street || "")} ${escapeHtml(event.house_number || "")}, ${escapeHtml(event.postal_code || "")} ${escapeHtml(event.city || "")}</p>
@@ -289,25 +369,40 @@
             <p class="text-on-surface-variant mt-1">${escapeHtml(event.opening_hours || "")}</p>
           </div>
         </div>
-        <div class="flex gap-4">
-          <button class="reject-btn flex-1 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors font-label text-xs uppercase tracking-widest">
+        <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
+          <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
             Afwijzen
           </button>
-          <button class="approve-btn flex-1 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest">
+          <button class="approve-btn flex-1 mt-4 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
             Goedkeuren
           </button>
         </div>
       </div>`;
 
-    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", () => moderateEvent(event.id, "approve"));
-    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", () => moderateEvent(event.id, "reject"));
+    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget));
+    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
+      if (!confirm(`"${event.name}" definitief afwijzen? Dit evenement is nog nooit gepubliceerd en wordt verwijderd.`)) return;
+      moderateEvent(event.id, "reject", e.currentTarget);
+    });
   }
 
-  async function moderateEvent(eventId, action) {
+  async function moderateEvent(eventId, action, buttonEl) {
+    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+    buttonEl.disabled = true;
+    otherBtn.disabled = true;
+    const originalLabel = buttonEl.innerHTML;
+    buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
+
     const rpcName = action === "approve" ? "approve_event" : "reject_event";
     const { error } = await client.rpc(rpcName, { p_event_id: eventId });
     if (error) {
-      alert(`Actie mislukt: ${error.message}`);
+      const errorBox = document.getElementById("event-action-error");
+      errorBox.textContent = `Actie mislukt: ${error.message}`;
+      errorBox.classList.remove("hidden");
+      buttonEl.disabled = false;
+      otherBtn.disabled = false;
+      buttonEl.innerHTML = originalLabel;
       return;
     }
     loadEvents();
@@ -315,41 +410,95 @@
 
   // ---------- Bieren & barcodes ----------
   const bierenListEl = document.getElementById("bieren-list");
+  const bierenSearchEl = document.getElementById("bieren-search");
+  const bierenFilterMissingEl = document.getElementById("bieren-filter-missing");
+  const bierenSummaryEl = document.getElementById("bieren-summary");
+  const bierenCountBadge = document.getElementById("bieren-count-badge");
+  let allBieren = [];
+
+  bierenSearchEl.addEventListener("input", renderBieren);
+  bierenFilterMissingEl.addEventListener("change", renderBieren);
 
   async function loadBieren() {
-    bierenListEl.innerHTML = '<p class="text-on-surface-variant text-sm">Laden...</p>';
-    const { data, error } = await client.from("bieren").select("*").order("id");
+    bierenListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("bieren").select("*").order("naam");
 
     if (error) {
-      bierenListEl.innerHTML = `<p class="text-error text-sm">Kon bieren niet laden: ${error.message}</p>`;
+      bierenListEl.innerHTML = `<p class="text-error text-sm">Kon bieren niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    allBieren = data;
+    const missingCount = data.filter((b) => !b.barcode).length;
+    setBadge(bierenCountBadge, missingCount, "bg-error-container");
+    if (missingCount === 0) bierenCountBadge.classList.add("hidden");
+    renderBieren();
+  }
+
+  function renderBieren() {
+    const query = bierenSearchEl.value.trim().toLowerCase();
+    const onlyMissing = bierenFilterMissingEl.checked;
+    const filtered = allBieren.filter((b) => {
+      if (onlyMissing && b.barcode) return false;
+      if (query && !b.naam.toLowerCase().includes(query)) return false;
+      return true;
+    });
+
+    const missingTotal = allBieren.filter((b) => !b.barcode).length;
+    bierenSummaryEl.textContent = `${filtered.length} van ${allBieren.length} bieren · ${missingTotal} zonder barcode`;
+
+    if (!filtered.length) {
+      bierenListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Geen bieren gevonden.</p>';
       return;
     }
 
     bierenListEl.innerHTML = "";
-    data.forEach((bier) => {
+    filtered.forEach((bier) => {
+      const hasBarcode = Boolean(bier.barcode);
       const row = document.createElement("div");
-      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6";
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
       row.innerHTML = `
-        <div class="flex-1 min-w-0">
-          <p class="font-display text-lg text-on-surface truncate">${escapeHtml(bier.naam)}</p>
-          <p class="text-on-surface-variant text-xs">${escapeHtml(bier.stijl || "")}${bier.brouwerij ? " &middot; " + escapeHtml(bier.brouwerij) : ""}</p>
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="w-2 h-2 rounded-full shrink-0 ${hasBarcode ? "bg-success" : "bg-error"}" title="${hasBarcode ? "Barcode ingesteld" : "Nog geen barcode"}"></span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(bier.naam)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(bier.stijl || "")}${bier.brouwerij ? " &middot; " + escapeHtml(bier.brouwerij) : ""}</p>
+          </div>
         </div>
         <div class="flex items-center gap-2 flex-1">
           <input type="text" value="${escapeHtml(bier.barcode || "")}" placeholder="Nog geen barcode"
             class="barcode-input flex-1 bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm font-mono"/>
-          <button class="save-btn px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-label uppercase tracking-wide hover:opacity-90 transition-opacity">
-            Opslaan
+          <button class="save-btn px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-label uppercase tracking-wide hover:opacity-90 transition-opacity flex items-center gap-2 shrink-0">
+            <span class="save-btn-label">Opslaan</span>
           </button>
-          <span class="save-status text-xs text-on-surface-variant"></span>
+          <span class="save-status text-xs shrink-0"></span>
         </div>`;
 
       const input = row.querySelector(".barcode-input");
       const status = row.querySelector(".save-status");
-      row.querySelector(".save-btn").addEventListener("click", async () => {
-        status.textContent = "Opslaan...";
+      const saveBtn = row.querySelector(".save-btn");
+      const saveBtnLabel = row.querySelector(".save-btn-label");
+      saveBtn.addEventListener("click", async () => {
+        saveBtn.disabled = true;
+        saveBtnLabel.innerHTML = '<span class="spinner"></span>';
+        status.textContent = "";
         const value = input.value.trim() || null;
         const { error: saveError } = await client.from("bieren").update({ barcode: value, updated_at: new Date().toISOString() }).eq("id", bier.id);
-        status.textContent = saveError ? `Fout: ${saveError.message}` : "Opgeslagen ✓";
+        saveBtn.disabled = false;
+        saveBtnLabel.textContent = "Opslaan";
+        if (saveError) {
+          status.textContent = `Fout: ${saveError.message}`;
+          status.className = "save-status text-xs shrink-0 text-error";
+        } else {
+          bier.barcode = value;
+          status.innerHTML = '<span class="text-success">Opgeslagen &#10003;</span>';
+          const dot = row.querySelector("span[title]");
+          dot.className = `w-2 h-2 rounded-full shrink-0 ${value ? "bg-success" : "bg-error"}`;
+          dot.title = value ? "Barcode ingesteld" : "Nog geen barcode";
+          const missingCount = allBieren.filter((b) => !b.barcode).length;
+          setBadge(bierenCountBadge, missingCount, "bg-error-container");
+          if (missingCount === 0) bierenCountBadge.classList.add("hidden");
+        }
         setTimeout(() => (status.textContent = ""), 3000);
       });
 
@@ -376,11 +525,7 @@
     if (!data.session) return;
     const { data: profile } = await client.from("profiles").select("is_admin").eq("id", data.session.user.id).maybeSingle();
     if (profile && profile.is_admin === true) {
-      adminEmailLabel.textContent = data.session.user.email || "";
-      loginView.classList.add("hidden");
-      dashboardView.classList.remove("hidden");
-      loadEvents();
-      loadBieren();
+      enterDashboard(data.session.user.email || "");
     }
   })();
 </script>

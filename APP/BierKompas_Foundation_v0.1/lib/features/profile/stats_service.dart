@@ -11,6 +11,12 @@ class ProfileBadge {
   final bool earned;
   final String category;
 
+  /// Hoever de gebruiker al is richting [requirementValue], voor de
+  /// voortgangsbalk. Null als dit (nog) niet te meten is (bv. badges die op
+  /// een deelfunctie of beoordeling wachten die nog niet bestaat) -- dan
+  /// toont de UI geen balk, alleen behaald/vergrendeld.
+  final int? currentValue;
+
   const ProfileBadge({
     required this.id,
     required this.title,
@@ -20,7 +26,16 @@ class ProfileBadge {
     required this.requirementValue,
     required this.earned,
     this.category = 'algemeen',
+    this.currentValue,
   });
+
+  /// Voortgang tussen 0.0 en 1.0, of null als er geen meetbare voortgang is.
+  double? get progress {
+    if (earned) return 1.0;
+    final current = currentValue;
+    if (current == null || requirementValue <= 0) return null;
+    return (current / requirementValue).clamp(0.0, 1.0);
+  }
 }
 
 class ProfileStats {
@@ -104,27 +119,70 @@ class StatsService {
         .eq('id', userId)
         .maybeSingle();
 
+    final beersTasted = profile?['beers_tasted'] as int? ?? 0;
+    final currentStreak = profile?['current_streak'] as int? ?? 0;
+
+    // Voor 'style'- en 'taster_flight'-voortgang: welke bierstijlen heeft
+    // deze gebruiker al gelogd, en hoeveel daarvan zijn van vandaag.
+    // Als de tabellen nog niet bestaan (migratie niet gedraaid) simpelweg
+    // geen voortgang tonen voor die badges i.p.v. de pagina te laten crashen.
+    var tastedStyles = <String>{};
+    var stylesToday = <String>{};
+    try {
+      final logs = await _client.from('user_beer_logs').select('logged_at, bieren(stijl)').eq('user_id', userId);
+      final today = DateTime.now();
+      for (final row in (logs as List)) {
+        final stijl = (row['bieren'] as Map<String, dynamic>?)?['stijl'] as String?;
+        if (stijl == null) continue;
+        tastedStyles.add(stijl);
+        final loggedAt = DateTime.tryParse(row['logged_at'] as String? ?? '')?.toLocal();
+        if (loggedAt != null && loggedAt.year == today.year && loggedAt.month == today.month && loggedAt.day == today.day) {
+          stylesToday.add(stijl);
+        }
+      }
+    } catch (_) {
+      // Migratie (add_bieren_tabel.sql) nog niet gedraaid -- geen voortgang tonen.
+    }
+
     final allBadges = await _client.from('badges').select().order('requirement_value');
     final earnedRows = await _client.from('user_badges').select('badge_id').eq('user_id', userId);
     final earnedIds = (earnedRows as List).map((r) => r['badge_id'] as String).toSet();
 
-    final badges = (allBadges as List)
-        .map((row) => ProfileBadge(
-              id: row['id'] as String,
-              title: row['title'] as String,
-              description: row['description'] as String,
-              icon: _iconsByName[row['icon_name'] as String] ?? Icons.emoji_events,
-              imageAsset: row['image_asset'] as String?,
-              requirementValue: row['requirement_value'] as int,
-              earned: earnedIds.contains(row['id'] as String),
-              category: row['category'] as String? ?? 'algemeen',
-            ))
-        .toList();
+    final badges = (allBadges as List).map((row) {
+      final requirementType = row['requirement_type'] as String?;
+      final targetStyle = row['target_style'] as String?;
+      int? currentValue;
+      switch (requirementType) {
+        case 'streak':
+          currentValue = currentStreak;
+          break;
+        case 'checkins':
+          currentValue = beersTasted;
+          break;
+        case 'style':
+          if (targetStyle != null) currentValue = tastedStyles.contains(targetStyle) ? 1 : 0;
+          break;
+        case 'taster_flight':
+          currentValue = stylesToday.length;
+          break;
+      }
+      return ProfileBadge(
+        id: row['id'] as String,
+        title: row['title'] as String,
+        description: row['description'] as String,
+        icon: _iconsByName[row['icon_name'] as String] ?? Icons.emoji_events,
+        imageAsset: row['image_asset'] as String?,
+        requirementValue: row['requirement_value'] as int,
+        earned: earnedIds.contains(row['id'] as String),
+        category: row['category'] as String? ?? 'algemeen',
+        currentValue: currentValue,
+      );
+    }).toList();
 
     return ProfileStats(
-      beersTasted: profile?['beers_tasted'] as int? ?? 0,
+      beersTasted: beersTasted,
       breweriesExplored: profile?['breweries_explored'] as int? ?? 0,
-      currentStreak: profile?['current_streak'] as int? ?? 0,
+      currentStreak: currentStreak,
       longestStreak: profile?['longest_streak'] as int? ?? 0,
       badges: badges,
     );
