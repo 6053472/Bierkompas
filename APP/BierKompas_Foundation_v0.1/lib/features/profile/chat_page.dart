@@ -800,7 +800,7 @@ class _ChatPageState extends State<ChatPage> {
               : Container(
                   decoration: const BoxDecoration(color: _gold, shape: BoxShape.circle),
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_forward, color: _bg),
+                    icon: const Icon(Icons.arrow_forward, color: Color.fromARGB(255, 255, 255, 255)),
                     onPressed: () => _send(body: _textController.text),
                   ),
                 ),

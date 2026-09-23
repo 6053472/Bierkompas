@@ -51,10 +51,26 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadAvatar();
+    _loadStreak();
     _checkPendingCheers();
     _subscribeToCheers();
     _friendsService.touchPresence();
     _presenceTimer = Timer.periodic(const Duration(seconds: 60), (_) => _friendsService.touchPresence());
+  }
+
+  // Ververst na elke tabwissel, zodat een streak/badge bijgewerkt door een
+  // actie op een ander tabblad (bijv. een proefnotitie in Profiel) hier
+  // zichtbaar wordt zonder de hele app opnieuw te starten.
+  Future<void> _loadStreak() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final streak = await _statsService.fetchCurrentStreak(user.id);
+      if (!mounted) return;
+      setState(() => _currentStreak = streak);
+    } catch (e) {
+      debugPrint('Fout bij ophalen streak: $e');
+    }
   }
 
   @override
@@ -110,7 +126,7 @@ class _HomePageState extends State<HomePage> {
   // pop-up, ongeacht welk tabblad open staat.
   void _subscribeToCheers() {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) return;   
     _cheersChannel = Supabase.instance.client
         .channel('cheers_${user.id}')
         .onPostgresChanges(
@@ -127,13 +143,21 @@ class _HomePageState extends State<HomePage> {
         .subscribe();
   }
 
-  void _goToTab(int index) => setState(() => _currentIndex = index);
+  void _goToTab(int index) {
+    setState(() => _currentIndex = index);
+    _loadStreak();
+  }
 
   @override
   Widget build(BuildContext context) {
     final goToProfile = () => _goToTab(_tabProfile);
     final pages = [
-      DiscoveryContentPage(onNavigate: _goToTab, avatarUrl: _avatarUrl), // Index 0: Ontdek
+      DiscoveryContentPage(
+        onNavigate: _goToTab,
+        avatarUrl: _avatarUrl,
+        streak: _currentStreak,
+        onActivityRecorded: _loadStreak,
+      ), // Index 0: Ontdek
       EventsPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile), // Index 1: Agenda
       FavoritesPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile),
       MapPage(avatarUrl: _avatarUrl, onProfileTap: goToProfile),
@@ -156,31 +180,31 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.explore,
                   label: 'ONTDEK',
                   isSelected: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
+                  onTap: () => _goToTab(0),
                 ),
                 _BottomNavItem(
                   icon: Icons.calendar_today,
                   label: 'AGENDA',
                   isSelected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
+                  onTap: () => _goToTab(1),
                 ),
                 _BottomNavItem(
                   icon: Icons.favorite_border,
                   label: 'FAVORIETEN',
                   isSelected: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
+                  onTap: () => _goToTab(2),
                 ),
                 _BottomNavItem(
                   icon: Icons.map_outlined,
                   label: 'KAART',
                   isSelected: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
+                  onTap: () => _goToTab(3),
                 ),
                 _BottomNavItem(
                   icon: Icons.person_outline,
                   label: 'PROFIEL',
                   isSelected: _currentIndex == 4,
-                  onTap: () => setState(() => _currentIndex = 4),
+                  onTap: () => _goToTab(4),
                 ),
               ],
             ),
@@ -218,7 +242,17 @@ class DiscoveryContentPage extends StatefulWidget {
   /// Springt naar een tab in de onderste navigatiebalk van [HomePage].
   final ValueChanged<int>? onNavigate;
 
-  const DiscoveryContentPage({super.key, this.streak = 0, this.onNavigate, this.avatarUrl});
+  /// Aangeroepen na een activiteit die de Bier Streak kan bijwerken (liken,
+  /// posten), zodat [HomePage] de streak-indicator kan verversen.
+  final VoidCallback? onActivityRecorded;
+
+  const DiscoveryContentPage({
+    super.key,
+    this.streak = 0,
+    this.onNavigate,
+    this.avatarUrl,
+    this.onActivityRecorded,
+  });
 
   @override
   State<DiscoveryContentPage> createState() => _DiscoveryContentPageState();
@@ -226,6 +260,7 @@ class DiscoveryContentPage extends StatefulWidget {
 
 class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   final _favoritesService = FavoritesService();
+  final _statsService = StatsService();
 
   /// Alles wat de gebruiker heeft geliked, als `type:id` (zie [FeedItem.favoriteKeyOf]).
   final Set<String> _likedKeys = {};
@@ -284,6 +319,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         await _favoritesService.remove(userId: user.id, itemType: itemType, itemId: itemId);
       } else {
         await _favoritesService.add(userId: user.id, itemType: itemType, itemId: itemId);
+        await _recordStreakActivity();
       }
     } on FavoritesException catch (e) {
       if (!mounted) return;
@@ -414,6 +450,27 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
     if (post == null || !mounted) return;
     setState(() => _feedItems.insert(0, post));
+    await _recordStreakActivity();
+  }
+
+  // Liken en posten zijn activiteiten voor de Bier Streak. Mislukt dit (bijv.
+  // geen netwerk), dan mag dat de eigenlijke actie niet blokkeren.
+  Future<void> _recordStreakActivity() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final result = await _statsService.recordDailyActivity(user.id);
+      widget.onActivityRecorded?.call();
+      if (result.newlyEarnedBadgeTitles.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Nieuwe badge ontgrendeld: ${result.newlyEarnedBadgeTitles.join(", ")} 🏅'),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Fout bij bijwerken Bier Streak: $e');
+    }
   }
 
   Future<void> _deletePost(FeedItem item) async {

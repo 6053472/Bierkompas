@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shared/image_utils.dart';
+import '../profile/stats_service.dart';
 import 'feed_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -77,6 +79,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
         imageUrl = await _feedService.uploadImage(bytes: bytes, fileExt: _imageExt ?? 'jpg');
       }
       final post = await _feedService.createPost(body: body, imageUrl: imageUrl);
+      await _recordStreakActivity();
       if (!mounted) return;
       Navigator.of(context).pop(post);
     } on FeedException catch (e) {
@@ -85,6 +88,18 @@ class _CreatePostPageState extends State<CreatePostPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Posten mislukt: $e')),
       );
+    }
+  }
+
+  // Plaatsen is een activiteit voor de Bier Streak. Mislukt dit, dan mag dat
+  // de zojuist geplaatste post niet blokkeren.
+  Future<void> _recordStreakActivity() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      await StatsService().recordDailyActivity(user.id);
+    } catch (e) {
+      debugPrint('Fout bij bijwerken Bier Streak: $e');
     }
   }
 
