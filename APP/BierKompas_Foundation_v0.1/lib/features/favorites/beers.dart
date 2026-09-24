@@ -69,7 +69,11 @@ const koperenNachtTripel = Beer(
   styleInfo: _tripelStyle,
 );
 
-const beers = [
+// Geen `const` meer: nieuwe, door een beheerder aangemaakte bieren (zie
+// beers_service.dart) worden bij het opstarten van de app aan deze lijst
+// toegevoegd, zodat ze overal verschijnen waar `beers` gebruikt wordt zonder
+// dat elk scherm apart Supabase hoeft te bevragen.
+final List<Beer> beers = [
   Beer(
     id: 1,
     name: 'Zatte',

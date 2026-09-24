@@ -185,7 +185,70 @@
             <h2 class="font-display text-2xl text-on-surface mb-1">Bieren &amp; barcodes</h2>
             <p class="text-on-surface-variant text-sm">Stel de barcode van een bier in zodat gebruikers het kunnen scannen in de app. Laat leeg om scannen voor dat bier uit te schakelen.</p>
           </div>
+          <button id="bier-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw bier
+          </button>
         </div>
+
+        <!-- Nieuw bier toevoegen (ingeklapt totdat je op de knop klikt) -->
+        <div id="bier-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-4">Nieuw bier toevoegen</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span>
+              <input id="bier-new-naam" type="text" placeholder="Bijv. Gouden Hop Tripel"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Stijl</span>
+              <input id="bier-new-stijl" type="text" placeholder="Bijv. Tripel"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Brouwerij</span>
+              <input id="bier-new-brouwerij" type="text" placeholder="Bijv. Brouwerij De Gouden Hop"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">ABV</span>
+              <input id="bier-new-abv" type="text" placeholder="Bijv. 8.0% ABV"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beschrijving</span>
+              <textarea id="bier-new-beschrijving" rows="2" placeholder="Wat is dit voor bier?"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Hoe het gemaakt wordt</span>
+              <textarea id="bier-new-hoegemaakt" rows="2" placeholder="Brouwproces / ingrediënten"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Over deze bierstijl</span>
+              <textarea id="bier-new-stijlinfo" rows="2" placeholder="Algemene uitleg over de bierstijl"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL</span>
+              <input id="bier-new-foto" type="text" placeholder="https://..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Barcode (optioneel)</span>
+              <input id="bier-new-barcode" type="text" placeholder="EAN-13, bv. 8710400000013"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm font-mono"/>
+            </label>
+          </div>
+          <p id="bier-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="bier-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="bier-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="bier-new-save-label">Bier opslaan</span>
+            </button>
+          </div>
+        </div>
+
         <div class="flex items-center gap-3 mb-6 mt-4 flex-wrap">
           <div class="relative flex-1 min-w-[200px] max-w-sm">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
@@ -438,6 +501,64 @@
     }
     loadEvents();
   }
+
+  // ---------- Nieuw bier toevoegen ----------
+  const bierNewToggle = document.getElementById("bier-new-toggle");
+  const bierNewForm = document.getElementById("bier-new-form");
+  const bierNewError = document.getElementById("bier-new-error");
+  const bierNewSaveBtn = document.getElementById("bier-new-save");
+  const bierNewSaveLabel = document.getElementById("bier-new-save-label");
+
+  bierNewToggle.addEventListener("click", () => bierNewForm.classList.toggle("hidden"));
+  document.getElementById("bier-new-cancel").addEventListener("click", () => {
+    bierNewForm.classList.add("hidden");
+    clearBierNewForm();
+  });
+
+  function clearBierNewForm() {
+    ["naam", "stijl", "brouwerij", "abv", "beschrijving", "hoegemaakt", "stijlinfo", "foto", "barcode"].forEach((field) => {
+      document.getElementById(`bier-new-${field}`).value = "";
+    });
+    bierNewError.classList.add("hidden");
+  }
+
+  bierNewSaveBtn.addEventListener("click", async () => {
+    const naam = document.getElementById("bier-new-naam").value.trim();
+    if (!naam) {
+      bierNewError.textContent = "Naam is verplicht.";
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    bierNewSaveBtn.disabled = true;
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    bierNewError.classList.add("hidden");
+
+    const { error } = await client.from("bieren").insert({
+      naam,
+      stijl: document.getElementById("bier-new-stijl").value.trim() || null,
+      brouwerij: document.getElementById("bier-new-brouwerij").value.trim() || null,
+      abv: document.getElementById("bier-new-abv").value.trim() || null,
+      beschrijving: document.getElementById("bier-new-beschrijving").value.trim() || null,
+      hoe_gemaakt: document.getElementById("bier-new-hoegemaakt").value.trim() || null,
+      stijl_info: document.getElementById("bier-new-stijlinfo").value.trim() || null,
+      foto_url: document.getElementById("bier-new-foto").value.trim() || null,
+      barcode: document.getElementById("bier-new-barcode").value.trim() || null,
+    });
+
+    bierNewSaveBtn.disabled = false;
+    bierNewSaveLabel.textContent = "Bier opslaan";
+
+    if (error) {
+      bierNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearBierNewForm();
+    bierNewForm.classList.add("hidden");
+    loadBieren();
+  });
 
   // ---------- Bieren & barcodes ----------
   const bierenListEl = document.getElementById("bieren-list");
