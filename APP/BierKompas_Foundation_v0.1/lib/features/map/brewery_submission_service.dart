@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../shared/postal_code_utils.dart';
 import 'breweries.dart';
 
 class BrewerySubmissionException implements Exception {
@@ -65,7 +66,7 @@ class BrewerySubmissionService {
     required String city,
     String? photoUrl,
   }) async {
-    final address = '$street $houseNumber, $postalCode $city, Nederland';
+    final address = '$street $houseNumber, ${normalizeDutchPostalCode(postalCode)} $city, Nederland';
     final coords = await geocodeAddress(address);
 
     try {

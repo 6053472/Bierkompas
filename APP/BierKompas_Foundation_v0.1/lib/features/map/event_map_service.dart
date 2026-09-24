@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../shared/postal_code_utils.dart';
+
 /// Een goedgekeurd evenement zoals getoond op de Kaart, met coördinaten
 /// zodat het als pin kan worden geplaatst.
 class EventPin {
@@ -88,7 +90,7 @@ class EventMapService {
     final city = row['city'] as String?;
     if ((street == null || street.isEmpty) && (city == null || city.isEmpty)) return null;
     final houseNumber = row['house_number'] as String? ?? '';
-    final postalCode = row['postal_code'] as String? ?? '';
+    final postalCode = normalizeDutchPostalCode(row['postal_code'] as String? ?? '');
     return '${street ?? ''} $houseNumber, $postalCode ${city ?? ''}, Nederland';
   }
 
