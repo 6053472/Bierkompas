@@ -105,6 +105,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // Toont alleen een klein "meer laden"-hintje; blokkeert de kaart niet meer,
   // want de publieke Overpass-servers kunnen tot een minuut per poging duren.
   bool _loadingMoreBreweries = false;
+  // true als zowel OSM als de eigen aanmeldingen niet opgehaald konden
+  // worden (bv. trage/overbelaste publieke Overpass-servers) -- dan tonen we
+  // een duidelijke foutmelding met een "Opnieuw proberen"-knop i.p.v. stil
+  // een lege kaart te laten zien.
+  bool _breweriesLoadFailed = false;
 
   // Zoomniveaus voor het selecteren van een brouwerij op de kaart.
   static const _zoomOverview = 8.0;
@@ -281,22 +286,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // BROUWERIJEN
   // ============================================================
 
-  // Haalt extra brouwerijen op via OpenStreetMap, ná het tonen van de lokale
-  // lijst. Lukt dit niet (trage/overbelaste publieke server), dan blijft
-  // gewoon de lokale lijst staan — de gebruiker hoeft daar niet op te wachten.
+  // Haalt brouwerijen op: alleen zelf aangemelde en door een beheerder
+  // goedgekeurde brouwerijen (zie brewery_submission_service.dart). Er wordt
+  // bewust geen automatische externe brouwerij-databron (meer) gebruikt.
   Future<void> _loadBreweries() async {
     setState(() {
       _loadingMoreBreweries = true;
+      _breweriesLoadFailed = false;
     });
 
     try {
-      final onlineBreweries =
-          await _fetchDutchBreweries();
       final submittedBreweries =
           await _brewerySubmissionService.fetchApproved();
 
       final allBreweries = [
-        ...onlineBreweries,
         ...breweries,
         ...submittedBreweries,
       ];
@@ -324,206 +327,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       setState(() {
         _results = result;
         _loadingMoreBreweries = false;
+        _breweriesLoadFailed = false;
       });
     } catch (e) {
       debugPrint(
-        'Online brouwerijen laden mislukt: $e',
+        'Brouwerijen laden mislukt: $e',
       );
 
-      // De lokale lijst staat al (gezet in initState); niets overschrijven.
       if (!mounted) return;
 
       setState(() {
         _loadingMoreBreweries = false;
+        _breweriesLoadFailed = _results.isEmpty;
       });
     }
-  }
-
-  Future<List<Brewery>> _fetchDutchBreweries() async {
-    const query = '''
-[out:json][timeout:60];
-
-area["ISO3166-1"="NL"][admin_level=2]->.nl;
-
-(
-  nwr["craft"="brewery"](area.nl);
-  nwr["brewery"](area.nl);
-  nwr["industrial"="brewery"](area.nl);
-  nwr["building"="brewery"](area.nl);
-);
-
-out center tags;
-''';
-
-    const endpoints = [
-      'https://overpass-api.de/api/interpreter',
-      'https://overpass.kumi.systems/api/interpreter',
-      'https://overpass.private.coffee/api/interpreter',
-    ];
-
-    Object? lastError;
-
-    for (final endpoint in endpoints) {
-      try {
-        final response = await http
-            .post(
-              Uri.parse(endpoint),
-              headers: const {
-                'User-Agent': 'BierKompas/1.0',
-                'Content-Type':
-                    'application/x-www-form-urlencoded',
-              },
-              body: {
-                'data': query,
-              },
-            )
-            .timeout(
-              const Duration(seconds: 15),
-            );
-
-        if (response.statusCode != 200) {
-          lastError = Exception(
-            'Overpass ${response.statusCode}',
-          );
-          continue;
-        }
-
-        final decoded =
-            jsonDecode(response.body);
-
-        final elements =
-            decoded['elements'];
-
-        if (elements is! List) {
-          continue;
-        }
-
-        final result = <Brewery>[];
-
-        for (final element in elements) {
-          final tags = element['tags'];
-
-          if (tags is! Map) continue;
-
-          final name =
-              tags['name']?.toString().trim();
-
-          if (name == null ||
-              name.isEmpty) {
-            continue;
-          }
-
-          double? latitude;
-          double? longitude;
-
-          if (element['type'] == 'node') {
-            latitude =
-                double.tryParse(
-              element['lat'].toString(),
-            );
-
-            longitude =
-                double.tryParse(
-              element['lon'].toString(),
-            );
-          } else {
-            final center =
-                element['center'];
-
-            if (center is Map) {
-              latitude =
-                  double.tryParse(
-                center['lat'].toString(),
-              );
-
-              longitude =
-                  double.tryParse(
-                center['lon'].toString(),
-              );
-            }
-          }
-
-          if (latitude == null ||
-              longitude == null) {
-            continue;
-          }
-
-          final osmId =
-              int.tryParse(
-            element['id'].toString(),
-          );
-
-          if (osmId == null) continue;
-
-          final breweryId =
-              -osmId.abs();
-
-          final city =
-              tags['addr:city']?.toString() ??
-                  'Nederland';
-
-          final street =
-              tags['addr:street']?.toString();
-
-          final houseNumber =
-              tags['addr:housenumber']
-                  ?.toString();
-
-          String location = city;
-
-          if (street != null &&
-              street.isNotEmpty) {
-            location =
-                houseNumber != null &&
-                        houseNumber.isNotEmpty
-                    ? '$street $houseNumber, $city'
-                    : '$street, $city';
-          }
-
-          final website =
-              tags['website']?.toString();
-
-          result.add(
-            Brewery(
-              id: breweryId,
-              title: name,
-              distance:
-                  'Brouwerij in $city',
-              rating: '—',
-              tags: const [
-                'BROUWERIJ',
-              ],
-              location: location,
-              founded:
-                  tags['start_date']
-                      ?.toString(),
-              about:
-                  'Nederlandse brouwerij.',
-              facts: [
-                if (street != null)
-                  'Adres: $location',
-                if (website != null)
-                  'Website: $website',
-              ],
-              latitude: latitude,
-              longitude: longitude,
-            ),
-          );
-        }
-
-        return result;
-      } catch (e) {
-        lastError = e;
-
-        debugPrint(
-          'Overpass endpoint mislukt: $endpoint',
-        );
-      }
-    }
-
-    throw Exception(
-      'Geen Overpass-server beschikbaar: $lastError',
-    );
   }
 
   // ============================================================
@@ -1313,10 +1130,43 @@ out center tags;
                 Expanded(
                   child: _results.isEmpty
                       ? Center(
-                          child: Text(
-                            'Geen brouwerijen gevonden.',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF9E8A7D),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _breweriesLoadFailed ? Icons.wifi_off : Icons.map_outlined,
+                                  color: const Color(0xFF9E8A7D),
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _breweriesLoadFailed
+                                      ? 'Kon brouwerijen niet laden. Controleer je internetverbinding.'
+                                      : 'Nog geen brouwerijen gevonden. Meld de eerste aan!',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF9E8A7D),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                if (_breweriesLoadFailed) ...[
+                                  const SizedBox(height: 16),
+                                  OutlinedButton.icon(
+                                    onPressed: _loadingMoreBreweries ? null : _loadBreweries,
+                                    icon: const Icon(Icons.refresh, color: Color(0xFFD4B28C), size: 18),
+                                    label: Text(
+                                      'Opnieuw proberen',
+                                      style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Color(0xFFD4B28C)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         )
