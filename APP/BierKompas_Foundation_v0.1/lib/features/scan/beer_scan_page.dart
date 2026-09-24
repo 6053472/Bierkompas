@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../favorites/beers.dart';
 import 'beer_scan_service.dart';
+import 'web_camera_cleanup.dart';
 
 // Zelfde kleurenpalet als de rest van de app (Profiel, Kaart, Agenda, Ontdek, ...).
 const _background = Color(0xFF1E1712);
@@ -57,6 +58,10 @@ class _BeerScanPageState extends State<BeerScanPage> {
   @override
   void dispose() {
     _controller.dispose();
+    // mobile_scanner geeft de camera op web niet altijd netjes vrij (bekende
+    // bug in de "polling"-scanner) -- forceer het stoppen van elke nog actieve
+    // cameratrack zodat het cameralampje in de browser ook echt uitgaat.
+    stopAllCameraStreams();
     super.dispose();
   }
 
