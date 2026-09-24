@@ -8,11 +8,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../favorites/favorites_service.dart';
 import 'breweries.dart';
 import 'brewery_submission_page.dart';
 import 'brewery_submission_service.dart';
+import 'event_map_service.dart';
 import '../../shared/profile_avatar_button.dart';
 
 class MapPage extends StatefulWidget {
@@ -66,6 +68,19 @@ class SearchSuggestion {
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final _favoritesService = FavoritesService();
   final _brewerySubmissionService = BrewerySubmissionService();
+  final _eventMapService = EventMapService();
+
+  List<EventPin> _events = [];
+  // null = alle types tonen.
+  String? _selectedEventType;
+  static const _eventTypeFilters = [
+    'Festival',
+    'Proeverij',
+    'Brouwersmarkt',
+    'Lezing',
+    'Bokbiertocht',
+    'Bierwandeltocht',
+  ];
 
   final _pageController = PageController(
     viewportFraction: 0.86,
@@ -112,9 +127,46 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     _loadBreweries();
     _loadFavorites();
+    _loadEvents();
 
     _searchController.addListener(
       _onSearchChanged,
+    );
+  }
+
+  Future<void> _loadEvents() async {
+    final events = await _eventMapService.fetchApprovedWithCoordinates();
+    if (!mounted) return;
+    setState(() => _events = events);
+  }
+
+  List<EventPin> get _visibleEvents => _selectedEventType == null
+      ? _events
+      : _events.where((e) => e.eventType == _selectedEventType).toList();
+
+  IconData _iconForEventType(String type) {
+    switch (type) {
+      case 'Proeverij':
+        return Icons.local_bar;
+      case 'Brouwersmarkt':
+        return Icons.storefront;
+      case 'Lezing':
+        return Icons.menu_book;
+      case 'Bokbiertocht':
+      case 'Bierwandeltocht':
+        return Icons.directions_walk;
+      case 'Festival':
+      default:
+        return Icons.celebration;
+    }
+  }
+
+  Future<void> _openEventDetail(EventPin event) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF2C221C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => _EventDetailSheet(event: event),
     );
   }
 
@@ -1105,6 +1157,27 @@ out center tags;
                         ),
                       ),
                     ),
+                  for (final event in _visibleEvents)
+                    Marker(
+                      point: LatLng(event.latitude, event.longitude),
+                      width: 36,
+                      height: 36,
+                      child: GestureDetector(
+                        onTap: () => _openEventDetail(event),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD4B28C),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFF2C221C), width: 2),
+                          ),
+                          child: Icon(
+                            _iconForEventType(event.eventType),
+                            color: const Color(0xFF2C221C),
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -1203,6 +1276,8 @@ out center tags;
                     ],
                   ),
                 ),
+
+                if (_events.isNotEmpty) _buildEventTypeFilters(),
 
                 Padding(
                   padding:
@@ -1335,6 +1410,47 @@ out center tags;
               label: const Text('Brouwerij toevoegen'),
             )
           : null,
+    );
+  }
+
+  Widget _buildEventTypeFilters() {
+    final types = ['Alle types', ..._eventTypeFilters];
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: types.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final type = types[index];
+            final isAll = type == 'Alle types';
+            final selected = isAll ? _selectedEventType == null : _selectedEventType == type;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedEventType = isAll ? null : type),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected ? const Color(0xFFD4B28C) : const Color(0xFF2C221C).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Center(
+                  child: Text(
+                    type.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      color: selected ? const Color(0xFF1E1712) : const Color(0xFFEFE6DD),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -1901,6 +2017,115 @@ out center tags;
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottomsheet met evenement-details, geopend vanaf een pin op de kaart.
+class _EventDetailSheet extends StatelessWidget {
+  const _EventDetailSheet({required this.event});
+
+  final EventPin event;
+
+  static const _primary = Color(0xFFD4B28C);
+  static const _onSurface = Color(0xFFEFE6DD);
+  static const _onSurfaceVariant = Color(0xFF9E8A7D);
+
+  Future<void> _openRoute() async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}',
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
+    ];
+    final time = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    return '${date.day} ${months[date.month - 1]} • $time';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prices = <String>[
+      if (event.ticketRegular != null) 'Regulier €${event.ticketRegular!.toStringAsFixed(2)}',
+      if (event.ticketBeer != null) 'Bierpakket €${event.ticketBeer!.toStringAsFixed(2)}',
+      if (event.ticketVip != null) 'VIP €${event.ticketVip!.toStringAsFixed(2)}',
+    ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: _primary.withOpacity(0.15), borderRadius: BorderRadius.circular(999)),
+              child: Text(
+                event.eventType.toUpperCase(),
+                style: GoogleFonts.inter(color: _primary, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              event.name,
+              style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${_formatDate(event.startDate)}${event.city != null ? ' • ${event.city}' : ''}',
+              style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13),
+            ),
+            if (event.locationName != null && event.locationName!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(event.locationName!, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13)),
+            ],
+            if (event.description != null && event.description!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                event.description!,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.4),
+              ),
+            ],
+            if (prices.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: prices
+                    .map((p) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3028),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(p, style: GoogleFonts.inter(color: _onSurface, fontSize: 12)),
+                        ))
+                    .toList(),
+              ),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _openRoute,
+                icon: const Icon(Icons.directions, color: _primary, size: 18),
+                label: Text('Route (Google)', style: GoogleFonts.inter(color: _primary, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: _primary),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
