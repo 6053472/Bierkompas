@@ -157,6 +157,32 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   bool get _showBreweries => _contentFilter != _MapContentFilter.events;
 
+  bool get _showEmptyContentState {
+    if (_breweriesLoadFailed) return true;
+    switch (_contentFilter) {
+      case _MapContentFilter.breweries:
+        return _results.isEmpty;
+      case _MapContentFilter.events:
+        return _events.isEmpty;
+      case _MapContentFilter.all:
+        return _results.isEmpty && _events.isEmpty;
+    }
+  }
+
+  String get _emptyContentMessage {
+    if (_breweriesLoadFailed) {
+      return 'Kon brouwerijen niet laden. Controleer je internetverbinding.';
+    }
+    switch (_contentFilter) {
+      case _MapContentFilter.breweries:
+        return 'Nog geen brouwerijen gevonden. Meld de eerste aan met de knop "Brouwerij toevoegen" hieronder!';
+      case _MapContentFilter.events:
+        return 'Nog geen evenementen gevonden. Maak er een aan via de "+"-knop op de Agenda-pagina!';
+      case _MapContentFilter.all:
+        return 'Nog niets gevonden. Meld een brouwerij aan met de knop hieronder, of maak een evenement aan via de Agenda-pagina!';
+    }
+  }
+
   IconData _iconForEventType(String type) {
     switch (type) {
       case 'Proeverij':
@@ -1138,45 +1164,52 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
 
                 Expanded(
-                  child: (_showBreweries && _results.isEmpty)
+                  child: _showEmptyContentState
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _breweriesLoadFailed ? Icons.wifi_off : Icons.map_outlined,
-                                  color: const Color(0xFF9E8A7D),
-                                  size: 32,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _breweriesLoadFailed
-                                      ? 'Kon brouwerijen niet laden. Controleer je internetverbinding.'
-                                      : 'Nog geen brouwerijen gevonden. Meld de eerste aan!',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF9E8A7D),
-                                    fontSize: 13,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C221C),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFF3E312A)),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _breweriesLoadFailed ? Icons.wifi_off : Icons.map_outlined,
+                                    color: const Color(0xFFD4B28C),
+                                    size: 32,
                                   ),
-                                ),
-                                if (_breweriesLoadFailed) ...[
-                                  const SizedBox(height: 16),
-                                  OutlinedButton.icon(
-                                    onPressed: _loadingMoreBreweries ? null : _loadBreweries,
-                                    icon: const Icon(Icons.refresh, color: Color(0xFFD4B28C), size: 18),
-                                    label: Text(
-                                      'Opnieuw proberen',
-                                      style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: Color(0xFFD4B28C)),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _emptyContentMessage,
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFFEFE6DD),
+                                      fontSize: 13,
+                                      height: 1.4,
                                     ),
                                   ),
+                                  if (_breweriesLoadFailed) ...[
+                                    const SizedBox(height: 16),
+                                    OutlinedButton.icon(
+                                      onPressed: _loadingMoreBreweries ? null : _loadBreweries,
+                                      icon: const Icon(Icons.refresh, color: Color(0xFFD4B28C), size: 18),
+                                      label: Text(
+                                        'Opnieuw proberen',
+                                        style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Color(0xFFD4B28C)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
                         )
