@@ -11,6 +11,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../favorites/favorites_service.dart';
 import 'breweries.dart';
+import 'brewery_submission_page.dart';
+import 'brewery_submission_service.dart';
 import '../../shared/profile_avatar_button.dart';
 
 class MapPage extends StatefulWidget {
@@ -63,6 +65,7 @@ class SearchSuggestion {
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final _favoritesService = FavoritesService();
+  final _brewerySubmissionService = BrewerySubmissionService();
 
   final _pageController = PageController(
     viewportFraction: 0.86,
@@ -237,10 +240,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     try {
       final onlineBreweries =
           await _fetchDutchBreweries();
+      final submittedBreweries =
+          await _brewerySubmissionService.fetchApproved();
 
       final allBreweries = [
         ...onlineBreweries,
         ...breweries,
+        ...submittedBreweries,
       ];
 
       final unique = <String, Brewery>{};
@@ -1015,6 +1021,14 @@ out center tags;
     );
   }
 
+  Future<void> _openBrewerySubmission() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BrewerySubmissionPage()),
+    );
+    // Na terugkomen niets vernieuwen: de aanmelding moet eerst door een
+    // beheerder goedgekeurd worden voordat hij op de kaart verschijnt.
+  }
+
   // ============================================================
   // UI
   // ============================================================
@@ -1145,6 +1159,11 @@ out center tags;
                                     FontWeight.bold,
                               ),
                             ),
+                          ),
+                          IconButton(
+                            tooltip: 'Brouwerij toevoegen',
+                            onPressed: _openBrewerySubmission,
+                            icon: const Icon(Icons.add_business_outlined, color: Color(0xFFD4B28C)),
                           ),
                           if (widget.onProfileTap !=
                               null)
@@ -1675,15 +1694,24 @@ out center tags;
                     ),
                   ),
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.local_bar,
-                    color: Color(
-                      0xFF7A6355,
-                    ),
-                    size: 48,
-                  ),
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: brewery.imageUrl != null
+                    ? Image.network(
+                        brewery.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.local_bar, color: Color(0xFF7A6355), size: 48),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(
+                          Icons.local_bar,
+                          color: Color(
+                            0xFF7A6355,
+                          ),
+                          size: 48,
+                        ),
+                      ),
               ),
 
               Positioned(

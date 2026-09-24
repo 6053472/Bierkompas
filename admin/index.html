@@ -137,6 +137,11 @@
         <span class="font-body text-sm hidden sm:inline">Bieren &amp; barcodes</span>
         <span id="bieren-count-badge" class="hidden ml-auto bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
+      <button data-panel="brouwerijen" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">add_business</span>
+        <span class="font-body text-sm hidden sm:inline">Brouwerij-aanmeldingen</span>
+        <span id="brouwerijen-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
+      </button>
     </nav>
     <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
       <span class="material-symbols-outlined">logout</span>
@@ -194,6 +199,27 @@
           <span id="bieren-summary" class="ml-auto text-xs text-on-surface-variant"></span>
         </div>
         <div id="bieren-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Brouwerij-aanmeldingen panel -->
+    <section id="panel-brouwerijen" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Brouwerij-aanmeldingen</h2>
+            <p class="text-on-surface-variant text-sm">Zelf aangemelde brouwerijen verschijnen pas op de kaart nadat je ze hier goedkeurt.</p>
+          </div>
+          <button id="brouwerijen-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div id="brouwerijen-list" class="lg:col-span-5 flex flex-col gap-3"></div>
+          <div id="brouwerijen-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[280px] flex items-center justify-center text-on-surface-variant text-sm text-center">
+            Selecteer een aanmelding om details te bekijken.
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -260,6 +286,7 @@
     dashboardView.classList.remove("hidden");
     loadEvents();
     loadBieren();
+    loadBrouwerijen();
   }
 
   document.getElementById("logout-button").addEventListener("click", async () => {
@@ -272,7 +299,11 @@
 
   // ---------- Navigatie tussen panelen ----------
   const navItems = document.querySelectorAll(".nav-item");
-  const panels = { events: document.getElementById("panel-events"), bieren: document.getElementById("panel-bieren") };
+  const panels = {
+    events: document.getElementById("panel-events"),
+    bieren: document.getElementById("panel-bieren"),
+    brouwerijen: document.getElementById("panel-brouwerijen"),
+  };
 
   function setActivePanel(name) {
     Object.entries(panels).forEach(([key, el]) => el.classList.toggle("hidden", key !== name));
@@ -504,6 +535,121 @@
 
       bierenListEl.appendChild(row);
     });
+  }
+
+  // ---------- Brouwerij-aanmeldingen ----------
+  const brouwerijenListEl = document.getElementById("brouwerijen-list");
+  const brouwerijenDetailEl = document.getElementById("brouwerijen-detail");
+  const brouwerijenCountBadge = document.getElementById("brouwerijen-count-badge");
+  document.getElementById("brouwerijen-refresh").addEventListener("click", loadBrouwerijen);
+
+  async function loadBrouwerijen() {
+    brouwerijenListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm px-2 py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("brewery_submissions")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at");
+
+    if (error) {
+      brouwerijenListEl.innerHTML = `<p class="text-error text-sm px-2">Kon aanmeldingen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(brouwerijenCountBadge, data.length);
+
+    if (!data.length) {
+      brouwerijenListEl.innerHTML = '<div class="flex flex-col items-center text-center gap-2 py-10 text-on-surface-variant"><span class="material-symbols-outlined text-3xl opacity-50">task_alt</span><p class="text-sm">Geen aanmeldingen die wachten op goedkeuring.</p></div>';
+      brouwerijenDetailEl.innerHTML = 'Selecteer een aanmelding om details te bekijken.';
+      return;
+    }
+
+    brouwerijenListEl.innerHTML = "";
+    data.forEach((sub, index) => {
+      const card = document.createElement("div");
+      card.dataset.brouwerijCard = sub.id;
+      card.className = "bg-surface-container p-4 rounded-xl border cursor-pointer transition-colors flex gap-3 items-center " + (index === 0 ? "border-primary/40 bg-surface-container-high" : "border-outline-variant/20 hover:bg-surface-container-high");
+      card.innerHTML = `
+        ${sub.photo_url
+          ? `<img src="${escapeHtml(sub.photo_url)}" class="w-14 h-14 rounded-lg object-cover shrink-0" alt=""/>`
+          : `<div class="w-14 h-14 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-surface-variant">local_bar</span></div>`}
+        <div class="min-w-0">
+          <h4 class="font-display text-lg text-on-surface truncate">${escapeHtml(sub.naam)}</h4>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(sub.city || "")}</p>
+        </div>`;
+      card.addEventListener("click", () => {
+        brouwerijenListEl.querySelectorAll("[data-brouwerij-card]").forEach((el) => {
+          el.classList.remove("border-primary/40", "bg-surface-container-high");
+          el.classList.add("border-outline-variant/20");
+        });
+        card.classList.remove("border-outline-variant/20");
+        card.classList.add("border-primary/40", "bg-surface-container-high");
+        showBrouwerijDetail(sub);
+      });
+      brouwerijenListEl.appendChild(card);
+    });
+
+    showBrouwerijDetail(data[0]);
+  }
+
+  function showBrouwerijDetail(sub) {
+    brouwerijenDetailEl.classList.remove("items-center", "justify-center", "text-center");
+    const hasCoords = sub.latitude != null && sub.longitude != null;
+    brouwerijenDetailEl.innerHTML = `
+      <div class="w-full fade-in">
+        ${sub.photo_url ? `<img src="${escapeHtml(sub.photo_url)}" class="w-full h-48 object-cover rounded-xl mb-4"/>` : ""}
+        <h3 class="font-display text-2xl text-on-surface mb-2">${escapeHtml(sub.naam)}</h3>
+        <p class="text-on-surface-variant text-sm mb-4">${escapeHtml(sub.beschrijving || "")}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 text-sm">
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Adres</span>
+            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}</p>
+          </div>
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Positie op kaart</span>
+            <p class="mt-1 ${hasCoords ? "text-on-surface" : "text-error"}">${hasCoords ? `${sub.latitude.toFixed(5)}, ${sub.longitude.toFixed(5)}` : "Niet gevonden -- verschijnt niet op de kaart totdat het adres klopt"}</p>
+          </div>
+        </div>
+        <div id="brouwerij-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
+          <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Afwijzen
+          </button>
+          <button class="approve-btn flex-1 mt-4 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Goedkeuren
+          </button>
+        </div>
+      </div>`;
+
+    brouwerijenDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateBrouwerij(sub.id, "approve", e.currentTarget));
+    brouwerijenDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
+      const reason = prompt(`Reden voor afwijzen van "${sub.naam}" (optioneel):`);
+      if (reason === null) return; // geannuleerd
+      moderateBrouwerij(sub.id, "reject", e.currentTarget, reason || null);
+    });
+  }
+
+  async function moderateBrouwerij(id, action, buttonEl, reason) {
+    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+    buttonEl.disabled = true;
+    otherBtn.disabled = true;
+    const originalLabel = buttonEl.innerHTML;
+    buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
+
+    const { error } = action === "approve"
+      ? await client.rpc("approve_brewery_submission", { p_submission_id: id })
+      : await client.rpc("reject_brewery_submission", { p_submission_id: id, p_reason: reason ?? null });
+
+    if (error) {
+      const errorBox = document.getElementById("brouwerij-action-error");
+      errorBox.textContent = `Actie mislukt: ${error.message}`;
+      errorBox.classList.remove("hidden");
+      buttonEl.disabled = false;
+      otherBtn.disabled = false;
+      buttonEl.innerHTML = originalLabel;
+      return;
+    }
+    loadBrouwerijen();
   }
 
   function escapeHtml(value) {

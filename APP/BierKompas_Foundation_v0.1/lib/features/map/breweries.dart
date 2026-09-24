@@ -14,6 +14,10 @@ class Brewery {
   final double latitude;
   final double longitude;
 
+  /// Foto van de locatie, alleen aanwezig bij brouwerijen die via "Brouwerij
+  /// toevoegen" zijn aangemeld en door een beheerder goedgekeurd.
+  final String? imageUrl;
+
   const Brewery({
     required this.id,
     required this.title,
@@ -26,6 +30,7 @@ class Brewery {
     required this.latitude,
     required this.longitude,
     this.founded,
+    this.imageUrl,
   });
 }
 
