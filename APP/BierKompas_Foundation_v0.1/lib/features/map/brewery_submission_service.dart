@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../shared/postal_code_utils.dart';
+import '../../shared/geocoding_service.dart';
 import 'breweries.dart';
 
 class BrewerySubmissionException implements Exception {
@@ -21,30 +19,6 @@ class BrewerySubmissionException implements Exception {
 /// supabase/add_brewery_submissions.sql).
 class BrewerySubmissionService {
   SupabaseClient get _client => Supabase.instance.client;
-
-  /// Zoekt de coördinaten van een adres via dezelfde gratis Nominatim-dienst
-  /// (OpenStreetMap) die de Kaart-pagina al gebruikt voor locatiezoeken.
-  /// Geeft null terug als het adres niet gevonden kan worden -- de aanmelding
-  /// kan dan nog steeds worden ingediend, alleen zonder positie op de kaart
-  /// totdat dat handmatig wordt hersteld.
-  Future<(double, double)?> geocodeAddress(String address) async {
-    try {
-      final uri = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${Uri.encodeQueryComponent(address)}',
-      );
-      final response = await http.get(uri, headers: {'User-Agent': 'BierKompas/1.0'});
-      if (response.statusCode != 200) return null;
-      final results = jsonDecode(response.body) as List;
-      if (results.isEmpty) return null;
-      final first = results.first as Map<String, dynamic>;
-      final lat = double.tryParse(first['lat'] as String? ?? '');
-      final lon = double.tryParse(first['lon'] as String? ?? '');
-      if (lat == null || lon == null) return null;
-      return (lat, lon);
-    } catch (_) {
-      return null;
-    }
-  }
 
   Future<String> uploadPhoto({required String userId, required Uint8List bytes}) async {
     final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -66,8 +40,23 @@ class BrewerySubmissionService {
     required String city,
     String? photoUrl,
   }) async {
-    final address = '$street $houseNumber, ${normalizeDutchPostalCode(postalCode)} $city, Nederland';
-    final coords = await geocodeAddress(address);
+    final geocode = await geocodeDutchAddress(
+      street: street,
+      houseNumber: houseNumber,
+      postalCode: postalCode,
+      city: city,
+    );
+
+    if (geocode.outcome == GeocodeOutcome.notFound) {
+      throw const BrewerySubmissionException(
+        'Dit adres kon niet gevonden worden. Controleer straat, huisnummer, postcode en plaats.',
+      );
+    }
+    if (geocode.outcome == GeocodeOutcome.serviceUnavailable) {
+      throw const BrewerySubmissionException(
+        'Kon het adres niet controleren (geen verbinding). Probeer het opnieuw.',
+      );
+    }
 
     try {
       await _client.from('brewery_submissions').insert({
@@ -78,8 +67,8 @@ class BrewerySubmissionService {
         'house_number': houseNumber,
         'postal_code': postalCode,
         'city': city,
-        'latitude': coords?.$1,
-        'longitude': coords?.$2,
+        'latitude': geocode.latitude,
+        'longitude': geocode.longitude,
         'photo_url': photoUrl,
       });
     } catch (e) {

@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../shared/geocoding_service.dart';
+
 class EventCreatePage extends StatefulWidget {
   const EventCreatePage({super.key});
 
@@ -216,6 +218,35 @@ class _EventCreatePageState extends State<EventCreatePage> {
     setState(() {
       _isLoading = true;
     });
+
+    // Adres moet écht bestaan, anders verschijnt het evenement straks nooit
+    // als pin op de kaart -- controleer dit vóórdat we iets opslaan.
+    final geocode = await geocodeDutchAddress(
+      street: _streetController.text.trim(),
+      houseNumber: _houseNumberController.text.trim(),
+      postalCode: _postalCodeController.text.trim(),
+      city: _cityController.text.trim(),
+    );
+
+    if (geocode.outcome == GeocodeOutcome.notFound) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showMessage(
+        'Dit adres kon niet gevonden worden. Controleer straat, huisnummer, postcode en plaats.',
+        isError: true,
+      );
+      return;
+    }
+
+    if (geocode.outcome == GeocodeOutcome.serviceUnavailable) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showMessage(
+        'Kon het adres niet controleren (geen verbinding). Probeer het opnieuw.',
+        isError: true,
+      );
+      return;
+    }
 
     try {
       final supabase = Supabase.instance.client;
