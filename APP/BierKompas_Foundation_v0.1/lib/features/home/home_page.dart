@@ -9,7 +9,6 @@ import '../favorites/favorites_page.dart';
 import '../favorites/favorites_service.dart';
 import '../feed/feed_card.dart';
 import '../feed/feed_service.dart';
-import '../map/breweries.dart';
 import '../map/map_page.dart';
 import '../profile/cheer_confirmation_page.dart';
 import '../profile/cheer_overlay.dart';
@@ -233,8 +232,6 @@ const _logoImage =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuBM580LJgGSlvZ-vRLbR8gR8YgCyscQpi9v23krIsU1Guv5lOfaBskJ9JU0mAQfjQ1lLx2JpEin-c8CRLQUKrrp2h9_rlhwvsXtUzKB82_sN9jqFo8KaIZ4p0n6lW7t7-a9ZBD17gqjKLyg7VthIMxzX5MEI8ErfqOXJhOV6IVqqi21Eo84uNNaBkkMfh3dS6SoiH87ofeiFMlfb7V-RoAaWbx94fXBu2zBenGe_GMOUk2P_--GMBAnIrE35R6aGf-bZA';
 const _popularImage =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuANIbUEodWyxyWEqbHFoWd_APYDtoiXgTOVbAJ5TIOp9PKG4baeF5XYwf34634GW-PHvDpk4FhxpB1XlsZEFAl3BsWVxT8Gq-KlOZ01ggozbCfeF3fRoufrH8N5tDetdyMY9uKUxDAadw9wON36RlMvSHNjV30Ol5XjZ06tnPRARXfPUGTEFIa5xw_1m7rvTyggDsC2HvYxMuo3GNidOYo-3ypVQq14WiAoZWsApQQMn_T-2VSeoFN7';
-const _partnerImage =
-    'https://lh3.googleusercontent.com/aida/AP1WRLvi8Zj598SlngHlPQofwL5eYRc3MWYFpw3q0uSxb7KHaatHvGFYih0mFHKiXgYpGD89u_tyS1o_Z-D8liFFV3vILgmLQ2B-62H7Kw3W71EdDCPKNBIdxCPSF2XAzQe0l51bqlHGvMUWnC96SsViQwlrVrdGlB93UeNGY657gJrtotMDVSkxt3ffWswZIsI3OM0wKkfthjWOFv1o1b-zqfn3YAaJ5uRGzluZ0svUF-FP31saG_v6yWa0kTQ';
 class DiscoveryContentPage extends StatefulWidget {
   final int streak;
   final String? avatarUrl;
@@ -522,21 +519,6 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                     topRight: _heartButton(
                       _isLiked(beerItemType, koperenNachtTripel.id),
                       () => _toggleLike(beerItemType, koperenNachtTripel.id),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  _sectionLabel('Partner in de Kijker'),
-                  _buildFeaturedCard(
-                    imageUrl: _partnerImage,
-                    badge: 'Aanbevolen',
-                    badgeColor: _secondary,
-                    badgeTextColor: _onSecondary,
-                    title: grutePierProeflokaal.title,
-                    subtitle: 'Bier & Spijs specialiteiten: Probeer ons Dubbel stoofvlees.',
-                    onTap: () => _goTo(_tabMap),
-                    topRight: _heartButton(
-                      _isLiked(breweryItemType, grutePierProeflokaal.id),
-                      () => _toggleLike(breweryItemType, grutePierProeflokaal.id),
                     ),
                   ),
                   const SizedBox(height: 48),
