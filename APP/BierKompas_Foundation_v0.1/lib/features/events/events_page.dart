@@ -63,16 +63,19 @@ class _EventsPageState extends State<EventsPage> {
     if (user == null) return;
 
     try {
-      final profile = await _supabase
+      final response = await _supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
-          .maybeSingle();
+          .limit(1);
+
+      final rows = List<Map<String, dynamic>>.from(response);
 
       if (!mounted) return;
 
       setState(() {
-        _isAdmin = profile?['is_admin'] == true;
+        _isAdmin =
+            rows.isNotEmpty && rows.first['is_admin'] == true;
       });
     } catch (e) {
       debugPrint('Admin controleren mislukt: $e');
@@ -243,46 +246,82 @@ class _EventsPageState extends State<EventsPage> {
     });
   }
 
-  Future<String?> _getRegistrationStatus(
-    int eventId,
-  ) async {
+  Future<String?> _getRegistrationStatus(int eventId) async {
     final user = _supabase.auth.currentUser;
 
     if (user == null) return null;
 
-    final result = await _supabase
-        .from('event_registrations')
-        .select('status')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+    try {
+      final response = await _supabase
+          .from('event_registrations')
+          .select('status')
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
+          .limit(1);
 
-    return result?['status']?.toString();
+      final rows = List<Map<String, dynamic>>.from(response);
+
+      if (rows.isEmpty) {
+        return null;
+      }
+
+      return rows.first['status']?.toString();
+    } catch (e) {
+      debugPrint('Registratiestatus ophalen mislukt: $e');
+      return null;
+    }
   }
 
-  Future<void> _registerForEvent(
-    int eventId,
-  ) async {
+  Future<String?> _registerForEvent(int eventId) async {
     final user = _supabase.auth.currentUser;
 
     if (user == null) {
-      _showMessage('Je moet ingelogd zijn om je aan te melden.');
-      return;
+      _showMessage(
+        'Je moet ingelogd zijn om je aan te melden.',
+      );
+      return null;
     }
 
     try {
-      final existing = await _supabase
+      final response = await _supabase
           .from('event_registrations')
           .select('id,status')
           .eq('event_id', eventId)
           .eq('user_id', user.id)
-          .maybeSingle();
+          .limit(1);
 
-      if (existing != null) {
-        _showMessage(
-          'Je hebt je al aangemeld voor dit evenement.',
-        );
-        return;
+      final rows = List<Map<String, dynamic>>.from(response);
+
+      if (rows.isNotEmpty) {
+        final existing = rows.first;
+        final existingStatus = existing['status']?.toString();
+
+        if (existingStatus == 'rejected') {
+          await _supabase
+              .from('event_registrations')
+              .update({
+                'status': 'pending',
+              })
+              .eq('id', existing['id']);
+
+          _showMessage(
+            'Opnieuw aangemeld. Wacht op goedkeuring.',
+          );
+
+          return 'pending';
+        }
+
+        if (existingStatus == 'approved') {
+          _showMessage(
+            'Je bent al goedgekeurd.',
+          );
+        } else if (existingStatus == 'pending') {
+          _showMessage(
+            'Je aanmelding wacht al op goedkeuring.',
+          );
+        }
+
+        return existingStatus;
       }
 
       await _supabase.from('event_registrations').insert({
@@ -294,18 +333,19 @@ class _EventsPageState extends State<EventsPage> {
       _showMessage(
         'Aanmelding verstuurd. Wacht op goedkeuring.',
       );
+
+      return 'pending';
     } catch (e) {
       debugPrint('Aanmelden mislukt: $e');
       _showMessage('Aanmelden mislukt.');
+      return null;
     }
   }
 
-  Future<void> _cancelRegistration(
-    int eventId,
-  ) async {
+  Future<bool> _cancelRegistration(int eventId) async {
     final user = _supabase.auth.currentUser;
 
-    if (user == null) return;
+    if (user == null) return false;
 
     try {
       await _supabase
@@ -315,40 +355,38 @@ class _EventsPageState extends State<EventsPage> {
           .eq('user_id', user.id);
 
       _showMessage('Je aanmelding is verwijderd.');
+
+      return true;
     } catch (e) {
       debugPrint('Afmelden mislukt: $e');
       _showMessage('Afmelden mislukt.');
+      return false;
     }
   }
+
+  // =========================================================
+  // GOEDGEKEURDE DEELNEMERS
+  // =========================================================
 
   Future<List<Map<String, dynamic>>> _fetchParticipants(
     int eventId,
   ) async {
-    final registrations = await _supabase
-        .from('event_registrations')
-        .select('id,user_id,status,created_at')
-        .eq('event_id', eventId)
-        .eq('status', 'approved')
-        .order('created_at');
+    try {
+      final response = await _supabase.rpc(
+        'get_event_approved_participants',
+        params: {
+          'p_event_id': eventId,
+        },
+      );
 
-    final registrationList =
-        List<Map<String, dynamic>>.from(registrations);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint(
+        'Goedgekeurde deelnemers ophalen mislukt: $e',
+      );
 
-    if (registrationList.isEmpty) return [];
-
-    final userIds = registrationList
-        .map((row) => row['user_id']?.toString())
-        .whereType<String>()
-        .toList();
-
-    if (userIds.isEmpty) return [];
-
-    final profiles = await _supabase
-        .from('profiles')
-        .select('id,name,avatar_url')
-        .inFilter('id', userIds);
-
-    return List<Map<String, dynamic>>.from(profiles);
+      return [];
+    }
   }
 
   Future<void> _updateRegistrationStatus({
@@ -358,7 +396,9 @@ class _EventsPageState extends State<EventsPage> {
     try {
       await _supabase
           .from('event_registrations')
-          .update({'status': status})
+          .update({
+            'status': status,
+          })
           .eq('id', registrationId);
 
       _showMessage(
@@ -375,56 +415,68 @@ class _EventsPageState extends State<EventsPage> {
   Future<List<Map<String, dynamic>>> _fetchPendingRegistrations(
     int eventId,
   ) async {
-    final registrations = await _supabase
-        .from('event_registrations')
-        .select('id,user_id,status,created_at')
-        .eq('event_id', eventId)
-        .eq('status', 'pending')
-        .order('created_at');
+    try {
+      final registrations = await _supabase
+          .from('event_registrations')
+          .select('id,user_id,status,created_at')
+          .eq('event_id', eventId)
+          .eq('status', 'pending')
+          .order('created_at');
 
-    final list = List<Map<String, dynamic>>.from(registrations);
+      final list = List<Map<String, dynamic>>.from(
+        registrations,
+      );
 
-    if (list.isEmpty) return [];
+      if (list.isEmpty) return [];
 
-    final userIds = list
-        .map((row) => row['user_id']?.toString())
-        .whereType<String>()
-        .toList();
+      final userIds = list
+          .map((row) => row['user_id']?.toString())
+          .whereType<String>()
+          .toList();
 
-    if (userIds.isEmpty) return [];
+      if (userIds.isEmpty) return [];
 
-    final profiles = await _supabase
-        .from('profiles')
-        .select('id,name,avatar_url')
-        .inFilter('id', userIds);
+      final profiles = await _supabase
+          .from('profiles')
+          .select('id,name,avatar_url')
+          .inFilter('id', userIds);
 
-    final profileList =
-        List<Map<String, dynamic>>.from(profiles);
+      final profileList =
+          List<Map<String, dynamic>>.from(profiles);
 
-    return list.map((registration) {
-      final userId = registration['user_id']?.toString();
+      return list.map((registration) {
+        final userId =
+            registration['user_id']?.toString();
 
-      Map<String, dynamic>? profile;
+        Map<String, dynamic>? profile;
 
-      for (final item in profileList) {
-        if (item['id']?.toString() == userId) {
-          profile = item;
-          break;
+        for (final item in profileList) {
+          if (item['id']?.toString() == userId) {
+            profile = item;
+            break;
+          }
         }
-      }
 
-      return {
-        ...registration,
-        'profile': profile,
-      };
-    }).toList();
+        return {
+          ...registration,
+          'profile': profile,
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint(
+        'Pending registraties ophalen mislukt: $e',
+      );
+      return [];
+    }
   }
 
   void _showMessage(String message) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+      ),
     );
   }
 
@@ -446,11 +498,14 @@ class _EventsPageState extends State<EventsPage> {
           ),
           content: Text(
             'Weet je zeker dat je "$eventName" wilt verwijderen?',
-            style: GoogleFonts.inter(color: textColor),
+            style: GoogleFonts.inter(
+              color: textColor,
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, false),
               child: Text(
                 'Annuleren',
                 style: GoogleFonts.inter(
@@ -459,7 +514,8 @@ class _EventsPageState extends State<EventsPage> {
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, true),
               child: Text(
                 'Verwijderen',
                 style: GoogleFonts.inter(
@@ -481,9 +537,13 @@ class _EventsPageState extends State<EventsPage> {
           .delete()
           .eq('id', eventId);
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
+
       _showMessage('Evenement verwijderd.');
     } catch (e) {
+      debugPrint('Evenement verwijderen mislukt: $e');
       _showMessage('Verwijderen mislukt.');
     }
   }
@@ -506,11 +566,14 @@ class _EventsPageState extends State<EventsPage> {
           ),
           content: Text(
             '"$eventName" wordt als vervallen gemarkeerd.',
-            style: GoogleFonts.inter(color: textColor),
+            style: GoogleFonts.inter(
+              color: textColor,
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, false),
               child: Text(
                 'Annuleren',
                 style: GoogleFonts.inter(
@@ -519,7 +582,8 @@ class _EventsPageState extends State<EventsPage> {
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, true),
               child: Text(
                 'Laten vervallen',
                 style: GoogleFonts.inter(
@@ -538,19 +602,31 @@ class _EventsPageState extends State<EventsPage> {
     try {
       await _supabase.rpc(
         'cancel_event',
-        params: {'p_event_id': eventId},
+        params: {
+          'p_event_id': eventId,
+        },
       );
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
+      debugPrint('Laten vervallen mislukt: $e');
       _showMessage('Laten vervallen mislukt.');
     }
   }
 
-  String _shareText(Map<String, dynamic> event) {
-    final name = event['name']?.toString() ?? 'Evenement';
-    final location = event['location_name']?.toString() ?? '';
-    final city = event['city']?.toString() ?? '';
+  String _shareText(
+    Map<String, dynamic> event,
+  ) {
+    final name =
+        event['name']?.toString() ?? 'Evenement';
+
+    final location =
+        event['location_name']?.toString() ?? '';
+
+    final city =
+        event['city']?.toString() ?? '';
 
     return 'Kom je ook naar "$name"'
         '${location.isNotEmpty ? ' bij $location' : ''}'
@@ -565,11 +641,15 @@ class _EventsPageState extends State<EventsPage> {
     );
 
     if (!opened) {
-      _showMessage('Kon geen deelvenster openen.');
+      _showMessage(
+        'Kon geen deelvenster openen.',
+      );
     }
   }
 
-  void _openShareSheet(Map<String, dynamic> event) {
+  void _openShareSheet(
+    Map<String, dynamic> event,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: cardColor,
@@ -595,7 +675,9 @@ class _EventsPageState extends State<EventsPage> {
                   ),
                   title: Text(
                     'Deel met een Biervriend',
-                    style: GoogleFonts.inter(color: textColor),
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(sheetContext);
@@ -609,10 +691,13 @@ class _EventsPageState extends State<EventsPage> {
                   ),
                   title: Text(
                     'Meer opties',
-                    style: GoogleFonts.inter(color: textColor),
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(sheetContext);
+
                     Share.share(
                       _shareText(event),
                       subject: event['name']?.toString(),
@@ -627,12 +712,18 @@ class _EventsPageState extends State<EventsPage> {
                     ),
                     title: Text(
                       'WhatsApp',
-                      style: GoogleFonts.inter(color: textColor),
+                      style: GoogleFonts.inter(
+                        color: textColor,
+                      ),
                     ),
                     onTap: () {
                       Navigator.pop(sheetContext);
+
                       _shareViaUrl(
-                        'https://wa.me/?text=${Uri.encodeComponent(_shareText(event))}',
+                        'https://wa.me/?text='
+                        '${Uri.encodeComponent(
+                          _shareText(event),
+                        )}',
                       );
                     },
                   ),
@@ -643,16 +734,22 @@ class _EventsPageState extends State<EventsPage> {
                   ),
                   title: Text(
                     'Tekst kopiëren',
-                    style: GoogleFonts.inter(color: textColor),
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                    ),
                   ),
                   onTap: () async {
                     Navigator.pop(sheetContext);
 
                     await Clipboard.setData(
-                      ClipboardData(text: _shareText(event)),
+                      ClipboardData(
+                        text: _shareText(event),
+                      ),
                     );
 
-                    _showMessage('Tekst gekopieerd.');
+                    _showMessage(
+                      'Tekst gekopieerd.',
+                    );
                   },
                 ),
               ],
@@ -673,53 +770,75 @@ class _EventsPageState extends State<EventsPage> {
     List<Friend> friends;
 
     try {
-      friends = await _friendsService.listFriends(user.id);
+      friends =
+          await _friendsService.listFriends(user.id);
     } on FriendsException catch (e) {
-      _showMessage('Vrienden ophalen mislukt: $e');
+      _showMessage(
+        'Vrienden ophalen mislukt: $e',
+      );
       return;
     }
 
     if (friends.isEmpty) {
-      _showMessage('Je hebt nog geen Bier-vrienden.');
+      _showMessage(
+        'Je hebt nog geen Bier-vrienden.',
+      );
       return;
     }
 
-    final picked = await showModalBottomSheet<Friend>(
+    final picked =
+        await showModalBottomSheet<Friend>(
       context: context,
       backgroundColor: cardColor,
       isScrollControlled: true,
       builder: (sheetContext) {
         return SafeArea(
           child: SizedBox(
-            height: MediaQuery.of(sheetContext).size.height * 0.6,
+            height:
+                MediaQuery.of(sheetContext)
+                        .size
+                        .height *
+                    0.6,
             child: ListView.builder(
-              padding: const EdgeInsets.all(20),
+              padding:
+                  const EdgeInsets.all(20),
               itemCount: friends.length,
-              itemBuilder: (context, index) {
+              itemBuilder:
+                  (context, index) {
                 final friend = friends[index];
 
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: backgroundColor,
-                    backgroundImage: friend.avatarUrl != null
-                        ? NetworkImage(friend.avatarUrl!)
-                        : null,
-                    child: friend.avatarUrl == null
-                        ? const Icon(
-                            Icons.person,
-                            color: secondaryTextColor,
-                          )
-                        : null,
+                    backgroundColor:
+                        backgroundColor,
+                    backgroundImage:
+                        friend.avatarUrl != null
+                            ? NetworkImage(
+                                friend.avatarUrl!,
+                              )
+                            : null,
+                    child:
+                        friend.avatarUrl == null
+                            ? const Icon(
+                                Icons.person,
+                                color:
+                                    secondaryTextColor,
+                              )
+                            : null,
                   ),
                   title: Text(
                     friend.name,
                     style: GoogleFonts.inter(
                       color: textColor,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                          FontWeight.w600,
                     ),
                   ),
                   onTap: () {
-                    Navigator.pop(sheetContext, friend);
+                    Navigator.pop(
+                      sheetContext,
+                      friend,
+                    );
                   },
                 );
               },
@@ -734,19 +853,26 @@ class _EventsPageState extends State<EventsPage> {
     try {
       await _chatService.sendMessage(
         receiverId: picked.id,
-        body: 'Zullen we hier samen naartoe gaan?',
+        body:
+            'Zullen we hier samen naartoe gaan?',
         type: MessageType.eventInvite,
         metadata: {
           'id': event['id'],
           'name': event['name'],
-          'start_date': event['start_date'],
-          'location_name': event['location_name'],
+          'start_date':
+              event['start_date'],
+          'location_name':
+              event['location_name'],
         },
       );
 
-      _showMessage('Gedeeld met ${picked.name}!');
+      _showMessage(
+        'Gedeeld met ${picked.name}!',
+      );
     } on ChatException catch (e) {
-      _showMessage('Delen mislukt: $e');
+      _showMessage(
+        'Delen mislukt: $e',
+      );
     }
   }
 
@@ -778,13 +904,22 @@ class _EventsPageState extends State<EventsPage> {
         day,
       );
 
-      final isSelected = _sameDate(date, _selectedDate);
-      final isToday = _sameDate(date, DateTime.now());
-      final hasEvent = _hasEventOnDate(events, date);
+      final isSelected =
+          _sameDate(date, _selectedDate);
+
+      final isToday =
+          _sameDate(date, DateTime.now());
+
+      final hasEvent =
+          _hasEventOnDate(events, date);
 
       days.add(
         GestureDetector(
-          onTap: () => setState(() => _selectedDate = date),
+          onTap: () {
+            setState(() {
+              _selectedDate = date;
+            });
+          },
           child: Container(
             margin: const EdgeInsets.all(3),
             decoration: BoxDecoration(
@@ -793,10 +928,12 @@ class _EventsPageState extends State<EventsPage> {
                   : isToday
                       ? beigeColor.withOpacity(0.12)
                       : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius:
+                  BorderRadius.circular(12),
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
               children: [
                 Text(
                   '$day',
@@ -835,8 +972,10 @@ class _EventsPageState extends State<EventsPage> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        borderRadius:
+            BorderRadius.circular(20),
+        border:
+            Border.all(color: borderColor),
       ),
       child: Column(
         children: [
@@ -850,17 +989,23 @@ class _EventsPageState extends State<EventsPage> {
                 child: Column(
                   children: [
                     Text(
-                      _formatMonth(_selectedMonth),
-                      style: GoogleFonts.playfairDisplay(
+                      _formatMonth(
+                        _selectedMonth,
+                      ),
+                      style:
+                          GoogleFonts.playfairDisplay(
                         color: textColor,
                         fontSize: 21,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
                     Text(
                       'Selecteer een dag',
-                      style: GoogleFonts.inter(
-                        color: secondaryTextColor,
+                      style:
+                          GoogleFonts.inter(
+                        color:
+                            secondaryTextColor,
                         fontSize: 11,
                       ),
                     ),
@@ -879,7 +1024,8 @@ class _EventsPageState extends State<EventsPage> {
               'Vandaag',
               style: GoogleFonts.inter(
                 color: beigeColor,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
           ),
@@ -898,7 +1044,8 @@ class _EventsPageState extends State<EventsPage> {
           GridView.count(
             crossAxisCount: 7,
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+            physics:
+                const NeverScrollableScrollPhysics(),
             children: days,
           ),
         ],
@@ -912,9 +1059,11 @@ class _EventsPageState extends State<EventsPage> {
   }) {
     return Material(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius:
+          BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius:
+            BorderRadius.circular(10),
         onTap: onTap,
         child: SizedBox(
           width: 40,
@@ -951,12 +1100,14 @@ class _EventsPageState extends State<EventsPage> {
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 26),
         Text(
           'Mijn evenementen',
-          style: GoogleFonts.playfairDisplay(
+          style:
+              GoogleFonts.playfairDisplay(
             color: textColor,
             fontSize: 23,
             fontWeight: FontWeight.bold,
@@ -971,7 +1122,9 @@ class _EventsPageState extends State<EventsPage> {
           ),
         ),
         const SizedBox(height: 14),
-        ...pendingEvents.map(_buildPendingCard),
+        ...pendingEvents.map(
+          _buildPendingCard,
+        ),
       ],
     );
   }
@@ -979,22 +1132,31 @@ class _EventsPageState extends State<EventsPage> {
   Widget _buildPendingCard(
     Map<String, dynamic> event,
   ) {
-    final eventId = event['id']?.toString() ?? '';
-    final name = event['name']?.toString() ?? 'Naamloos';
+    final eventId =
+        event['id']?.toString() ?? '';
+
+    final name =
+        event['name']?.toString() ??
+            'Naamloos';
+
     final date = _getEventDate(event);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin:
+          const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius:
+            BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.orangeAccent.withOpacity(0.35),
+          color: Colors.orangeAccent
+              .withOpacity(0.35),
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1006,10 +1168,12 @@ class _EventsPageState extends State<EventsPage> {
               Expanded(
                 child: Text(
                   name,
-                  style: GoogleFonts.playfairDisplay(
+                  style:
+                      GoogleFonts.playfairDisplay(
                     color: textColor,
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ),
@@ -1030,19 +1194,29 @@ class _EventsPageState extends State<EventsPage> {
             'In afwachting van goedkeuring',
             style: GoogleFonts.inter(
               color: Colors.orangeAccent,
-              fontWeight: FontWeight.w600,
+              fontWeight:
+                  FontWeight.w600,
             ),
           ),
           Align(
-            alignment: Alignment.centerRight,
+            alignment:
+                Alignment.centerRight,
             child: TextButton.icon(
               onPressed: eventId.isEmpty
                   ? null
-                  : () => _deleteEvent(eventId, name),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Verwijderen'),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.redAccent,
+                  : () => _deleteEvent(
+                        eventId,
+                        name,
+                      ),
+              icon: const Icon(
+                Icons.delete_outline,
+              ),
+              label:
+                  const Text('Verwijderen'),
+              style:
+                  TextButton.styleFrom(
+                foregroundColor:
+                    Colors.redAccent,
               ),
             ),
           ),
@@ -1055,15 +1229,20 @@ class _EventsPageState extends State<EventsPage> {
     List<Map<String, dynamic>> events,
   ) {
     final selectedEvents =
-        _eventsForDate(events, _selectedDate);
+        _eventsForDate(
+      events,
+      _selectedDate,
+    );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 26),
         Text(
           _formatDate(_selectedDate),
-          style: GoogleFonts.playfairDisplay(
+          style:
+              GoogleFonts.playfairDisplay(
             color: textColor,
             fontSize: 23,
             fontWeight: FontWeight.bold,
@@ -1073,7 +1252,9 @@ class _EventsPageState extends State<EventsPage> {
         if (selectedEvents.isEmpty)
           _emptyDayCard()
         else
-          ...selectedEvents.map(_buildEventCard),
+          ...selectedEvents.map(
+            _buildEventCard,
+          ),
       ],
     );
   }
@@ -1084,8 +1265,10 @@ class _EventsPageState extends State<EventsPage> {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor),
+        borderRadius:
+            BorderRadius.circular(18),
+        border:
+            Border.all(color: borderColor),
       ),
       child: Column(
         children: [
@@ -1099,7 +1282,8 @@ class _EventsPageState extends State<EventsPage> {
             'Geen evenementen',
             style: GoogleFonts.inter(
               color: textColor,
-              fontWeight: FontWeight.w600,
+              fontWeight:
+                  FontWeight.w600,
             ),
           ),
         ],
@@ -1110,43 +1294,68 @@ class _EventsPageState extends State<EventsPage> {
   Widget _buildEventCard(
     Map<String, dynamic> event,
   ) {
-    final eventId = event['id']?.toString() ?? '';
-    final eventUserId = event['user_id']?.toString() ?? '';
-    final currentUser = _supabase.auth.currentUser;
+    final eventId =
+        event['id']?.toString() ?? '';
+
+    final eventUserId =
+        event['user_id']?.toString() ?? '';
+
+    final currentUser =
+        _supabase.auth.currentUser;
 
     final isOwner =
-        currentUser != null && eventUserId == currentUser.id;
+        currentUser != null &&
+            eventUserId ==
+                currentUser.id;
 
-    final name = event['name']?.toString() ?? 'Naamloos';
+    final name =
+        event['name']?.toString() ??
+            'Naamloos';
+
     final eventType =
-        event['event_type']?.toString() ?? 'Festival';
-    final city = event['city']?.toString() ?? '';
+        event['event_type']?.toString() ??
+            'Festival';
+
+    final city =
+        event['city']?.toString() ?? '';
+
     final location =
-        event['location_name']?.toString() ?? '';
+        event['location_name']?.toString() ??
+            '';
+
     final imageUrl =
-        event['image_asset']?.toString().trim();
+        event['image_asset']
+            ?.toString()
+            .trim();
 
     final hasImage =
         imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        imageUrl != 'null';
+            imageUrl.isNotEmpty &&
+            imageUrl != 'null';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin:
+          const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor),
+        borderRadius:
+            BorderRadius.circular(18),
+        border:
+            Border.all(color: borderColor),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => _showEventDetails(event),
+        borderRadius:
+            BorderRadius.circular(18),
+        onTap: () =>
+            _showEventDetails(event),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             if (hasImage)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(
+                borderRadius:
+                    const BorderRadius.vertical(
                   top: Radius.circular(18),
                 ),
                 child: SizedBox(
@@ -1158,12 +1367,16 @@ class _EventsPageState extends State<EventsPage> {
                       Image.network(
                         imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
+                        errorBuilder:
+                            (_, __, ___) {
                           return Container(
-                            color: backgroundColor,
-                            child: const Icon(
+                            color:
+                                backgroundColor,
+                            child:
+                                const Icon(
                               Icons.local_bar,
-                              color: beigeColor,
+                              color:
+                                  beigeColor,
                               size: 45,
                             ),
                           );
@@ -1172,48 +1385,61 @@ class _EventsPageState extends State<EventsPage> {
                       Positioned(
                         right: 12,
                         top: 12,
-                        child: _shareButton(event),
+                        child:
+                            _shareButton(event),
                       ),
                     ],
                   ),
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding:
+                  const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           name,
-                          style: GoogleFonts.playfairDisplay(
+                          style:
+                              GoogleFonts.playfairDisplay(
                             color: textColor,
                             fontSize: 21,
-                            fontWeight: FontWeight.bold,
+                            fontWeight:
+                                FontWeight.bold,
                           ),
                         ),
                       ),
-                      _eventTypeBadge(eventType),
+                      _eventTypeBadge(
+                        eventType,
+                      ),
                     ],
                   ),
-                  if (location.isNotEmpty || city.isNotEmpty) ...[
+                  if (location.isNotEmpty ||
+                      city.isNotEmpty) ...[
                     const SizedBox(height: 7),
                     Row(
                       children: [
                         const Icon(
-                          Icons.location_on_outlined,
+                          Icons
+                              .location_on_outlined,
                           color: beigeColor,
                           size: 16,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(
+                          width: 5,
+                        ),
                         Expanded(
                           child: Text(
                             '$location'
                             '${city.isNotEmpty ? ' · $city' : ''}',
-                            style: GoogleFonts.inter(
-                              color: beigeColor,
+                            style:
+                                GoogleFonts.inter(
+                              color:
+                                  beigeColor,
                               fontSize: 12,
                             ),
                           ),
@@ -1225,15 +1451,21 @@ class _EventsPageState extends State<EventsPage> {
                   Row(
                     children: [
                       const Icon(
-                        Icons.schedule_outlined,
-                        color: secondaryTextColor,
+                        Icons
+                            .schedule_outlined,
+                        color:
+                            secondaryTextColor,
                         size: 16,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(
+                        width: 6,
+                      ),
                       Text(
                         _formatTime(event),
-                        style: GoogleFonts.inter(
-                          color: secondaryTextColor,
+                        style:
+                            GoogleFonts.inter(
+                          color:
+                              secondaryTextColor,
                           fontSize: 12,
                         ),
                       ),
@@ -1244,24 +1476,36 @@ class _EventsPageState extends State<EventsPage> {
                     children: [
                       Text(
                         'Bekijk details',
-                        style: GoogleFonts.inter(
+                        style:
+                            GoogleFonts.inter(
                           color: beigeColor,
-                          fontWeight: FontWeight.bold,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                       const Spacer(),
-                      if (isOwner && eventId.isNotEmpty)
+                      if (isOwner &&
+                          eventId.isNotEmpty)
                         GestureDetector(
                           onTap: () {
-                            final id = int.tryParse(eventId);
+                            final id =
+                                int.tryParse(
+                              eventId,
+                            );
 
                             if (id != null) {
-                              _cancelEvent(id, name);
+                              _cancelEvent(
+                                id,
+                                name,
+                              );
                             }
                           },
-                          child: const Icon(
-                            Icons.event_busy_outlined,
-                            color: Colors.redAccent,
+                          child:
+                              const Icon(
+                            Icons
+                                .event_busy_outlined,
+                            color:
+                                Colors.redAccent,
                           ),
                         ),
                     ],
@@ -1275,17 +1519,22 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Widget _eventTypeBadge(String type) {
+  Widget _eventTypeBadge(
+    String type,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(
+      padding:
+          const EdgeInsets.symmetric(
         horizontal: 9,
         vertical: 6,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius:
+            BorderRadius.circular(8),
         border: Border.all(
-          color: beigeColor.withOpacity(0.35),
+          color:
+              beigeColor.withOpacity(0.35),
         ),
       ),
       child: Text(
@@ -1293,19 +1542,26 @@ class _EventsPageState extends State<EventsPage> {
         style: GoogleFonts.inter(
           color: beigeColor,
           fontSize: 9,
-          fontWeight: FontWeight.bold,
+          fontWeight:
+              FontWeight.bold,
         ),
       ),
     );
   }
 
-  Widget _shareButton(Map<String, dynamic> event) {
+  Widget _shareButton(
+    Map<String, dynamic> event,
+  ) {
     return Material(
-      color: backgroundColor.withOpacity(0.9),
-      borderRadius: BorderRadius.circular(10),
+      color:
+          backgroundColor.withOpacity(0.9),
+      borderRadius:
+          BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: () => _openShareSheet(event),
+        borderRadius:
+            BorderRadius.circular(10),
+        onTap: () =>
+            _openShareSheet(event),
         child: const SizedBox(
           width: 38,
           height: 38,
@@ -1326,38 +1582,64 @@ class _EventsPageState extends State<EventsPage> {
       event['id']?.toString() ?? '',
     );
 
-    final currentUser = _supabase.auth.currentUser;
+    final currentUser =
+        _supabase.auth.currentUser;
 
     final isOwner =
         currentUser != null &&
-        event['user_id']?.toString() == currentUser.id;
+            event['user_id']?.toString() ==
+                currentUser.id;
 
-    final name = event['name']?.toString() ?? 'Naamloos';
+    final name =
+        event['name']?.toString() ??
+            'Naamloos';
+
     final eventType =
-        event['event_type']?.toString() ?? '';
-    final location =
-        event['location_name']?.toString() ?? '';
-    final city = event['city']?.toString() ?? '';
-    final description =
-        event['description']?.toString() ?? '';
-    final openingHours =
-        event['opening_hours']?.toString() ?? '';
-    final street = event['street']?.toString() ?? '';
-    final houseNumber =
-        event['house_number']?.toString() ?? '';
-    final postalCode =
-        event['postal_code']?.toString() ?? '';
-    final imageUrl =
-        event['image_asset']?.toString().trim();
+        event['event_type']?.toString() ??
+            '';
 
-    final eventDate = _getEventDate(event);
+    final location =
+        event['location_name']?.toString() ??
+            '';
+
+    final city =
+        event['city']?.toString() ?? '';
+
+    final description =
+        event['description']?.toString() ??
+            '';
+
+    final openingHours =
+        event['opening_hours']?.toString() ??
+            '';
+
+    final street =
+        event['street']?.toString() ?? '';
+
+    final houseNumber =
+        event['house_number']?.toString() ??
+            '';
+
+    final postalCode =
+        event['postal_code']?.toString() ??
+            '';
+
+    final imageUrl =
+        event['image_asset']
+            ?.toString()
+            .trim();
+
+    final eventDate =
+        _getEventDate(event);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
+      shape:
+          const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(
           top: Radius.circular(26),
         ),
       ),
@@ -1373,25 +1655,34 @@ class _EventsPageState extends State<EventsPage> {
               scrollController,
             ) {
               return ListView(
-                controller: scrollController,
-                padding: const EdgeInsets.all(20),
+                controller:
+                    scrollController,
+                padding:
+                    const EdgeInsets.all(20),
                 children: [
                   if (imageUrl != null &&
                       imageUrl.isNotEmpty &&
                       imageUrl != 'null')
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius:
+                          BorderRadius.circular(
+                        18,
+                      ),
                       child: Image.network(
                         imageUrl,
                         height: 210,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
+                        errorBuilder:
+                            (_, __, ___) {
                           return Container(
                             height: 210,
-                            color: backgroundColor,
-                            child: const Icon(
+                            color:
+                                backgroundColor,
+                            child:
+                                const Icon(
                               Icons.local_bar,
-                              color: beigeColor,
+                              color:
+                                  beigeColor,
                               size: 50,
                             ),
                           );
@@ -1401,83 +1692,108 @@ class _EventsPageState extends State<EventsPage> {
                   const SizedBox(height: 18),
                   Text(
                     name,
-                    style: GoogleFonts.playfairDisplay(
+                    style:
+                        GoogleFonts.playfairDisplay(
                       color: textColor,
                       fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                     ),
                   ),
-                  if (eventType.isNotEmpty) ...[
+                  if (eventType
+                      .isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    _eventTypeBadge(eventType),
+                    _eventTypeBadge(
+                      eventType,
+                    ),
                   ],
                   const SizedBox(height: 20),
                   if (eventDate != null)
                     _detailRow(
-                      Icons.calendar_month_outlined,
+                      Icons
+                          .calendar_month_outlined,
                       'Datum',
-                      _formatDate(eventDate),
+                      _formatDate(
+                        eventDate,
+                      ),
                     ),
                   if (eventDate != null)
                     _detailRow(
-                      Icons.schedule_outlined,
+                      Icons
+                          .schedule_outlined,
                       'Starttijd',
                       _formatTime(event),
                     ),
-                  if (openingHours.isNotEmpty)
+                  if (openingHours
+                      .isNotEmpty)
                     _detailRow(
-                      Icons.access_time_outlined,
+                      Icons
+                          .access_time_outlined,
                       'Openingstijden',
                       openingHours,
                     ),
                   if (location.isNotEmpty)
                     _detailRow(
-                      Icons.location_on_outlined,
+                      Icons
+                          .location_on_outlined,
                       'Locatie',
                       location,
                     ),
                   if (city.isNotEmpty)
                     _detailRow(
-                      Icons.location_city_outlined,
+                      Icons
+                          .location_city_outlined,
                       'Plaats',
                       city,
                     ),
                   if (street.isNotEmpty ||
-                      houseNumber.isNotEmpty ||
-                      postalCode.isNotEmpty)
+                      houseNumber
+                          .isNotEmpty ||
+                      postalCode
+                          .isNotEmpty)
                     _detailRow(
                       Icons.home_outlined,
                       'Adres',
                       '$street $houseNumber\n'
                           '$postalCode $city',
                     ),
-                  if (description.isNotEmpty) ...[
+                  if (description
+                      .isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Text(
                       'Over dit evenement',
-                      style: GoogleFonts.playfairDisplay(
+                      style:
+                          GoogleFonts.playfairDisplay(
                         color: beigeColor,
                         fontSize: 21,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       description,
-                      style: GoogleFonts.inter(
+                      style:
+                          GoogleFonts.inter(
                         color: textColor,
                         fontSize: 14,
                         height: 1.55,
                       ),
                     ),
                   ],
-                  if (eventId != null && !isOwner) ...[
+                  if (eventId != null &&
+                      !isOwner) ...[
                     const SizedBox(height: 24),
-                    _registrationButton(eventId),
+                    _registrationButton(
+                      eventId,
+                    ),
                   ],
-                  if (eventId != null && isOwner) ...[
+                  if (eventId != null &&
+                      isOwner) ...[
                     const SizedBox(height: 28),
-                    _buildOwnerRegistrations(eventId),
+                    _buildOwnerRegistrations(
+                      eventId,
+                    ),
                   ],
                 ],
               );
@@ -1488,19 +1804,21 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Widget _registrationButton(int eventId) {
+  Widget _registrationButton(
+    int eventId,
+  ) {
     return FutureBuilder<String?>(
-      future: _getRegistrationStatus(eventId),
+      future: _getRegistrationStatus(
+        eventId,
+      ),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
           return Container(
             height: 52,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const CircularProgressIndicator(
+            child:
+                const CircularProgressIndicator(
               color: beigeColor,
               strokeWidth: 2,
             ),
@@ -1512,26 +1830,36 @@ class _EventsPageState extends State<EventsPage> {
         if (status == 'approved') {
           return Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(15),
+            padding:
+                const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.green
+                  .withOpacity(0.12),
+              borderRadius:
+                  BorderRadius.circular(14),
               border: Border.all(
-                color: Colors.green.withOpacity(0.35),
+                color: Colors.green
+                    .withOpacity(0.35),
               ),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.check_circle,
-                  color: Colors.greenAccent,
+                  color:
+                      Colors.greenAccent,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  'Je bent goedgekeurd!',
-                  style: GoogleFonts.inter(
-                    color: Colors.greenAccent,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Je bent goedgekeurd!',
+                    style:
+                        GoogleFonts.inter(
+                      color:
+                          Colors.greenAccent,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -1544,24 +1872,41 @@ class _EventsPageState extends State<EventsPage> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.orangeAccent.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
+                padding:
+                    const EdgeInsets.all(15),
+                decoration:
+                    BoxDecoration(
+                  color: Colors.orangeAccent
+                      .withOpacity(0.12),
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
+                  border: Border.all(
+                    color: Colors
+                        .orangeAccent
+                        .withOpacity(0.35),
+                  ),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.hourglass_top,
-                      color: Colors.orangeAccent,
+                      color:
+                          Colors.orangeAccent,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(
+                      width: 10,
+                    ),
                     Expanded(
                       child: Text(
-                        'Aanmelding wacht op goedkeuring.',
-                        style: GoogleFonts.inter(
-                          color: Colors.orangeAccent,
-                          fontWeight: FontWeight.w600,
+                        'Wacht op goedkeuring',
+                        style:
+                            GoogleFonts.inter(
+                          color: Colors
+                              .orangeAccent,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ),
@@ -1570,11 +1915,22 @@ class _EventsPageState extends State<EventsPage> {
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => _cancelRegistration(eventId),
+                onPressed: () async {
+                  final success =
+                      await _cancelRegistration(
+                    eventId,
+                  );
+
+                  if (success &&
+                      context.mounted) {
+                    setState(() {});
+                  }
+                },
                 child: const Text(
                   'Aanmelding intrekken',
                   style: TextStyle(
-                    color: Colors.redAccent,
+                    color:
+                        Colors.redAccent,
                   ),
                 ),
               ),
@@ -1587,23 +1943,34 @@ class _EventsPageState extends State<EventsPage> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
+                padding:
+                    const EdgeInsets.all(15),
+                decoration:
+                    BoxDecoration(
+                  color: Colors.redAccent
+                      .withOpacity(0.10),
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
                 ),
                 child: const Row(
                   children: [
                     Icon(
                       Icons.cancel,
-                      color: Colors.redAccent,
+                      color:
+                          Colors.redAccent,
                     ),
                     SizedBox(width: 10),
-                    Text(
-                      'Je aanmelding is afgewezen.',
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        'Je aanmelding is afgewezen.',
+                        style: TextStyle(
+                          color:
+                              Colors.redAccent,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -1611,28 +1978,68 @@ class _EventsPageState extends State<EventsPage> {
               ),
               const SizedBox(height: 10),
               ElevatedButton(
-                onPressed: () => _registerForEvent(eventId),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: beigeColor,
-                  foregroundColor: backgroundColor,
-                  minimumSize: const Size(double.infinity, 50),
+                onPressed: () async {
+                  await _registerForEvent(
+                    eventId,
+                  );
+
+                  if (context.mounted) {
+                    setState(() {});
+                  }
+                },
+                style:
+                    ElevatedButton.styleFrom(
+                  backgroundColor:
+                      beigeColor,
+                  foregroundColor:
+                      backgroundColor,
+                  minimumSize:
+                      const Size(
+                    double.infinity,
+                    50,
+                  ),
                 ),
-                child: const Text('Opnieuw aanmelden'),
+                child: const Text(
+                  'Opnieuw aanmelden',
+                ),
               ),
             ],
           );
         }
 
         return ElevatedButton.icon(
-          onPressed: () => _registerForEvent(eventId),
-          icon: const Icon(Icons.how_to_reg),
-          label: const Text('Aanmelden'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: beigeColor,
-            foregroundColor: backgroundColor,
-            minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+          onPressed: () async {
+            await _registerForEvent(
+              eventId,
+            );
+
+            if (context.mounted) {
+              setState(() {});
+            }
+          },
+          icon: const Icon(
+            Icons.how_to_reg,
+          ),
+          label: const Text(
+            'Aanmelden',
+          ),
+          style:
+              ElevatedButton.styleFrom(
+            backgroundColor:
+                beigeColor,
+            foregroundColor:
+                backgroundColor,
+            minimumSize:
+                const Size(
+              double.infinity,
+              52,
+            ),
+            shape:
+                RoundedRectangleBorder(
+              borderRadius:
+                  BorderRadius.circular(
+                14,
+              ),
             ),
           ),
         );
@@ -1640,117 +2047,181 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Widget _buildOwnerRegistrations(int eventId) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Aanmeldingen',
-          style: GoogleFonts.playfairDisplay(
-            color: beigeColor,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        FutureBuilder<List<Map<String, dynamic>>>(
-          future: _fetchPendingRegistrations(eventId),
-          builder: (context, pendingSnapshot) {
-            if (pendingSnapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.all(15),
-                child: CircularProgressIndicator(
-                  color: beigeColor,
-                ),
-              );
-            }
-
-            final pending = pendingSnapshot.data ?? [];
-
-            return Column(
-              children: [
-                if (pending.isNotEmpty) ...[
-                  Text(
-                    'Wachten op goedkeuring',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.bold,
+  Widget _buildOwnerRegistrations(
+    int eventId,
+  ) {
+    return StatefulBuilder(
+      builder: (
+        context,
+        refresh,
+      ) {
+        return Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Aanmeldingen',
+              style:
+                  GoogleFonts.playfairDisplay(
+                color: beigeColor,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<
+                List<Map<String, dynamic>>>(
+              future:
+                  _fetchPendingRegistrations(
+                eventId,
+              ),
+              builder:
+                  (
+                context,
+                pendingSnapshot,
+              ) {
+                if (pendingSnapshot
+                        .connectionState ==
+                    ConnectionState.waiting) {
+                  return const Padding(
+                    padding:
+                        EdgeInsets.all(15),
+                    child:
+                        CircularProgressIndicator(
+                      color: beigeColor,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...pending.map(_buildPendingRegistration),
-                  const SizedBox(height: 20),
-                ],
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _fetchParticipants(eventId),
-                  builder: (context, approvedSnapshot) {
-                    if (approvedSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const CircularProgressIndicator(
+                  );
+                }
+
+                final pending =
+                    pendingSnapshot.data ?? [];
+
+                return Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    if (pending.isNotEmpty) ...[
+                      Text(
+                        'Wachten op goedkeuring',
+                        style:
+                            GoogleFonts.inter(
+                          color: textColor,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...pending.map(
+                        (registration) =>
+                            _buildPendingRegistration(
+                          registration,
+                          onChanged: () {
+                            refresh(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    Text(
+                      'Goedgekeurd',
+                      style:
+                          GoogleFonts.playfairDisplay(
                         color: beigeColor,
-                      );
-                    }
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    FutureBuilder<
+                        List<Map<String, dynamic>>>(
+                      future:
+                          _fetchParticipants(
+                        eventId,
+                      ),
+                      builder: (
+                        context,
+                        approvedSnapshot,
+                      ) {
+                        if (approvedSnapshot
+                                .connectionState ==
+                            ConnectionState.waiting) {
+                          return const Padding(
+                            padding:
+                                EdgeInsets.all(10),
+                            child:
+                                CircularProgressIndicator(
+                              color: beigeColor,
+                            ),
+                          );
+                        }
 
-                    final approved =
-                        approvedSnapshot.data ?? [];
+                        final approved =
+                            approvedSnapshot
+                                    .data ??
+                                [];
 
-                    if (approved.isEmpty) {
-                      return Text(
-                        'Nog geen goedgekeurde deelnemers.',
-                        style: GoogleFonts.inter(
-                          color: secondaryTextColor,
-                        ),
-                      );
-                    }
+                        if (approved.isEmpty) {
+                          return Text(
+                            'Nog niemand goedgekeurd.',
+                            style:
+                                GoogleFonts.inter(
+                              color:
+                                  secondaryTextColor,
+                            ),
+                          );
+                        }
 
-                    return Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Goedgekeurde deelnemers',
-                          style: GoogleFonts.inter(
-                            color: textColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ...approved.map(_buildParticipant),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-      ],
+                        return Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment
+                                  .start,
+                          children: [
+                            ...approved.map(
+                              _buildParticipant,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildPendingRegistration(
-    Map<String, dynamic> registration,
-  ) {
+    Map<String, dynamic> registration, {
+    VoidCallback? onChanged,
+  }) {
     final profile =
-        registration['profile'] as Map<String, dynamic>?;
+        registration['profile']
+            as Map<String, dynamic>?;
 
     final name =
-        profile?['name']?.toString() ?? 'Onbekende gebruiker';
+        profile?['name']?.toString() ??
+            'Onbekende gebruiker';
 
     final avatar =
-        profile?['avatar_url']?.toString();
+        profile?['avatar_url']
+            ?.toString();
 
     final id = int.tryParse(
-      registration['id']?.toString() ?? '',
+      registration['id']?.toString() ??
+          '',
     );
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin:
+          const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius:
+            BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -1761,7 +2232,8 @@ class _EventsPageState extends State<EventsPage> {
               name,
               style: GoogleFonts.inter(
                 color: textColor,
-                fontWeight: FontWeight.w600,
+                fontWeight:
+                    FontWeight.w600,
               ),
             ),
           ),
@@ -1775,7 +2247,9 @@ class _EventsPageState extends State<EventsPage> {
                       status: 'rejected',
                     );
 
-                    if (mounted) setState(() {});
+                    if (mounted) {
+                      onChanged?.call();
+                    }
                   },
             icon: const Icon(
               Icons.close,
@@ -1792,7 +2266,9 @@ class _EventsPageState extends State<EventsPage> {
                       status: 'approved',
                     );
 
-                    if (mounted) setState(() {});
+                    if (mounted) {
+                      onChanged?.call();
+                    }
                   },
             icon: const Icon(
               Icons.check,
@@ -1808,17 +2284,21 @@ class _EventsPageState extends State<EventsPage> {
     Map<String, dynamic> profile,
   ) {
     final name =
-        profile['name']?.toString() ?? 'Onbekende gebruiker';
+        profile['name']?.toString() ??
+            'Onbekende gebruiker';
 
     final avatar =
-        profile['avatar_url']?.toString();
+        profile['avatar_url']
+            ?.toString();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin:
+          const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius:
+            BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -1829,7 +2309,8 @@ class _EventsPageState extends State<EventsPage> {
               name,
               style: GoogleFonts.inter(
                 color: textColor,
-                fontWeight: FontWeight.w600,
+                fontWeight:
+                    FontWeight.w600,
               ),
             ),
           ),
@@ -1843,21 +2324,26 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Widget _participantAvatar(String? avatarUrl) {
+  Widget _participantAvatar(
+    String? avatarUrl,
+  ) {
     final hasAvatar =
         avatarUrl != null &&
-        avatarUrl.isNotEmpty &&
-        avatarUrl != 'null';
+            avatarUrl.isNotEmpty &&
+            avatarUrl != 'null';
 
     return CircleAvatar(
       radius: 22,
       backgroundColor: cardColor,
       backgroundImage:
-          hasAvatar ? NetworkImage(avatarUrl!) : null,
+          hasAvatar
+              ? NetworkImage(avatarUrl!)
+              : null,
       child: !hasAvatar
           ? const Icon(
               Icons.person,
-              color: secondaryTextColor,
+              color:
+                  secondaryTextColor,
             )
           : null,
     );
@@ -1869,16 +2355,23 @@ class _EventsPageState extends State<EventsPage> {
     String value,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding:
+          const EdgeInsets.only(
+        bottom: 16,
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius:
+                  BorderRadius.circular(
+                10,
+              ),
             ),
             child: Icon(
               icon,
@@ -1889,22 +2382,27 @@ class _EventsPageState extends State<EventsPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.inter(
-                    color: secondaryTextColor,
+                  style:
+                      GoogleFonts.inter(
+                    color:
+                        secondaryTextColor,
                     fontSize: 11,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  style: GoogleFonts.inter(
+                  style:
+                      GoogleFonts.inter(
                     color: textColor,
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontWeight:
+                        FontWeight.w500,
                   ),
                 ),
               ],
@@ -1916,22 +2414,31 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor:
+          backgroundColor,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(155),
+        preferredSize:
+            const Size.fromHeight(155),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration:
+              const BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(26),
-              bottomRight: Radius.circular(26),
+            borderRadius:
+                BorderRadius.only(
+              bottomLeft:
+                  Radius.circular(26),
+              bottomRight:
+                  Radius.circular(26),
             ),
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding:
+                  const EdgeInsets.fromLTRB(
                 18,
                 10,
                 18,
@@ -1946,10 +2453,15 @@ class _EventsPageState extends State<EventsPage> {
                       Container(
                         width: 44,
                         height: 44,
-                        decoration: BoxDecoration(
-                          color: backgroundColor,
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              backgroundColor,
                           borderRadius:
-                              BorderRadius.circular(13),
+                              BorderRadius
+                                  .circular(
+                            13,
+                          ),
                         ),
                         child: const Icon(
                           Icons.sports_bar,
@@ -1957,77 +2469,116 @@ class _EventsPageState extends State<EventsPage> {
                           size: 25,
                         ),
                       ),
-                      const SizedBox(width: 11),
+                      const SizedBox(
+                        width: 11,
+                      ),
                       Expanded(
                         child: Text(
                           'Evenementen',
                           style:
                               GoogleFonts.playfairDisplay(
-                            color: textColor,
+                            color:
+                                textColor,
                             fontSize: 27,
-                            fontWeight: FontWeight.bold,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
                           ),
                         ),
                       ),
                       if (_isAdmin)
                         Padding(
                           padding:
-                              const EdgeInsets.only(right: 8),
+                              const EdgeInsets
+                                  .only(
+                            right: 8,
+                          ),
                           child: Material(
-                            color: const Color(0xFFD4A340),
+                            color:
+                                const Color(
+                              0xFFD4A340,
+                            ),
                             borderRadius:
-                                BorderRadius.circular(12),
+                                BorderRadius
+                                    .circular(
+                              12,
+                            ),
                             child: InkWell(
                               borderRadius:
-                                  BorderRadius.circular(12),
+                                  BorderRadius
+                                      .circular(
+                                12,
+                              ),
                               onTap: () async {
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AdminEventsPage(),
+                                    builder:
+                                        (_) =>
+                                            const AdminEventsPage(),
                                   ),
                                 );
 
                                 if (mounted) {
-                                  setState(() {});
+                                  setState(
+                                    () {},
+                                  );
                                 }
                               },
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 9,
+                              child:
+                                  const Padding(
+                                padding:
+                                    EdgeInsets
+                                        .symmetric(
+                                  horizontal:
+                                      10,
+                                  vertical:
+                                      9,
                                 ),
                                 child: Icon(
-                                  Icons.admin_panel_settings,
-                                  color: backgroundColor,
+                                  Icons
+                                      .admin_panel_settings,
+                                  color:
+                                      backgroundColor,
                                   size: 20,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      if (widget.onProfileTap != null)
+                      if (widget
+                              .onProfileTap !=
+                          null)
                         ProfileAvatarButton(
-                          onTap: widget.onProfileTap!,
-                          avatarUrl: widget.avatarUrl,
+                          onTap: widget
+                              .onProfileTap!,
+                          avatarUrl:
+                              widget.avatarUrl,
                         ),
                     ],
                   ),
-                  const SizedBox(height: 17),
+                  const SizedBox(
+                    height: 17,
+                  ),
                   Text(
                     'De Moderne Events',
-                    style: GoogleFonts.playfairDisplay(
+                    style:
+                        GoogleFonts.playfairDisplay(
                       color: beigeColor,
                       fontSize: 24,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                          FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(
+                    height: 4,
+                  ),
                   Text(
                     'Ontdek bierproeverijen, festivals en meer.',
-                    style: GoogleFonts.inter(
-                      color: secondaryTextColor,
+                    style:
+                        GoogleFonts.inter(
+                      color:
+                          secondaryTextColor,
                       fontSize: 12,
                     ),
                   ),
@@ -2037,13 +2588,17 @@ class _EventsPageState extends State<EventsPage> {
           ),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
+      body: FutureBuilder<
+          Map<String, dynamic>>(
         future: _fetchAllEventData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState ==
+        builder:
+            (context, snapshot) {
+          if (snapshot
+                  .connectionState ==
               ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
+              child:
+                  CircularProgressIndicator(
                 color: beigeColor,
               ),
             );
@@ -2053,22 +2608,28 @@ class _EventsPageState extends State<EventsPage> {
             return Center(
               child: Text(
                 'Evenementen konden niet worden geladen.',
-                style: GoogleFonts.inter(
+                style:
+                    GoogleFonts.inter(
                   color: textColor,
                 ),
               ),
             );
           }
 
-          final data = snapshot.data ?? {};
+          final data =
+              snapshot.data ?? {};
 
           final approvedEvents =
-              List<Map<String, dynamic>>.from(
+              List<
+                  Map<String,
+                      dynamic>>.from(
             data['approved'] ?? [],
           );
 
           final pendingEvents =
-              List<Map<String, dynamic>>.from(
+              List<
+                  Map<String,
+                      dynamic>>.from(
             data['pending'] ?? [],
           );
 
@@ -2078,41 +2639,57 @@ class _EventsPageState extends State<EventsPage> {
             onRefresh: () async {
               setState(() {});
               await Future.delayed(
-                const Duration(milliseconds: 300),
+                const Duration(
+                  milliseconds: 300,
+                ),
               );
             },
             child: ListView(
               physics:
                   const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
+              padding:
+                  const EdgeInsets.fromLTRB(
                 16,
                 18,
                 16,
                 100,
               ),
               children: [
-                _buildCalendar(approvedEvents),
-                _buildSelectedDayEvents(approvedEvents),
-                _buildPendingEvents(pendingEvents),
+                _buildCalendar(
+                  approvedEvents,
+                ),
+                _buildSelectedDayEvents(
+                  approvedEvents,
+                ),
+                _buildPendingEvents(
+                  pendingEvents,
+                ),
               ],
             ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton:
+          FloatingActionButton(
         backgroundColor: beigeColor,
-        foregroundColor: backgroundColor,
+        foregroundColor:
+            backgroundColor,
         onPressed: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const EventCreatePage(),
+              builder: (_) =>
+                  const EventCreatePage(),
             ),
           );
 
-          if (mounted) setState(() {});
+          if (mounted) {
+            setState(() {});
+          }
         },
-        child: const Icon(Icons.add),
+        child: const Icon(
+          Icons.add,
+        ),
       ),
     );
   }
