@@ -1129,7 +1129,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 ),
 
-                _buildContentTypeFilters(),
                 if (_events.isNotEmpty && _contentFilter != _MapContentFilter.breweries) _buildEventTypeFilters(),
 
                 Padding(
@@ -1306,53 +1305,53 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildContentTypeFilters() {
-    final options = <(_MapContentFilter, String, IconData)>[
+  Widget _buildContentFilterButton() {
+    const options = <(_MapContentFilter, String, IconData)>[
       (_MapContentFilter.all, 'Alles', Icons.apps),
       (_MapContentFilter.breweries, 'Brouwerijen', Icons.sports_bar),
       (_MapContentFilter.events, 'Evenementen', Icons.event),
     ];
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: SizedBox(
-        height: 36,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: options.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final (filter, label, icon) = options[index];
-            final selected = _contentFilter == filter;
-            return GestureDetector(
-              onTap: () => setState(() => _contentFilter = filter),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: selected ? const Color(0xFFD4B28C) : const Color(0xFF2C221C),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xFF3E312A)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 16, color: selected ? const Color(0xFF1E1712) : const Color(0xFFD4B28C)),
-                    const SizedBox(width: 6),
-                    Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        color: selected ? const Color(0xFF1E1712) : const Color(0xFFEFE6DD),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
+    final active = _contentFilter != _MapContentFilter.all;
+
+    return PopupMenuButton<_MapContentFilter>(
+      initialValue: _contentFilter,
+      onSelected: (value) => setState(() => _contentFilter = value),
+      color: const Color(0xFF2C221C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      tooltip: 'Filter op kaart',
+      padding: EdgeInsets.zero,
+      icon: Icon(
+        Icons.tune,
+        color: active ? const Color(0xFFD4B28C) : const Color(0xFF9E8A7D),
+        size: 18,
       ),
+      itemBuilder: (context) => [
+        for (final (filter, label, icon) in options)
+          PopupMenuItem<_MapContentFilter>(
+            value: filter,
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: _contentFilter == filter ? const Color(0xFFD4B28C) : const Color(0xFF9E8A7D),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFFEFE6DD),
+                    fontWeight: _contentFilter == filter ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                if (_contentFilter == filter) ...[
+                  const Spacer(),
+                  const Icon(Icons.check, size: 16, color: Color(0xFFD4B28C)),
+                ],
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -1515,13 +1514,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 )
               else
-                const Icon(
-                  Icons.tune,
-                  color: Color(
-                    0xFF9E8A7D,
-                  ),
-                  size: 18,
-                ),
+                _buildContentFilterButton(),
             ],
           ),
         ),
