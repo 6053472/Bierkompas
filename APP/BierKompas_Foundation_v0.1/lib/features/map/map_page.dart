@@ -1160,11 +1160,6 @@ out center tags;
                               ),
                             ),
                           ),
-                          IconButton(
-                            tooltip: 'Brouwerij toevoegen',
-                            onPressed: _openBrewerySubmission,
-                            icon: const Icon(Icons.add_business_outlined, color: Color(0xFFD4B28C)),
-                          ),
                           if (widget.onProfileTap !=
                               null)
                             ProfileAvatarButton(
@@ -1331,6 +1326,15 @@ out center tags;
           ),
         ],
       ),
+      floatingActionButton: _selectedIndex == null
+          ? FloatingActionButton.extended(
+              onPressed: _openBrewerySubmission,
+              backgroundColor: const Color(0xFFD4B28C),
+              foregroundColor: const Color(0xFF1E1712),
+              icon: const Icon(Icons.add),
+              label: const Text('Brouwerij toevoegen'),
+            )
+          : null,
     );
   }
 
