@@ -1,11 +1,13 @@
--- ============================================================
--- BierKompas - Supabase schema.sql
--- ============================================================
+```sql
+-- =========================================================
+-- BierKompas Supabase schema
+-- Herstelde versie zonder events RLS-recursie
+-- =========================================================
 
 
--- ============================================================
+-- =========================================================
 -- 1. PROFILES
--- ============================================================
+-- =========================================================
 
 create table if not exists public.profiles (
     id uuid primary key references auth.users(id) on delete cascade,
@@ -25,15 +27,15 @@ add column if not exists is_admin boolean not null default false;
 alter table public.profiles enable row level security;
 
 
--- ============================================================
--- 2. ADMIN FUNCTIE
--- ============================================================
+-- =========================================================
+-- ADMIN FUNCTIE
+-- =========================================================
 
 create or replace function public.is_admin()
 returns boolean
 language sql
 security definer
-set search_path = public, pg_temp
+set search_path = public
 as $$
     select coalesce(
         (
@@ -46,9 +48,9 @@ as $$
 $$;
 
 
--- ============================================================
--- 3. PROFILE POLICIES
--- ============================================================
+-- =========================================================
+-- PROFILE POLICIES
+-- =========================================================
 
 drop policy if exists "Profiles: select own"
 on public.profiles;
@@ -84,50 +86,38 @@ with check (
 );
 
 
-create policy "Profiles: event owners and admins can view participants"
-on public.profiles
-for select
-to authenticated
-using (
-    public.is_admin()
-    OR
-    exists (
-        select 1
-        from public.event_registrations er
-        inner join public.events e
-            on e.id = er.event_id
-        where er.user_id = public.profiles.id
-        and e.user_id = auth.uid()
-    )
-);
-
-
--- ============================================================
--- 4. NIEUWE GEBRUIKER -> PROFILE
--- ============================================================
+-- =========================================================
+-- NIEUWE GEBRUIKER -> PROFILE
+-- =========================================================
 
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public
 as $$
 begin
 
     insert into public.profiles (
         id,
         name,
-        email
+        email,
+        avatar_url
     )
     values (
         new.id,
         coalesce(new.raw_user_meta_data->>'name', ''),
-        coalesce(new.email, '')
+        coalesce(new.email, ''),
+        new.raw_user_meta_data->>'avatar_url'
     )
-    on conflict (id) do update
-    set
+    on conflict (id)
+    do update set
         name = excluded.name,
-        email = excluded.email;
+        email = excluded.email,
+        avatar_url = coalesce(
+            excluded.avatar_url,
+            public.profiles.avatar_url
+        );
 
     return new;
 
@@ -145,42 +135,41 @@ for each row
 execute procedure public.handle_new_user();
 
 
--- ============================================================
--- 5. USER CONSENTS
--- ============================================================
+-- =========================================================
+-- 2. USER CONSENTS
+-- =========================================================
 
 create table if not exists public.user_consents (
     id bigint generated always as identity primary key,
+    user_id uuid not null references auth.users(id) on delete cascade,
+    terms_version text not null,
+    privacy_version text not null,
+    accepted_at timestamptz not null default now(),
+    age_confirmed boolean not null default false,
+    lawful_alcohol_use boolean not null default false,
+    accurate_account_data boolean not null default false,
+    personal_account boolean not null default false,
+    credentials_secure boolean not null default false,
+    no_impersonation boolean not null default false,
 
-    user_id uuid not null
-        references auth.users(id)
-        on delete cascade,
-
-    consent_type text not null,
-
-    accepted boolean not null default false,
-
-    created_at timestamptz not null default now(),
-
-    constraint unique_user_consent
-        unique (user_id, consent_type)
+    constraint unique_user_consent_version
+        unique (user_id, terms_version, privacy_version)
 );
 
-alter table public.user_consents
-enable row level security;
+alter table public.user_consents enable row level security;
 
 
-drop policy if exists "User consents: own select"
+drop policy if exists "Consents: select own"
 on public.user_consents;
 
-drop policy if exists "User consents: own insert"
+drop policy if exists "Consents: insert own"
 on public.user_consents;
 
-drop policy if exists "User consents: own update"
+drop policy if exists "Consents: update own"
 on public.user_consents;
 
 
-create policy "User consents: own select"
+create policy "Consents: select own"
 on public.user_consents
 for select
 to authenticated
@@ -189,7 +178,7 @@ using (
 );
 
 
-create policy "User consents: own insert"
+create policy "Consents: insert own"
 on public.user_consents
 for insert
 to authenticated
@@ -198,7 +187,7 @@ with check (
 );
 
 
-create policy "User consents: own update"
+create policy "Consents: update own"
 on public.user_consents
 for update
 to authenticated
@@ -210,37 +199,35 @@ with check (
 );
 
 
--- ============================================================
--- 6. FAVORITES
--- ============================================================
+-- =========================================================
+-- 3. FAVORITES
+-- =========================================================
 
 create table if not exists public.favorites (
     id bigint generated always as identity primary key,
+    user_id uuid not null references auth.users(id) on delete cascade,
+    item_type text not null,
+    item_id bigint not null,
+    created_at timestamptz not null default now(),
 
-    user_id uuid not null
-        references auth.users(id)
-        on delete cascade,
-
-    event_id bigint,
-
-    created_at timestamptz not null default now()
+    constraint unique_favorite
+        unique (user_id, item_type, item_id)
 );
 
-alter table public.favorites
-enable row level security;
+alter table public.favorites enable row level security;
 
 
-drop policy if exists "Favorites: own select"
+drop policy if exists "Favorites: select own"
 on public.favorites;
 
-drop policy if exists "Favorites: own insert"
+drop policy if exists "Favorites: insert own"
 on public.favorites;
 
-drop policy if exists "Favorites: own delete"
+drop policy if exists "Favorites: delete own"
 on public.favorites;
 
 
-create policy "Favorites: own select"
+create policy "Favorites: select own"
 on public.favorites
 for select
 to authenticated
@@ -249,7 +236,7 @@ using (
 );
 
 
-create policy "Favorites: own insert"
+create policy "Favorites: insert own"
 on public.favorites
 for insert
 to authenticated
@@ -258,7 +245,7 @@ with check (
 );
 
 
-create policy "Favorites: own delete"
+create policy "Favorites: delete own"
 on public.favorites
 for delete
 to authenticated
@@ -267,134 +254,153 @@ using (
 );
 
 
--- ============================================================
--- 7. EVENTS
--- ============================================================
+-- =========================================================
+-- 4. EVENTS
+-- =========================================================
 
 create table if not exists public.events (
     id bigint generated always as identity primary key,
 
-    user_id uuid not null
+    user_id uuid
         references auth.users(id)
         on delete cascade,
 
     name text not null,
-
-    event_type text not null default 'Festival',
+    event_type text not null,
 
     start_date timestamptz not null,
-
-    end_date timestamptz,
+    end_date timestamptz not null,
 
     opening_hours text,
 
-    street text,
+    street text not null,
+    house_number text not null,
+    postal_code text not null,
+    city text not null,
+    location_name text not null,
 
-    house_number text,
+    description text not null,
 
-    postal_code text,
+    ticket_regular boolean not null default false,
+    ticket_beer boolean not null default false,
+    ticket_vip boolean not null default false,
 
-    city text,
+    price numeric(10,2),
 
-    location_name text,
-
-    description text,
-
-    ticket_regular numeric,
-
-    ticket_beer numeric,
-
-    ticket_vip numeric,
-
-    price numeric default 0.00,
-
-    price_incl_btw boolean not null default true,
-
+    price_incl_btw boolean not null default false,
     price_excl_btw boolean not null default false,
-
-    image_asset text,
 
     status text not null default 'pending',
 
-    created_at timestamptz not null default now(),
+    image_asset text,
 
-    constraint event_status_check
-        check (
-            status in (
-                'pending',
-                'approved',
-                'rejected',
-                'cancelled'
-            )
-        )
+    created_at timestamptz not null default now()
 );
 
+
 alter table public.events
-enable row level security;
+add column if not exists image_asset text;
+
+alter table public.events
+add column if not exists status text not null default 'pending';
+
+alter table public.events enable row level security;
 
 
--- ============================================================
--- 8. EVENTS POLICIES
--- ============================================================
+-- =========================================================
+-- ALLE OUDE EVENTS POLICIES OPRUIMEN
+-- =========================================================
+
+drop policy if exists "Approved events are public"
+on public.events;
+
+drop policy if exists "Events: everyone can view"
+on public.events;
 
 drop policy if exists "Events: everyone can view approved"
+on public.events;
+
+drop policy if exists "Events: view approved, own, or admin"
+on public.events;
+
+drop policy if exists "Users can view their own events"
 on public.events;
 
 drop policy if exists "Events: authenticated users can create"
 on public.events;
 
+drop policy if exists "Events: authenticated users can insert"
+on public.events;
+
+drop policy if exists "Events: owner can update"
+on public.events;
+
 drop policy if exists "Events: owners can update"
 on public.events;
 
-drop policy if exists "Events: owners can delete"
+drop policy if exists "Events: owner or admin can update"
 on public.events;
 
 drop policy if exists "Events: admins can update"
+on public.events;
+
+drop policy if exists "Events: owner can delete"
+on public.events;
+
+drop policy if exists "Events: owners can delete"
 on public.events;
 
 drop policy if exists "Events: admins can delete"
 on public.events;
 
 
-create policy "Events: everyone can view approved"
+-- =========================================================
+-- EVENTS SELECT
+-- Geen verwijzing naar profiles/events/andere policies.
+-- Hierdoor geen RLS-recursie.
+-- =========================================================
+
+create policy "Events: everyone can view"
 on public.events
 for select
+to anon, authenticated
 using (
-    status = 'approved'
-    or user_id = auth.uid()
-    or public.is_admin()
+    true
 );
 
 
-create policy "Events: authenticated users can create"
+-- =========================================================
+-- EVENTS INSERT
+-- =========================================================
+
+create policy "Events: authenticated users can insert"
 on public.events
 for insert
 to authenticated
 with check (
-    user_id = auth.uid()
+    auth.uid() = user_id
 );
 
 
-create policy "Events: owners can update"
+-- =========================================================
+-- EVENTS UPDATE - EIGENAAR
+-- =========================================================
+
+create policy "Events: owner can update"
 on public.events
 for update
 to authenticated
 using (
-    user_id = auth.uid()
+    auth.uid() = user_id
 )
 with check (
-    user_id = auth.uid()
+    auth.uid() = user_id
 );
 
 
-create policy "Events: owners can delete"
-on public.events
-for delete
-to authenticated
-using (
-    user_id = auth.uid()
-);
-
+-- =========================================================
+-- EVENTS UPDATE - ADMIN
+-- =========================================================
 
 create policy "Events: admins can update"
 on public.events
@@ -408,6 +414,23 @@ with check (
 );
 
 
+-- =========================================================
+-- EVENTS DELETE - EIGENAAR
+-- =========================================================
+
+create policy "Events: owner can delete"
+on public.events
+for delete
+to authenticated
+using (
+    auth.uid() = user_id
+);
+
+
+-- =========================================================
+-- EVENTS DELETE - ADMIN
+-- =========================================================
+
 create policy "Events: admins can delete"
 on public.events
 for delete
@@ -417,9 +440,18 @@ using (
 );
 
 
--- ============================================================
--- 9. EVENT REGISTRATIONS
--- ============================================================
+grant select
+on public.events
+to anon;
+
+grant select, insert, update, delete
+on public.events
+to authenticated;
+
+
+-- =========================================================
+-- 5. EVENT REGISTRATIONS
+-- =========================================================
 
 create table if not exists public.event_registrations (
     id bigint generated always as identity primary key,
@@ -449,259 +481,215 @@ create table if not exists public.event_registrations (
         )
 );
 
+
 alter table public.event_registrations
-enable row level security;
+add column if not exists status text not null default 'pending';
 
 
--- ============================================================
--- 10. REGISTRATION POLICIES
--- ============================================================
-
-drop policy if exists "Registrations: own select"
-on public.event_registrations;
-
-drop policy if exists "Registrations: event owner select"
-on public.event_registrations;
-
-drop policy if exists "Registrations: admin select"
-on public.event_registrations;
-
-drop policy if exists "Registrations: own insert"
-on public.event_registrations;
-
-drop policy if exists "Registrations: own delete"
-on public.event_registrations;
-
-drop policy if exists "Registrations: event owner update"
-on public.event_registrations;
-
-drop policy if exists "Registrations: admin update"
-on public.event_registrations;
+update public.event_registrations
+set status = 'pending'
+where status is null;
 
 
-create policy "Registrations: own select"
-on public.event_registrations
-for select
-to authenticated
-using (
-    user_id = auth.uid()
-);
-
-
-create policy "Registrations: event owner select"
-on public.event_registrations
-for select
-to authenticated
-using (
-    exists (
-        select 1
-        from public.events e
-        where e.id = event_registrations.event_id
-        and e.user_id = auth.uid()
-    )
-);
-
-
-create policy "Registrations: admin select"
-on public.event_registrations
-for select
-to authenticated
-using (
-    public.is_admin()
-);
-
-
-create policy "Registrations: own insert"
-on public.event_registrations
-for insert
-to authenticated
-with check (
-    user_id = auth.uid()
-);
-
-
-create policy "Registrations: own delete"
-on public.event_registrations
-for delete
-to authenticated
-using (
-    user_id = auth.uid()
-);
-
-
-create policy "Registrations: event owner update"
-on public.event_registrations
-for update
-to authenticated
-using (
-    exists (
-        select 1
-        from public.events e
-        where e.id = event_registrations.event_id
-        and e.user_id = auth.uid()
-    )
-)
-with check (
-    exists (
-        select 1
-        from public.events e
-        where e.id = event_registrations.event_id
-        and e.user_id = auth.uid()
-    )
-);
-
-
-create policy "Registrations: admin update"
-on public.event_registrations
-for update
-to authenticated
-using (
-    public.is_admin()
-)
-with check (
-    public.is_admin()
-);
-
-
--- ============================================================
--- 11. GOEDGEKEURDE DEELNEMERS OPHALEN
--- ============================================================
-
-drop function if exists public.get_event_approved_participants(bigint);
-
-create function public.get_event_approved_participants(
-    p_event_id bigint
-)
-returns table (
-    id uuid,
-    name text,
-    avatar_url text
-)
-language sql
-security definer
-set search_path = public, pg_temp
-as $$
-    select
-        p.id,
-        p.name,
-        p.avatar_url
-
-    from public.event_registrations er
-
-    inner join public.profiles p
-        on p.id = er.user_id
-
-    inner join public.events e
-        on e.id = er.event_id
-
-    where er.event_id = p_event_id
-
-      and er.status = 'approved'
-
-      and (
-          e.user_id = auth.uid()
-          or public.is_admin()
-      )
-
-    order by er.created_at;
-$$;
-
-
-revoke all
-on function public.get_event_approved_participants(bigint)
-from public;
-
-
-grant execute
-on function public.get_event_approved_participants(bigint)
-to authenticated;
-
-
--- ============================================================
--- 12. EVENEMENT LATEN VERVALLEN
--- ============================================================
-
-create or replace function public.cancel_event(
-    p_event_id bigint
-)
-returns void
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
+do $$
 begin
 
     if not exists (
         select 1
-        from public.events
-        where id = p_event_id
-        and (
-            user_id = auth.uid()
-            or public.is_admin()
-        )
+        from pg_constraint
+        where conname = 'event_registration_status_check'
     ) then
 
-        raise exception
-            'Geen toestemming om dit evenement te annuleren.';
+        alter table public.event_registrations
+        add constraint event_registration_status_check
+        check (
+            status in (
+                'pending',
+                'approved',
+                'rejected'
+            )
+        );
 
     end if;
 
-
-    update public.events
-
-    set status = 'cancelled'
-
-    where id = p_event_id;
-
-end;
-$$;
+end $$;
 
 
-grant execute
-on function public.cancel_event(bigint)
+alter table public.event_registrations
+enable row level security;
+
+
+-- =========================================================
+-- REGISTRATION POLICIES
+-- =========================================================
+
+drop policy if exists "Registrations: select own"
+on public.event_registrations;
+
+drop policy if exists "Registrations: event owner can view"
+on public.event_registrations;
+
+drop policy if exists "Registrations: admins can view"
+on public.event_registrations;
+
+drop policy if exists "Registrations: insert own"
+on public.event_registrations;
+
+drop policy if exists "Registrations: delete own"
+on public.event_registrations;
+
+drop policy if exists "Registrations: owner can update"
+on public.event_registrations;
+
+drop policy if exists "Registrations: admins can update"
+on public.event_registrations;
+
+
+create policy "Registrations: select own"
+on public.event_registrations
+for select
+to authenticated
+using (
+    auth.uid() = user_id
+);
+
+
+create policy "Registrations: event owner can view"
+on public.event_registrations
+for select
+to authenticated
+using (
+    exists (
+        select 1
+        from public.events e
+        where e.id = event_registrations.event_id
+        and e.user_id = auth.uid()
+    )
+);
+
+
+create policy "Registrations: admins can view"
+on public.event_registrations
+for select
+to authenticated
+using (
+    public.is_admin()
+);
+
+
+create policy "Registrations: insert own"
+on public.event_registrations
+for insert
+to authenticated
+with check (
+    auth.uid() = user_id
+);
+
+
+create policy "Registrations: delete own"
+on public.event_registrations
+for delete
+to authenticated
+using (
+    auth.uid() = user_id
+);
+
+
+create policy "Registrations: owner can update"
+on public.event_registrations
+for update
+to authenticated
+using (
+    exists (
+        select 1
+        from public.events e
+        where e.id = event_registrations.event_id
+        and e.user_id = auth.uid()
+    )
+)
+with check (
+    exists (
+        select 1
+        from public.events e
+        where e.id = event_registrations.event_id
+        and e.user_id = auth.uid()
+    )
+);
+
+
+create policy "Registrations: admins can update"
+on public.event_registrations
+for update
+to authenticated
+using (
+    public.is_admin()
+)
+with check (
+    public.is_admin()
+);
+
+
+grant select, insert, update, delete
+on public.event_registrations
 to authenticated;
 
 
--- ============================================================
--- 13. GRANTS
--- ============================================================
+-- =========================================================
+-- 6. PARTICIPANT PROFILE ACCESS
+-- =========================================================
 
-grant select, insert, update, delete
+drop policy if exists "Profiles: event owners can view participants"
+on public.profiles;
+
+drop policy if exists "Profiles: event owners and admins can view participants"
+on public.profiles;
+
+
+create policy "Profiles: event owners and admins can view participants"
+on public.profiles
+for select
+to authenticated
+using (
+    exists (
+        select 1
+        from public.event_registrations er
+        join public.events e
+            on e.id = er.event_id
+        where er.user_id = public.profiles.id
+        and e.user_id = auth.uid()
+    )
+    or public.is_admin()
+);
+
+
+-- =========================================================
+-- 7. GRANTS
+-- =========================================================
+
+grant select, update
 on public.profiles
 to authenticated;
 
+grant select, insert, update
+on public.user_consents
+to authenticated;
+
+grant select, insert, delete
+on public.favorites
+to authenticated;
 
 grant select, insert, update, delete
 on public.events
 to authenticated;
 
-
 grant select, insert, update, delete
 on public.event_registrations
 to authenticated;
 
 
-grant select, insert, update, delete
-on public.user_consents
-to authenticated;
-
-
-grant select, insert, update, delete
-on public.favorites
-to authenticated;
-
-
--- ============================================================
--- 14. IDENTITY / SEQUENCES
--- ============================================================
-
-grant usage, select
-on all sequences in schema public
-to authenticated;
-
-
--- ============================================================
--- 15. POSTGREST SCHEMA RELOAD
--- ============================================================
+-- =========================================================
+-- 8. SUPABASE SCHEMA CACHE
+-- =========================================================
 
 notify pgrst, 'reload schema';
+```
