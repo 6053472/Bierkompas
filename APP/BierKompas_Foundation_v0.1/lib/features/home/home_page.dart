@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../favorites/beers.dart';
 import '../favorites/favorites_page.dart';
 import '../favorites/favorites_service.dart';
 import '../feed/feed_card.dart';
@@ -218,9 +217,7 @@ class _HomePageState extends State<HomePage> {
 // zodat Ontdek er niet meer uitspringt met eigen "Artisanal Draught"-kleuren.
 const _background = Color(0xFF1E1712);
 const _primary = Color(0xFFD4B28C);
-const _onPrimary = Color(0xFF1E1712);
 const _secondary = Color(0xFFD4B28C);
-const _onSecondary = Color(0xFF1E1712);
 const _secondaryContainer = Color(0xFF3C3028);
 const _surfaceContainerLow = Color(0xFF2C221C);
 const _surfaceContainer = Color(0xFF2C221C);
@@ -230,8 +227,6 @@ const _outlineVariant = Color(0xFF3E312A);
 
 const _logoImage =
     'https://lh3.googleusercontent.com/aida-public/AB6AXuBM580LJgGSlvZ-vRLbR8gR8YgCyscQpi9v23krIsU1Guv5lOfaBskJ9JU0mAQfjQ1lLx2JpEin-c8CRLQUKrrp2h9_rlhwvsXtUzKB82_sN9jqFo8KaIZ4p0n6lW7t7-a9ZBD17gqjKLyg7VthIMxzX5MEI8ErfqOXJhOV6IVqqi21Eo84uNNaBkkMfh3dS6SoiH87ofeiFMlfb7V-RoAaWbx94fXBu2zBenGe_GMOUk2P_--GMBAnIrE35R6aGf-bZA';
-const _popularImage =
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuANIbUEodWyxyWEqbHFoWd_APYDtoiXgTOVbAJ5TIOp9PKG4baeF5XYwf34634GW-PHvDpk4FhxpB1XlsZEFAl3BsWVxT8Gq-KlOZ01ggozbCfeF3fRoufrH8N5tDetdyMY9uKUxDAadw9wON36RlMvSHNjV30Ol5XjZ06tnPRARXfPUGTEFIa5xw_1m7rvTyggDsC2HvYxMuo3GNidOYo-3ypVQq14WiAoZWsApQQMn_T-2VSeoFN7';
 class DiscoveryContentPage extends StatefulWidget {
   final int streak;
   final String? avatarUrl;
@@ -507,25 +502,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                   const SizedBox(height: 48),
                   _buildActionGrid(),
                   const SizedBox(height: 48),
-                  _sectionLabel('Nu Populair'),
-                  _buildFeaturedCard(
-                    imageUrl: _popularImage,
-                    badge: 'Vandaag Getapt',
-                    badgeColor: _primary,
-                    badgeTextColor: _onPrimary,
-                    title: koperenNachtTripel.name,
-                    subtitle: 'Intens, kruidig met tonen van karamel.',
-                    onTap: () => _goTo(_tabFavorites),
-                    topRight: _heartButton(
-                      _isLiked(beerItemType, koperenNachtTripel.id),
-                      () => _toggleLike(beerItemType, koperenNachtTripel.id),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
                   _sectionLabel('Snelkoppelingen'),
                   _buildShortcut(Icons.bookmarks_outlined, 'Mijn Favorieten', () => _goTo(_tabFavorites)),
-                  const SizedBox(height: 12),
-                  _buildShortcut(Icons.restaurant_outlined, 'Tafeltje Reserveren', () => _goTo(_tabFavorites)),
                   const SizedBox(height: 48),
                   _sectionLabel('Bierfeed'),
                   const SizedBox(height: 12),
@@ -535,24 +513,6 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _heartButton(bool liked, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.5),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          liked ? Icons.favorite : Icons.favorite_border,
-          color: liked ? _primary : Colors.white,
-          size: 18,
         ),
       ),
     );
@@ -798,89 +758,6 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           fontSize: 14,
           fontWeight: FontWeight.w600,
           letterSpacing: 2.8,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeaturedCard({
-    required String imageUrl,
-    required String badge,
-    required Color badgeColor,
-    required Color badgeTextColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Widget? topRight,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 192,
-        decoration: BoxDecoration(
-          color: _background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _primary.withOpacity(0.2)),
-          boxShadow: [_amberGlow],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _networkImage(imageUrl),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [_background, Color(0x001E1712)],
-                  stops: [0, 0.5],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: badgeColor,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      badge.toUpperCase(),
-                      style: GoogleFonts.openSans(
-                        color: badgeTextColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.25,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    title,
-                    style: GoogleFonts.playfairDisplay(
-                      color: _onSurface,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      height: 32 / 24,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 20 / 14),
-                  ),
-                ],
-              ),
-            ),
-            if (topRight != null) Positioned(top: 12, right: 12, child: topRight),
-          ],
         ),
       ),
     );
