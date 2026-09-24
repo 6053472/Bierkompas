@@ -17,6 +17,8 @@ import 'brewery_submission_service.dart';
 import 'event_map_service.dart';
 import '../../shared/profile_avatar_button.dart';
 
+enum _MapContentFilter { all, breweries, events }
+
 class MapPage extends StatefulWidget {
   const MapPage({
     super.key,
@@ -73,6 +75,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<EventPin> _events = [];
   // null = alle types tonen.
   String? _selectedEventType;
+  _MapContentFilter _contentFilter = _MapContentFilter.all;
   static const _eventTypeFilters = [
     'Festival',
     'Proeverij',
@@ -145,9 +148,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     setState(() => _events = events);
   }
 
-  List<EventPin> get _visibleEvents => _selectedEventType == null
-      ? _events
-      : _events.where((e) => e.eventType == _selectedEventType).toList();
+  List<EventPin> get _visibleEvents {
+    if (_contentFilter == _MapContentFilter.breweries) return const [];
+    return _selectedEventType == null
+        ? _events
+        : _events.where((e) => e.eventType == _selectedEventType).toList();
+  }
+
+  bool get _showBreweries => _contentFilter != _MapContentFilter.events;
 
   IconData _iconForEventType(String type) {
     switch (type) {
@@ -931,7 +939,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
               MarkerLayer(
                 markers: [
-                  for (final entry in _results.asMap().entries)
+                  if (_showBreweries)
+                    for (final entry in _results.asMap().entries)
                     Marker(
                       point: LatLng(
                         entry.value.brewery.latitude,
@@ -1062,7 +1071,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 15),
                       Text(
-                        'Brouwerijen in Nederland',
+                        'Ontdek op de kaart',
                         style:
                             GoogleFonts.playfairDisplay(
                           color: const Color(
@@ -1076,8 +1085,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       const SizedBox(height: 6),
                       Text(
                         _searchedLocation.isEmpty
-                            ? 'Zoek een stad, straat, postcode of provincie.'
-                            : 'Brouwerijen vanaf $_searchedLocation, dichtstbijzijnde eerst.',
+                            ? 'Brouwerijen en evenementen bij jou in de buurt.'
+                            : 'Resultaten vanaf $_searchedLocation, dichtstbijzijnde eerst.',
                         maxLines: 2,
                         overflow:
                             TextOverflow.ellipsis,
@@ -1094,7 +1103,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 ),
 
-                if (_events.isNotEmpty) _buildEventTypeFilters(),
+                _buildContentTypeFilters(),
+                if (_events.isNotEmpty && _contentFilter != _MapContentFilter.breweries) _buildEventTypeFilters(),
 
                 Padding(
                   padding:
@@ -1128,7 +1138,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
 
                 Expanded(
-                  child: _results.isEmpty
+                  child: (_showBreweries && _results.isEmpty)
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
@@ -1186,10 +1196,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 16),
+                                        const Icon(Icons.place, color: Color(0xFFD4B28C), size: 16),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Tik op een bier-icoon voor details',
+                                          'Tik op een pin voor details',
                                           style: GoogleFonts.inter(
                                             color: const Color(0xFFEFE6DD),
                                             fontSize: 12,
@@ -1260,6 +1270,56 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               label: const Text('Brouwerij toevoegen'),
             )
           : null,
+    );
+  }
+
+  Widget _buildContentTypeFilters() {
+    final options = <(_MapContentFilter, String, IconData)>[
+      (_MapContentFilter.all, 'Alles', Icons.apps),
+      (_MapContentFilter.breweries, 'Brouwerijen', Icons.sports_bar),
+      (_MapContentFilter.events, 'Evenementen', Icons.event),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: options.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final (filter, label, icon) = options[index];
+            final selected = _contentFilter == filter;
+            return GestureDetector(
+              onTap: () => setState(() => _contentFilter = filter),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected ? const Color(0xFFD4B28C) : const Color(0xFF2C221C),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFF3E312A)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 16, color: selected ? const Color(0xFF1E1712) : const Color(0xFFD4B28C)),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        color: selected ? const Color(0xFF1E1712) : const Color(0xFFEFE6DD),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
