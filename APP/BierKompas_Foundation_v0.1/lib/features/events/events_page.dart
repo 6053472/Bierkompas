@@ -243,78 +243,6 @@ class _EventsPageState extends State<EventsPage> {
     });
   }
 
-  Future<String?> _getRegistrationStatus(int eventId) async {
-    final user = _supabase.auth.currentUser;
-
-    if (user == null) return null;
-
-    final result = await _supabase
-        .from('event_registrations')
-        .select('status')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-    return result?['status']?.toString();
-  }
-
-  Future<void> _registerForEvent(int eventId) async {
-    final user = _supabase.auth.currentUser;
-
-    if (user == null) {
-      _showMessage('Je moet ingelogd zijn om je aan te melden.');
-      return;
-    }
-
-    try {
-      final existing = await _supabase
-          .from('event_registrations')
-          .select('id,status')
-          .eq('event_id', eventId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-      if (existing != null) {
-        _showMessage(
-          'Je hebt je al aangemeld voor dit evenement.',
-        );
-        return;
-      }
-
-      await _supabase.from('event_registrations').insert({
-        'event_id': eventId,
-        'user_id': user.id,
-        'status': 'pending',
-      });
-
-      _showMessage(
-        'Aanmelding verstuurd. Wacht op goedkeuring.',
-      );
-    } catch (e) {
-      debugPrint('Aanmelden mislukt: $e');
-      _showMessage('Aanmelden mislukt.');
-    }
-  }
-
-  Future<void> _cancelRegistration(int eventId) async {
-    final user = _supabase.auth.currentUser;
-
-    if (user == null) return;
-
-    try {
-      await _supabase
-          .from('event_registrations')
-          .delete()
-          .eq('event_id', eventId)
-          .eq('user_id', user.id);
-
-      _showMessage('Je aanmelding is verwijderd.');
-    } catch (e) {
-      debugPrint('Afmelden mislukt: $e');
-      _showMessage('Afmelden mislukt.');
-    }
-  }
-
   Future<List<Map<String, dynamic>>> _fetchParticipants(
     int eventId,
   ) async {
@@ -464,7 +392,10 @@ class _EventsPageState extends State<EventsPage> {
           .delete()
           .eq('id', eventId);
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
+
       _showMessage('Evenement verwijderd.');
     } catch (e) {
       _showMessage('Verwijderen mislukt.');
@@ -526,7 +457,9 @@ class _EventsPageState extends State<EventsPage> {
         },
       );
 
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
       _showMessage('Laten vervallen mislukt.');
     }
@@ -1450,7 +1383,6 @@ class _EventsPageState extends State<EventsPage> {
                         )
                       else
                         _eventDetailPlaceholder(),
-
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
@@ -1469,7 +1401,6 @@ class _EventsPageState extends State<EventsPage> {
                           ),
                         ),
                       ),
-
                       Positioned(
                         top: 16,
                         right: 16,
@@ -1494,7 +1425,6 @@ class _EventsPageState extends State<EventsPage> {
                           ),
                         ),
                       ),
-
                       Positioned(
                         top: 16,
                         left: 16,
@@ -1519,7 +1449,6 @@ class _EventsPageState extends State<EventsPage> {
                           ),
                         ),
                       ),
-
                       Positioned(
                         left: 20,
                         right: 20,
@@ -1567,7 +1496,6 @@ class _EventsPageState extends State<EventsPage> {
                       ),
                     ],
                   ),
-
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       18,
@@ -1599,7 +1527,6 @@ class _EventsPageState extends State<EventsPage> {
                               ),
                             ],
                           ),
-
                         if (location.isNotEmpty ||
                             city.isNotEmpty) ...[
                           const SizedBox(height: 10),
@@ -1614,7 +1541,6 @@ class _EventsPageState extends State<EventsPage> {
                             ].join(' · '),
                           ),
                         ],
-
                         if (openingHours.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           _wideInfoCard(
@@ -1623,7 +1549,6 @@ class _EventsPageState extends State<EventsPage> {
                             openingHours,
                           ),
                         ],
-
                         if (street.isNotEmpty ||
                             houseNumber.isNotEmpty ||
                             postalCode.isNotEmpty) ...[
@@ -1635,7 +1560,6 @@ class _EventsPageState extends State<EventsPage> {
                                 '$postalCode $city',
                           ),
                         ],
-
                         if (description.isNotEmpty) ...[
                           const SizedBox(height: 28),
                           Text(
@@ -1670,7 +1594,6 @@ class _EventsPageState extends State<EventsPage> {
                             ),
                           ),
                         ],
-
                         if (eventId != null && !isOwner) ...[
                           const SizedBox(height: 28),
                           Text(
@@ -1685,7 +1608,6 @@ class _EventsPageState extends State<EventsPage> {
                           const SizedBox(height: 10),
                           _registrationButton(eventId),
                         ],
-
                         if (eventId != null && isOwner) ...[
                           const SizedBox(height: 30),
                           Container(
@@ -1900,248 +1822,9 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Widget _registrationButton(int eventId) {
-    return FutureBuilder<String?>(
-      future: _getRegistrationStatus(eventId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
-          return Container(
-            height: 54,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: borderColor,
-              ),
-            ),
-            child: const CircularProgressIndicator(
-              color: beigeColor,
-              strokeWidth: 2,
-            ),
-          );
-        }
-
-        final status = snapshot.data;
-
-        if (status == 'approved') {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: Colors.green.withOpacity(0.30),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.greenAccent,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Je bent goedgekeurd',
-                        style: GoogleFonts.inter(
-                          color: Colors.greenAccent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Je kunt deelnemen aan dit evenement.',
-                        style: GoogleFonts.inter(
-                          color: secondaryTextColor,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (status == 'pending') {
-          return Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orangeAccent.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: Colors.orangeAccent
-                        .withOpacity(0.25),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.orangeAccent
-                            .withOpacity(0.10),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.hourglass_top,
-                        color: Colors.orangeAccent,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Aanmelding in behandeling',
-                            style: GoogleFonts.inter(
-                              color: Colors.orangeAccent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'De organisator moet je aanmelding nog goedkeuren.',
-                            style: GoogleFonts.inter(
-                              color: secondaryTextColor,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () =>
-                    _cancelRegistration(eventId),
-                child: Text(
-                  'Aanmelding intrekken',
-                  style: GoogleFonts.inter(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-
-        if (status == 'rejected') {
-          return Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: Colors.redAccent.withOpacity(0.25),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent
-                            .withOpacity(0.10),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Je aanmelding is afgewezen.',
-                        style: GoogleFonts.inter(
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () =>
-                      _registerForEvent(eventId),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: beigeColor,
-                    foregroundColor: backgroundColor,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    'Opnieuw aanmelden',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-
-        return SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton.icon(
-            onPressed: () =>
-                _registerForEvent(eventId),
-            icon: const Icon(Icons.how_to_reg),
-            label: Text(
-              'Aanmelden voor evenement',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: beigeColor,
-              foregroundColor: backgroundColor,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-            ),
-          ),
-        );
-      },
+    return _RegistrationButton(
+      supabase: _supabase,
+      eventId: eventId,
     );
   }
 
@@ -2726,6 +2409,7 @@ class _EventsPageState extends State<EventsPage> {
             backgroundColor: cardColor,
             onRefresh: () async {
               setState(() {});
+
               await Future.delayed(
                 const Duration(milliseconds: 300),
               );
@@ -2765,10 +2449,573 @@ class _EventsPageState extends State<EventsPage> {
             ),
           );
 
-          if (mounted) setState(() {});
+          if (mounted) {
+            setState(() {});
+          }
         },
         child: const Icon(Icons.add),
       ),
     );
   }
 }
+
+class _RegistrationButton extends StatefulWidget {
+  const _RegistrationButton({
+    required this.supabase,
+    required this.eventId,
+  });
+
+  final SupabaseClient supabase;
+  final int eventId;
+
+  @override
+  State<_RegistrationButton> createState() =>
+      _RegistrationButtonState();
+}
+
+class _RegistrationButtonState
+    extends State<_RegistrationButton> {
+  String? _status;
+  String? _message;
+
+  bool _loading = true;
+  bool _actionLoading = false;
+
+  static const Color backgroundColor = Color(0xFF1E1712);
+  static const Color cardColor = Color(0xFF2C221C);
+  static const Color borderColor = Color(0xFF46372D);
+  static const Color beigeColor = Color(0xFFD4B28C);
+  static const Color textColor = Color(0xFFEFE6DD);
+  static const Color secondaryTextColor = Color(0xFF9E8A7D);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    final user = widget.supabase.auth.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      setState(() {
+        _loading = false;
+      });
+
+      return;
+    }
+
+    try {
+      final result = await widget.supabase
+          .from('event_registrations')
+          .select('status')
+          .eq('event_id', widget.eventId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (!mounted) return;
+
+      setState(() {
+        _status = result?['status']?.toString();
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'Aanmeldstatus ophalen mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _loading = false;
+        _message =
+            'Aanmeldstatus kon niet worden opgehaald.';
+      });
+    }
+  }
+
+  Future<void> _register() async {
+    final user = widget.supabase.auth.currentUser;
+
+    if (user == null) {
+      setState(() {
+        _message =
+            'Je moet ingelogd zijn om je aan te melden.';
+      });
+      return;
+    }
+
+    setState(() {
+      _actionLoading = true;
+      _message = null;
+    });
+
+    try {
+      final existing = await widget.supabase
+          .from('event_registrations')
+          .select('id,status')
+          .eq('event_id', widget.eventId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (existing != null) {
+        final existingStatus =
+            existing['status']?.toString();
+
+        if (existingStatus == 'rejected') {
+          await widget.supabase
+              .from('event_registrations')
+              .update({
+                'status': 'pending',
+              })
+              .eq(
+                'id',
+                existing['id'],
+              );
+
+          if (!mounted) return;
+
+          setState(() {
+            _status = 'pending';
+            _actionLoading = false;
+            _message =
+                'Aanmelding opnieuw verstuurd. Wacht op goedkeuring.';
+          });
+
+          return;
+        }
+
+        if (!mounted) return;
+
+        setState(() {
+          _status = existingStatus;
+          _actionLoading = false;
+          _message = existingStatus == 'pending'
+              ? 'Je aanmelding wacht al op goedkeuring.'
+              : 'Je bent al goedgekeurd voor dit evenement.';
+        });
+
+        return;
+      }
+
+      await widget.supabase
+          .from('event_registrations')
+          .insert({
+        'event_id': widget.eventId,
+        'user_id': user.id,
+        'status': 'pending',
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _status = 'pending';
+        _actionLoading = false;
+        _message =
+            'Aanmelding verstuurd. Wacht op goedkeuring.';
+      });
+    } catch (e) {
+      debugPrint(
+        'Aanmelden mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _actionLoading = false;
+        _message = 'Aanmelden mislukt.';
+      });
+    }
+  }
+
+  Future<void> _cancel() async {
+    final user = widget.supabase.auth.currentUser;
+
+    if (user == null) return;
+
+    setState(() {
+      _actionLoading = true;
+      _message = null;
+    });
+
+    try {
+      await widget.supabase
+          .from('event_registrations')
+          .delete()
+          .eq(
+            'event_id',
+            widget.eventId,
+          )
+          .eq(
+            'user_id',
+            user.id,
+          );
+
+      if (!mounted) return;
+
+      setState(() {
+        _status = null;
+        _actionLoading = false;
+        _message = 'Je aanmelding is verwijderd.';
+      });
+    } catch (e) {
+      debugPrint(
+        'Afmelden mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _actionLoading = false;
+        _message = 'Afmelden mislukt.';
+      });
+    }
+  }
+
+  Widget _messageWidget() {
+    if (_message == null || _message!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isError =
+        _message!.toLowerCase().contains('mislukt');
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: isError
+            ? Colors.redAccent.withOpacity(0.08)
+            : beigeColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: isError
+              ? Colors.redAccent.withOpacity(0.25)
+              : beigeColor.withOpacity(0.25),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isError
+                ? Icons.error_outline
+                : Icons.info_outline,
+            color:
+                isError ? Colors.redAccent : beigeColor,
+            size: 19,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              _message!,
+              style: GoogleFonts.inter(
+                color: textColor,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _loadingButton() {
+    return Container(
+      width: double.infinity,
+      height: 54,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: borderColor,
+        ),
+      ),
+      child: const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(
+          color: beigeColor,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _approvedWidget() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: Colors.green.withOpacity(0.30),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.greenAccent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Je bent goedgekeurd',
+                      style: GoogleFonts.inter(
+                        color: Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Je kunt deelnemen aan dit evenement.',
+                      style: GoogleFonts.inter(
+                        color: secondaryTextColor,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        _messageWidget(),
+      ],
+    );
+  }
+
+  Widget _pendingWidget() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orangeAccent.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: Colors.orangeAccent
+                  .withOpacity(0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent
+                      .withOpacity(0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.hourglass_top,
+                  color: Colors.orangeAccent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Wachten op goedkeuring',
+                      style: GoogleFonts.inter(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'De organisator moet je aanmelding nog goedkeuren.',
+                      style: GoogleFonts.inter(
+                        color: secondaryTextColor,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: _actionLoading
+              ? null
+              : _cancel,
+          child: Text(
+            'Aanmelding intrekken',
+            style: GoogleFonts.inter(
+              color: Colors.redAccent,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        _messageWidget(),
+      ],
+    );
+  }
+
+  Widget _rejectedWidget() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.redAccent.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: Colors.redAccent.withOpacity(0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent
+                      .withOpacity(0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.redAccent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Je aanmelding is afgewezen.',
+                  style: GoogleFonts.inter(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed:
+                _actionLoading ? null : _register,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: beigeColor,
+              foregroundColor: backgroundColor,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(
+              'Opnieuw aanmelden',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        _messageWidget(),
+      ],
+    );
+  }
+
+  Widget _defaultButton() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton.icon(
+            onPressed:
+                _actionLoading ? null : _register,
+            icon: const Icon(Icons.how_to_reg),
+            label: Text(
+              'Aanmelden voor evenement',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: beigeColor,
+              foregroundColor: backgroundColor,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+          ),
+        ),
+        _messageWidget(),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return _loadingButton();
+    }
+
+    if (_actionLoading) {
+      if (_status == 'pending') {
+        return Column(
+          children: [
+            _pendingWidget(),
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(
+              color: beigeColor,
+              backgroundColor: cardColor,
+            ),
+          ],
+        );
+      }
+
+      return _loadingButton();
+    }
+
+    if (_status == 'approved') {
+      return _approvedWidget();
+    }
+
+    if (_status == 'pending') {
+      return _pendingWidget();
+    }
+
+    if (_status == 'rejected') {
+      return _rejectedWidget();
+    }
+
+    return _defaultButton();
+  }
+}
+
