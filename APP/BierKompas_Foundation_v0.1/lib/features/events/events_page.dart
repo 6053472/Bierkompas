@@ -243,85 +243,6 @@ class _EventsPageState extends State<EventsPage> {
     });
   }
 
-  Future<List<Map<String, dynamic>>> _fetchParticipants(
-    int eventId,
-  ) async {
-    try {
-      final response = await _supabase.rpc(
-        'get_event_approved_participants',
-        params: {
-          'p_event_id': eventId,
-        },
-      );
-
-      return List<Map<String, dynamic>>.from(
-        (response as List).map(
-          (row) => Map<String, dynamic>.from(row as Map),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Deelnemers ophalen mislukt: $e');
-      return [];
-    }
-  }
-
-  Future<void> _updateRegistrationStatus({
-    required int registrationId,
-    required String status,
-  }) async {
-    try {
-      await _supabase
-          .from('event_registrations')
-          .update({'status': status})
-          .eq('id', registrationId);
-
-      _showMessage(
-        status == 'approved'
-            ? 'Aanmelding goedgekeurd.'
-            : 'Aanmelding afgewezen.',
-      );
-    } catch (e) {
-      debugPrint('Status wijzigen mislukt: $e');
-      _showMessage('Status wijzigen mislukt.');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchPendingRegistrations(
-    int eventId,
-  ) async {
-    try {
-      final response = await _supabase.rpc(
-        'get_event_pending_registrations',
-        params: {
-          'p_event_id': eventId,
-        },
-      );
-
-      final rows = List<Map<String, dynamic>>.from(
-        (response as List).map(
-          (row) => Map<String, dynamic>.from(row as Map),
-        ),
-      );
-
-      return rows.map((row) {
-        return {
-          'id': row['id'],
-          'user_id': row['user_id'],
-          'status': row['status'],
-          'created_at': row['created_at'],
-          'profile': {
-            'id': row['user_id'],
-            'name': row['name'],
-            'avatar_url': row['avatar_url'],
-          },
-        };
-      }).toList();
-    } catch (e) {
-      debugPrint('Aanmeldingen ophalen mislukt: $e');
-      return [];
-    }
-  }
-
   void _showMessage(String message) {
     if (!mounted) return;
 
@@ -1829,334 +1750,10 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Widget _buildOwnerRegistrations(int eventId) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FutureBuilder<List<Map<String, dynamic>>>(
-          future: _fetchPendingRegistrations(eventId),
-          builder: (context, pendingSnapshot) {
-            if (pendingSnapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(15),
-                  child: CircularProgressIndicator(
-                    color: beigeColor,
-                  ),
-                ),
-              );
-            }
-
-            final pending =
-                pendingSnapshot.data ?? [];
-
-            return Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Nieuwe aanmeldingen',
-                      style: GoogleFonts.inter(
-                        color: textColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (pending.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding:
-                            const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orangeAccent
-                              .withOpacity(0.12),
-                          borderRadius:
-                              BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${pending.length}',
-                          style: GoogleFonts.inter(
-                            color: Colors.orangeAccent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 10),
-                if (pending.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius:
-                          BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      'Geen nieuwe aanmeldingen.',
-                      style: GoogleFonts.inter(
-                        color: secondaryTextColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  )
-                else
-                  ...pending.map(
-                    _buildPendingRegistration,
-                  ),
-                const SizedBox(height: 22),
-                FutureBuilder<
-                    List<Map<String, dynamic>>>(
-                  future:
-                      _fetchParticipants(eventId),
-                  builder: (
-                    context,
-                    approvedSnapshot,
-                  ) {
-                    if (approvedSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: beigeColor,
-                        ),
-                      );
-                    }
-
-                    final approved =
-                        approvedSnapshot.data ?? [];
-
-                    return Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'Goedgekeurde deelnemers',
-                              style: GoogleFonts.inter(
-                                color: textColor,
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (approved.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding:
-                                    const EdgeInsets
-                                        .symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green
-                                      .withOpacity(0.10),
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                    20,
-                                  ),
-                                ),
-                                child: Text(
-                                  '${approved.length}',
-                                  style: GoogleFonts.inter(
-                                    color:
-                                        Colors.greenAccent,
-                                    fontSize: 11,
-                                    fontWeight:
-                                        FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        if (approved.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding:
-                                const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: backgroundColor,
-                              borderRadius:
-                                  BorderRadius.circular(14),
-                            ),
-                            child: Text(
-                              'Nog geen goedgekeurde deelnemers.',
-                              style: GoogleFonts.inter(
-                                color:
-                                    secondaryTextColor,
-                                fontSize: 12,
-                              ),
-                            ),
-                          )
-                        else
-                          ...approved.map(
-                            _buildParticipant,
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPendingRegistration(
-    Map<String, dynamic> registration,
-  ) {
-    final profile =
-        registration['profile']
-            as Map<String, dynamic>?;
-
-    final name =
-        profile?['name']?.toString() ??
-            'Onbekende gebruiker';
-
-    final avatar =
-        profile?['avatar_url']?.toString();
-
-    final id = int.tryParse(
-      registration['id']?.toString() ?? '',
-    );
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: borderColor,
-        ),
-      ),
-      child: Row(
-        children: [
-          _participantAvatar(avatar),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              name,
-              style: GoogleFonts.inter(
-                color: textColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Material(
-            color: Colors.redAccent.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-            child: IconButton(
-              tooltip: 'Afwijzen',
-              onPressed: id == null
-                  ? null
-                  : () async {
-                      await _updateRegistrationStatus(
-                        registrationId: id,
-                        status: 'rejected',
-                      );
-
-                      if (mounted) {
-                        setState(() {});
-                      }
-                    },
-              icon: const Icon(
-                Icons.close,
-                color: Colors.redAccent,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Material(
-            color: Colors.greenAccent.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-            child: IconButton(
-              tooltip: 'Goedkeuren',
-              onPressed: id == null
-                  ? null
-                  : () async {
-                      await _updateRegistrationStatus(
-                        registrationId: id,
-                        status: 'approved',
-                      );
-
-                      if (mounted) {
-                        setState(() {});
-                      }
-                    },
-              icon: const Icon(
-                Icons.check,
-                color: Colors.greenAccent,
-                size: 20,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildParticipant(
-    Map<String, dynamic> profile,
-  ) {
-    final name =
-        profile['name']?.toString() ??
-            'Onbekende gebruiker';
-
-    final avatar =
-        profile['avatar_url']?.toString();
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: borderColor,
-        ),
-      ),
-      child: Row(
-        children: [
-          _participantAvatar(avatar),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Text(
-              name,
-              style: GoogleFonts.inter(
-                color: textColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.10),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check,
-              color: Colors.greenAccent,
-              size: 17,
-            ),
-          ),
-        ],
-      ),
+    return _OwnerRegistrations(
+      supabase: _supabase,
+      eventId: eventId,
+      onMessage: _showMessage,
     );
   }
 
@@ -2181,61 +1778,6 @@ class _EventsPageState extends State<EventsPage> {
               color: secondaryTextColor,
             )
           : null,
-    );
-  }
-
-  Widget _detailRow(
-    IconData icon,
-    String title,
-    String value,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius:
-                  BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: beigeColor,
-              size: 19,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    color: secondaryTextColor,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    color: textColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -3019,3 +2561,492 @@ class _RegistrationButtonState
   }
 }
 
+class _OwnerRegistrations extends StatefulWidget {
+  const _OwnerRegistrations({
+    required this.supabase,
+    required this.eventId,
+    required this.onMessage,
+  });
+
+  final SupabaseClient supabase;
+  final int eventId;
+  final void Function(String message) onMessage;
+
+  @override
+  State<_OwnerRegistrations> createState() =>
+      _OwnerRegistrationsState();
+}
+
+class _OwnerRegistrationsState
+    extends State<_OwnerRegistrations> {
+  static const Color backgroundColor = Color(0xFF1E1712);
+  static const Color cardColor = Color(0xFF2C221C);
+  static const Color borderColor = Color(0xFF46372D);
+  static const Color beigeColor = Color(0xFFD4B28C);
+  static const Color textColor = Color(0xFFEFE6DD);
+  static const Color secondaryTextColor = Color(0xFF9E8A7D);
+
+  List<Map<String, dynamic>> _pending = [];
+  List<Map<String, dynamic>> _approved = [];
+
+  bool _loading = true;
+  int? _updatingId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRegistrations();
+  }
+
+  Future<void> _loadRegistrations() async {
+    try {
+      final pendingResponse =
+          await widget.supabase.rpc(
+        'get_event_pending_registrations',
+        params: {
+          'p_event_id': widget.eventId,
+        },
+      );
+
+      final approvedResponse =
+          await widget.supabase.rpc(
+        'get_event_approved_participants',
+        params: {
+          'p_event_id': widget.eventId,
+        },
+      );
+
+      final pendingRows =
+          List<Map<String, dynamic>>.from(
+        (pendingResponse as List).map(
+          (row) => Map<String, dynamic>.from(
+            row as Map,
+          ),
+        ),
+      );
+
+      final pending = pendingRows.map((row) {
+        return {
+          'id': row['id'],
+          'user_id': row['user_id'],
+          'status': row['status'],
+          'created_at': row['created_at'],
+          'profile': {
+            'id': row['user_id'],
+            'name': row['name'],
+            'avatar_url': row['avatar_url'],
+          },
+        };
+      }).toList();
+
+      final approved =
+          List<Map<String, dynamic>>.from(
+        (approvedResponse as List).map(
+          (row) => Map<String, dynamic>.from(
+            row as Map,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _pending = pending;
+        _approved = approved;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'Aanmeldingen ophalen mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _changeRegistrationStatus(
+    Map<String, dynamic> registration,
+    String status,
+  ) async {
+    final id = int.tryParse(
+      registration['id']?.toString() ?? '',
+    );
+
+    if (id == null) return;
+
+    setState(() {
+      _updatingId = id;
+    });
+
+    try {
+      await widget.supabase
+          .from('event_registrations')
+          .update({
+        'status': status,
+      }).eq(
+        'id',
+        id,
+      );
+
+      if (!mounted) return;
+
+      final profile =
+          registration['profile']
+              as Map<String, dynamic>?;
+
+      setState(() {
+        _pending.removeWhere(
+          (item) =>
+              item['id']?.toString() ==
+              registration['id']?.toString(),
+        );
+
+        if (status == 'approved' &&
+            profile != null) {
+          final alreadyExists = _approved.any(
+            (participant) =>
+                participant['id']?.toString() ==
+                profile['id']?.toString(),
+          );
+
+          if (!alreadyExists) {
+            _approved.add(
+              Map<String, dynamic>.from(profile),
+            );
+          }
+        }
+
+        _updatingId = null;
+      });
+
+      widget.onMessage(
+        status == 'approved'
+            ? 'Aanmelding goedgekeurd.'
+            : 'Aanmelding afgewezen.',
+      );
+    } catch (e) {
+      debugPrint(
+        'Status wijzigen mislukt: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _updatingId = null;
+      });
+
+      widget.onMessage(
+        'Status wijzigen mislukt.',
+      );
+    }
+  }
+
+  Widget _participantAvatar(
+    String? avatarUrl,
+  ) {
+    final hasAvatar =
+        avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        avatarUrl != 'null';
+
+    return CircleAvatar(
+      radius: 22,
+      backgroundColor: cardColor,
+      backgroundImage:
+          hasAvatar
+              ? NetworkImage(avatarUrl!)
+              : null,
+      child: !hasAvatar
+          ? const Icon(
+              Icons.person,
+              color: secondaryTextColor,
+            )
+          : null,
+    );
+  }
+
+  Widget _buildPendingRegistration(
+    Map<String, dynamic> registration,
+  ) {
+    final profile =
+        registration['profile']
+            as Map<String, dynamic>?;
+
+    final name =
+        profile?['name']?.toString() ??
+            'Onbekende gebruiker';
+
+    final avatar =
+        profile?['avatar_url']?.toString();
+
+    final id = int.tryParse(
+      registration['id']?.toString() ?? '',
+    );
+
+    final isUpdating =
+        id != null && _updatingId == id;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: borderColor,
+        ),
+      ),
+      child: Row(
+        children: [
+          _participantAvatar(avatar),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              name,
+              style: GoogleFonts.inter(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (isUpdating)
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                color: beigeColor,
+                strokeWidth: 2,
+              ),
+            )
+          else ...[
+            Material(
+              color:
+                  Colors.redAccent.withOpacity(0.08),
+              borderRadius:
+                  BorderRadius.circular(10),
+              child: IconButton(
+                tooltip: 'Afwijzen',
+                onPressed: id == null
+                    ? null
+                    : () => _changeRegistrationStatus(
+                          registration,
+                          'rejected',
+                        ),
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.redAccent,
+                  size: 20,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Material(
+              color:
+                  Colors.greenAccent.withOpacity(0.08),
+              borderRadius:
+                  BorderRadius.circular(10),
+              child: IconButton(
+                tooltip: 'Goedkeuren',
+                onPressed: id == null
+                    ? null
+                    : () => _changeRegistrationStatus(
+                          registration,
+                          'approved',
+                        ),
+                icon: const Icon(
+                  Icons.check,
+                  color: Colors.greenAccent,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticipant(
+    Map<String, dynamic> profile,
+  ) {
+    final name =
+        profile['name']?.toString() ??
+            'Onbekende gebruiker';
+
+    final avatar =
+        profile['avatar_url']?.toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: borderColor,
+        ),
+      ),
+      child: Row(
+        children: [
+          _participantAvatar(avatar),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              name,
+              style: GoogleFonts.inter(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.10),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check,
+              color: Colors.greenAccent,
+              size: 17,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyBox(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          color: secondaryTextColor,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(15),
+          child: CircularProgressIndicator(
+            color: beigeColor,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Nieuwe aanmeldingen',
+              style: GoogleFonts.inter(
+                color: textColor,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_pending.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent
+                      .withOpacity(0.12),
+                  borderRadius:
+                      BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_pending.length}',
+                  style: GoogleFonts.inter(
+                    color: Colors.orangeAccent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_pending.isEmpty)
+          _emptyBox(
+            'Geen nieuwe aanmeldingen.',
+          )
+        else
+          ..._pending.map(
+            _buildPendingRegistration,
+          ),
+        const SizedBox(height: 22),
+        Row(
+          children: [
+            Text(
+              'Goedgekeurde deelnemers',
+              style: GoogleFonts.inter(
+                color: textColor,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_approved.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green
+                      .withOpacity(0.10),
+                  borderRadius:
+                      BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_approved.length}',
+                  style: GoogleFonts.inter(
+                    color: Colors.greenAccent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_approved.isEmpty)
+          _emptyBox(
+            'Nog geen goedgekeurde deelnemers.',
+          )
+        else
+          ..._approved.map(
+            _buildParticipant,
+          ),
+      ],
+    );
+  }
+}
