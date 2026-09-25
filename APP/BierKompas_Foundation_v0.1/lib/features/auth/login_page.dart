@@ -14,7 +14,8 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
 
@@ -22,14 +23,35 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isOutlookLoading = false;
   bool _obscurePassword = true;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+          _isOutlookLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -61,6 +83,8 @@ class _LoginPageState extends State<LoginPage> {
         (route) => false,
       );
     } on Exception catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = e.toString();
       });
@@ -74,36 +98,60 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _googleLogin() async {
+    if (_isGoogleLoading || _isOutlookLoading || _isLoading) {
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _isGoogleLoading = true;
       _error = null;
     });
 
     try {
       await _authService.loginWithGoogle();
     } on Exception catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = e.toString();
-        _isLoading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _outlookLogin() async {
+    if (_isGoogleLoading || _isOutlookLoading || _isLoading) {
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _isOutlookLoading = true;
       _error = null;
     });
 
     try {
       await _authService.loginWithOutlook();
     } on Exception catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = e.toString();
-        _isLoading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isOutlookLoading = false;
+        });
+      }
     }
   }
+
+  bool get _socialLoading => _isGoogleLoading || _isOutlookLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -112,9 +160,10 @@ class _LoginPageState extends State<LoginPage> {
     const muted = Color(0xFF9E8A7D);
     const card = Color(0xFF2C221C);
     const field = Color(0xFF241B16);
+    const background = Color(0xFF1E1712);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1712),
+      backgroundColor: background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -149,9 +198,7 @@ class _LoginPageState extends State<LoginPage> {
                       size: 34,
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   Text(
                     'Bierkompas',
                     style: GoogleFonts.playfairDisplay(
@@ -160,9 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     'Welkom terug. Log in om verder te ontdekken.',
                     textAlign: TextAlign.center,
@@ -171,9 +216,7 @@ class _LoginPageState extends State<LoginPage> {
                       fontSize: 13,
                     ),
                   ),
-
                   const SizedBox(height: 28),
-
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -198,31 +241,28 @@ class _LoginPageState extends State<LoginPage> {
                             cream,
                             muted,
                           ),
-
                           const SizedBox(height: 14),
-
                           _buildPasswordField(
                             field,
                             cream,
                             muted,
                           ),
-
                           if (_error != null) ...[
                             const SizedBox(height: 14),
                             _buildError(_error!),
                           ],
-
                           const SizedBox(height: 20),
-
                           SizedBox(
                             height: 48,
                             child: ElevatedButton(
-                              onPressed:
-                                  _isLoading ? null : _submit,
+                              onPressed: _isLoading || _socialLoading
+                                  ? null
+                                  : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: gold,
-                                foregroundColor:
-                                    const Color(0xFF1E1712),
+                                disabledBackgroundColor:
+                                    gold.withOpacity(0.55),
+                                foregroundColor: background,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius:
@@ -236,63 +276,40 @@ class _LoginPageState extends State<LoginPage> {
                                       child:
                                           CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color:
-                                            Color(0xFF1E1712),
+                                        color: background,
                                       ),
                                     )
                                   : Text(
                                       'Inloggen',
                                       style: GoogleFonts.inter(
-                                        fontWeight:
-                                            FontWeight.bold,
+                                        fontWeight: FontWeight.bold,
                                         fontSize: 15,
                                       ),
                                     ),
                             ),
                           ),
-
                           const SizedBox(height: 20),
-
                           _buildDivider(muted),
-
                           const SizedBox(height: 20),
-
-                          _buildSocialButton(
-                            text: 'Doorgaan met Google',
-                            icon: Icons.g_mobiledata,
-                            onPressed:
-                                _isLoading ? null : _googleLogin,
-                            cream: cream,
-                            field: field,
-                            muted: muted,
-                          ),
-
+                          _buildGoogleButton(),
                           const SizedBox(height: 12),
-
-                          _buildSocialButton(
-                            text: 'Doorgaan met Outlook',
-                            icon: Icons.mail_outline,
-                            onPressed:
-                                _isLoading ? null : _outlookLogin,
-                            cream: cream,
-                            field: field,
-                            muted: muted,
-                          ),
+                          _buildMicrosoftButton(),
                         ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterPage(),
-                        ),
-                      );
-                    },
+                    onPressed: _isLoading || _socialLoading
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const RegisterPage(),
+                              ),
+                            );
+                          },
                     child: Text(
                       'Nog geen account? Registreren',
                       style: GoogleFonts.inter(
@@ -307,6 +324,132 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleButton() {
+    const cream = Color(0xFFEFE6DD);
+    const field = Color(0xFF241B16);
+    const muted = Color(0xFF9E8A7D);
+
+    return SizedBox(
+      height: 50,
+      child: OutlinedButton(
+        onPressed: _isLoading || _isOutlookLoading
+            ? null
+            : _googleLogin,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: field,
+          side: BorderSide(
+            color: muted.withOpacity(0.3),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(13),
+          ),
+        ),
+        child: _isGoogleLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cream,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _googleLogo(),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Doorgaan met Google',
+                    style: GoogleFonts.inter(
+                      color: cream,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildMicrosoftButton() {
+    const cream = Color(0xFFEFE6DD);
+    const field = Color(0xFF241B16);
+    const muted = Color(0xFF9E8A7D);
+
+    return SizedBox(
+      height: 50,
+      child: OutlinedButton(
+        onPressed: _isLoading || _isGoogleLoading
+            ? null
+            : _outlookLogin,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: field,
+          side: BorderSide(
+            color: muted.withOpacity(0.3),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(13),
+          ),
+        ),
+        child: _isOutlookLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cream,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _microsoftLogo(),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Doorgaan met Outlook',
+                    style: GoogleFonts.inter(
+                      color: cream,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _googleLogo() {
+    return Text(
+      'G',
+      style: GoogleFonts.inter(
+        color: const Color(0xFF4285F4),
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+
+  Widget _microsoftLogo() {
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: GridView.count(
+        crossAxisCount: 2,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+        children: const [
+          ColoredBox(color: Color(0xFFF25022)),
+          ColoredBox(color: Color(0xFF7FBA00)),
+          ColoredBox(color: Color(0xFF00A4EF)),
+          ColoredBox(color: Color(0xFFFFB900)),
+        ],
       ),
     );
   }
@@ -336,44 +479,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSocialButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback? onPressed,
-    required Color cream,
-    required Color field,
-    required Color muted,
-  }) {
-    return SizedBox(
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(
-          icon,
-          color: cream,
-          size: 22,
-        ),
-        label: Text(
-          text,
-          style: GoogleFonts.inter(
-            color: cream,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: field,
-          side: BorderSide(
-            color: muted.withOpacity(0.25),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
     );
   }
 
