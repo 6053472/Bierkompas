@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../shared/share_sheet.dart';
 import 'feed_service.dart';
 
 // Zelfde kleurenpalet als de rest van de app.
@@ -80,6 +82,18 @@ class FeedCard extends StatelessWidget {
                   children: [
                     _buildLabel(label, icon),
                     const Spacer(),
+                    GestureDetector(
+                      onTap: () => showAppShareSheet(
+                        context,
+                        shareText: _buildShareText(),
+                        subject: item.title,
+                      ),
+                      behavior: HitTestBehavior.opaque,
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.ios_share, color: _onSurfaceVariant, size: 20),
+                      ),
+                    ),
                     if (onDeleteTap != null)
                       GestureDetector(
                         onTap: onDeleteTap,
@@ -199,6 +213,11 @@ class FeedCard extends StatelessWidget {
         final author = item.author;
         return author == null ? null : Text(author, style: metaStyle);
     }
+  }
+
+  String _buildShareText() {
+    final authorSuffix = item.author != null ? ' — ${item.author}' : '';
+    return '${item.title}$authorSuffix\n\n${item.body}\n\nBekijk het in Bierkompas! 🍻';
   }
 
   static String _formatDate(DateTime date) {

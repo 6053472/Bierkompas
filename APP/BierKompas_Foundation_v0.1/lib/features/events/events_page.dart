@@ -1,16 +1,13 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../profile/chat_service.dart';
 import '../profile/friends_service.dart';
 import 'admin_events_page.dart';
 import 'event_create.dart';
 import '../../shared/profile_avatar_button.dart';
+import '../../shared/share_sheet.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({
@@ -543,135 +540,20 @@ class _EventsPageState extends State<EventsPage> {
         'Bekijk het in BierKompas! 🍻';
   }
 
-  Future<void> _shareViaUrl(String url) async {
-    final opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-
-    if (!opened) {
-      _showMessage('Kon geen deelvenster openen.');
-    }
-  }
-
   void _openShareSheet(Map<String, dynamic> event) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+    showAppShareSheet(
+      context,
+      shareText: _shareText(event),
+      subject: event['name']?.toString(),
+      title: 'Evenement delen',
+      extraOption: (sheetContext) => ListTile(
+        leading: const Icon(Icons.person_outline, color: beigeColor),
+        title: Text('Deel met een Biervriend', style: GoogleFonts.inter(color: textColor)),
+        onTap: () {
+          Navigator.pop(sheetContext);
+          _shareWithFriend(event);
+        },
       ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 6),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: borderColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Evenement delen',
-                  style: GoogleFonts.playfairDisplay(
-                    color: textColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: const Icon(
-                    Icons.person_outline,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Deel met een Biervriend',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _shareWithFriend(event);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.ios_share,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Meer opties',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    Share.share(
-                      _shareText(event),
-                      subject: event['name']?.toString(),
-                    );
-                  },
-                ),
-                if (kIsWeb)
-                  ListTile(
-                    leading: const Icon(
-                      Icons.chat,
-                      color: Color(0xFF25D366),
-                    ),
-                    title: Text(
-                      'WhatsApp',
-                      style: GoogleFonts.inter(
-                        color: textColor,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _shareViaUrl(
-                        'https://wa.me/?text=${Uri.encodeComponent(_shareText(event))}',
-                      );
-                    },
-                  ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.copy_all_outlined,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Tekst kopiëren',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                    ),
-                  ),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-
-                    await Clipboard.setData(
-                      ClipboardData(
-                        text: _shareText(event),
-                      ),
-                    );
-
-                    _showMessage('Tekst gekopieerd.');
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
