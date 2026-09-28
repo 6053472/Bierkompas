@@ -147,6 +147,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   static const _zoomNearby = 14.0;
   static const _zoomFocused = 17.0;
 
+  // Vaste hoogte van het onderste paneel (kaarten/lijsten per tab), zodat de
+  // rest van de kaart vrij blijft voor knijp-zoomen (zie build()).
+  static const _panelHeight = 400.0;
+
   // null = nog geen pin aangetikt: dan tonen we alleen de kaart met
   // pinnetjes, geen kaart-paneel eronder.
   int? _selectedIndex;
@@ -870,7 +874,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 if (_activeTab == _MapTab.horeca && _loadingHoreca) _buildLoadingHint('Horeca laden...'),
                 if (_activeTab == _MapTab.nearby && _loadingNearby) _buildLoadingHint('Bierliefhebbers zoeken...'),
 
-                Expanded(
+                // Bewust geen Expanded: een PageView (waar TabBarView op
+                // gebaseerd is) claimt anders de hele resterende kaart als
+                // veeg-gebied, ook waar niets te zien is, en blokkeert dan
+                // het knijp-zoomen op de kaart eronder. Met een vaste hoogte
+                // blijft de rest van de kaart (via de Spacer) vrij voor
+                // kaart-gestures, en blijft dit paneel wel swipebaar.
+                const Spacer(),
+                SizedBox(
+                  height: _panelHeight,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
@@ -1233,6 +1245,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Widget _buildNearbyPanel() {
+    if (_loadingNearby) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)));
+    }
     if (!_locationSharingEnabled) {
       return _buildEmptyState(
         icon: Icons.location_off_outlined,
