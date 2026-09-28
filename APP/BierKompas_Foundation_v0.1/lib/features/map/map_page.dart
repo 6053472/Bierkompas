@@ -22,8 +22,8 @@ import 'horeca_submission_page.dart';
 import 'horeca_submission_service.dart';
 import '../../shared/profile_avatar_button.dart';
 
-/// De 4 losse, swipebare weergaven van de kaart.
-enum _MapTab { breweries, horeca, events, nearby }
+/// De weergaven van de kaart: alles samen, of per soort.
+enum _MapTab { all, breweries, horeca, events, nearby }
 
 class MapPage extends StatefulWidget {
   const MapPage({
@@ -158,7 +158,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _tabController = TabController(length: 4, vsync: this)..addListener(_onTabChanged);
+    _tabController = TabController(length: 5, vsync: this)..addListener(_onTabChanged);
 
     // Toon de lokale lijst meteen, zodat de kaart niet minutenlang leeg/aan
     // het laden lijkt terwijl er op de online data gewacht wordt.
@@ -168,8 +168,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _loadHoreca();
     _loadFavorites();
     _loadEvents();
+    _startNearbyRefresh();
 
     _searchController.addListener(_onSearchChanged);
+  }
+
+  // Vrienden-locaties zijn zichtbaar op de "Alles"- en "Bierliefhebbers"-tab.
+  void _startNearbyRefresh() {
+    _loadNearbyFriends();
+    _nearbyRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadNearbyFriends());
   }
 
   void _onTabChanged() {
@@ -179,7 +186,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _selectedHorecaIndex = null;
     });
     _nearbyRefreshTimer?.cancel();
-    if (_activeTab == _MapTab.nearby) {
+    if (_activeTab == _MapTab.nearby || _activeTab == _MapTab.all) {
       _loadNearbyFriends();
       _nearbyRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadNearbyFriends());
     }
@@ -291,17 +298,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _deselectOnMapTap() {
-    switch (_activeTab) {
-      case _MapTab.breweries:
-        _deselectBrewery();
-        break;
-      case _MapTab.horeca:
-        _deselectHoreca();
-        break;
-      case _MapTab.events:
-      case _MapTab.nearby:
-        break;
-    }
+    _deselectBrewery();
+    _deselectHoreca();
   }
 
   // ============================================================
@@ -788,6 +786,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         // Emoji i.p.v. Material-icons: die renderden in de
                         // release-build voor Horeca/Bierliefhebbers leeg.
                         tabs: const [
+                          Tab(icon: Text('\u{1F5FA}\u{FE0F}', style: TextStyle(fontSize: 18)), text: 'Alles'),
                           Tab(icon: Text('\u{1F37A}', style: TextStyle(fontSize: 18)), text: 'Brouwerijen'),
                           Tab(icon: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 18)), text: 'Horeca'),
                           Tab(icon: Text('\u{1F4C5}', style: TextStyle(fontSize: 18)), text: 'Activiteiten'),
@@ -798,7 +797,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 ),
 
-                if (_activeTab == _MapTab.events && _events.isNotEmpty) _buildEventTypeFilters(),
+                if ((_activeTab == _MapTab.events || _activeTab == _MapTab.all) && _events.isNotEmpty) _buildEventTypeFilters(),
 
                 if (_activeTab != _MapTab.nearby)
                   Padding(
@@ -806,8 +805,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     child: _buildSearchBox(),
                   ),
 
-                if (_activeTab == _MapTab.breweries && _loadingMoreBreweries) _buildLoadingHint('Brouwerijen laden...'),
-                if (_activeTab == _MapTab.horeca && _loadingHoreca) _buildLoadingHint('Horeca laden...'),
+                if ((_activeTab == _MapTab.breweries || _activeTab == _MapTab.all) && _loadingMoreBreweries) _buildLoadingHint('Brouwerijen laden...'),
+                if ((_activeTab == _MapTab.horeca || _activeTab == _MapTab.all) && _loadingHoreca) _buildLoadingHint('Horeca laden...'),
                 if (_activeTab == _MapTab.nearby && _loadingNearby) _buildLoadingHint('Bierliefhebbers zoeken...'),
 
                 // Compact lijstje direct onder de zoekbalk; alleen zo hoog als
@@ -856,6 +855,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           icon: const Icon(Icons.add),
           label: const Text('Horeca toevoegen'),
         );
+      case _MapTab.all:
       case _MapTab.events:
       case _MapTab.nearby:
         return null;
@@ -878,7 +878,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   List<Marker> _buildMarkers() {
     switch (_activeTab) {
+      case _MapTab.all:
+        return [..._breweryMarkers(), ..._horecaMarkers(), ..._eventMarkers(), ..._friendMarkers()];
       case _MapTab.breweries:
+        return _breweryMarkers();
+      case _MapTab.horeca:
+        return _horecaMarkers();
+      case _MapTab.events:
+        return _eventMarkers();
+      case _MapTab.nearby:
+        return _friendMarkers();
+    }
+  }
+
+  List<Marker> _breweryMarkers() {
         return [
           for (final entry in _results.asMap().entries)
             Marker(
@@ -903,7 +916,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
         ];
-      case _MapTab.horeca:
+  }
+
+  List<Marker> _horecaMarkers() {
         return [
           for (final entry in _horecaResults.asMap().entries)
             Marker(
@@ -928,7 +943,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
         ];
-      case _MapTab.events:
+  }
+
+  List<Marker> _eventMarkers() {
         return [
           for (final event in _visibleEvents)
             Marker(
@@ -948,7 +965,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
         ];
-      case _MapTab.nearby:
+  }
+
+  List<Marker> _friendMarkers() {
         return [
           for (final friend in _nearbyFriends)
             Marker(
@@ -975,7 +994,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
         ];
-    }
   }
 
   Widget _buildEventTypeFilters() {
@@ -1033,6 +1051,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   Widget _buildActivePanel() {
     switch (_activeTab) {
+      case _MapTab.all:
+        return _buildAllPanel();
       case _MapTab.breweries:
         return _buildBreweryPanel();
       case _MapTab.horeca:
@@ -1083,6 +1103,25 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: itemBuilder,
     );
+  }
+
+  Widget _buildAllPanel() {
+    final events = _visibleEvents;
+    final tiles = <Widget>[
+      for (var i = 0; i < _results.length; i++) _buildBreweryTile(i, _results[i]),
+      for (var i = 0; i < _horecaResults.length; i++) _buildHorecaTile(i, _horecaResults[i]),
+      for (final event in events) _buildEventTile(event),
+      if (_locationSharingEnabled) for (final friend in _nearbyFriends) _buildNearbyFriendTile(friend),
+    ];
+
+    if (tiles.isEmpty) {
+      return _buildEmptyState(
+        emoji: '\u{1F5FA}\u{FE0F}',
+        message: 'Nog niets gevonden. Meld een brouwerij of horeca aan, of maak een evenement aan via de Agenda!',
+      );
+    }
+
+    return _buildCompactList(itemCount: tiles.length, itemBuilder: (context, index) => tiles[index]);
   }
 
   Widget _buildBreweryPanel() {
