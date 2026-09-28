@@ -19,6 +19,7 @@ import '../scan/beer_scan_page.dart';
 import '../events/events_page.dart';
 import '../../shared/profile_avatar_button.dart';
 import 'social_page.dart';
+import 'vinden_proeven_page.dart';
 import '../feed/create_post_page.dart';
 
 // Tab-indexen van de onderste navigatiebalk.
@@ -625,7 +626,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         Icons.local_drink_outlined,
         'Vinden & Proeven',
         'ONTDEK BIEREN',
-        () => _goTo(_tabFavorites),
+        () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VindenProevenPage())),
         cornerAction: _buildScanButton(),
       ),
       _buildActionTile(Icons.map_outlined, Icons.location_on_outlined, 'Kaart & Locaties',
