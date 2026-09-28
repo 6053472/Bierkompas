@@ -70,5 +70,7 @@
 	<string>BierKompas heeft toegang tot je foto's nodig om een profielfoto of chatfoto te kunnen kiezen.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>BierKompas heeft toegang tot je camera nodig om een foto te maken voor je profiel of chat, en om barcodes van bier te scannen.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BierKompas gebruikt je locatie om brouwerijen bij jou in de buurt te tonen, en om je locatie te delen met vrienden als je dat zelf aanzet.</string>
 </dict>
 </plist>
