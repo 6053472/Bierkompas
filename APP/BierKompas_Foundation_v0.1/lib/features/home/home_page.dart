@@ -213,8 +213,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Zelfde kleurenpalet als de rest van de app (Profiel, Kaart, Agenda, ...),
-// zodat Ontdek er niet meer uitspringt met eigen "Artisanal Draught"-kleuren.
+
 const _background = Color(0xFF1E1712);
 const _primary = Color(0xFFD4B28C);
 const _secondary = Color(0xFFD4B28C);
