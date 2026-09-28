@@ -881,8 +881,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 // blijft de rest van de kaart (via de Spacer) vrij voor
                 // kaart-gestures, en blijft dit paneel wel swipebaar.
                 const Spacer(),
-                SizedBox(
+                Container(
                   height: _panelHeight,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1E1712),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                    border: Border(top: BorderSide(color: Color(0xFF3E312A))),
+                  ),
+                  clipBehavior: Clip.antiAlias,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
