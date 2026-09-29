@@ -76,11 +76,13 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
+  // Ook vervallen evenementen blijven zichtbaar (met een "Vervallen"-stempel)
+  // i.p.v. te verdwijnen zodra de organisator ze laat vervallen.
   Future<List<Map<String, dynamic>>> _fetchApprovedEvents() async {
     final response = await _supabase
         .from('events')
         .select()
-        .eq('status', 'approved')
+        .inFilter('status', ['approved', 'cancelled'])
         .order('start_date', ascending: true);
 
     return List<Map<String, dynamic>>.from(response);
@@ -381,6 +383,37 @@ class _EventsPageState extends State<EventsPage> {
     } catch (e) {
       _showMessage('Laten vervallen mislukt.');
     }
+  }
+
+  /// "Vervallen"-stempel, schuin over de afbeelding van een geannuleerd
+  /// evenement, zodat het zichtbaar blijft i.p.v. verwijderd te worden.
+  Widget _vervallenStamp() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.45),
+        alignment: Alignment.center,
+        child: Transform.rotate(
+          angle: -0.2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.redAccent, width: 2),
+              borderRadius: BorderRadius.circular(6),
+              color: Colors.black.withOpacity(0.35),
+            ),
+            child: Text(
+              'VERVALLEN',
+              style: GoogleFonts.inter(
+                color: Colors.redAccent,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _shareText(Map<String, dynamic> event) {
@@ -879,6 +912,8 @@ class _EventsPageState extends State<EventsPage> {
         currentUser != null &&
         eventUserId == currentUser.id;
 
+    final isCancelled = event['status']?.toString() == 'cancelled';
+
     final name = event['name']?.toString() ?? 'Naamloos';
 
     final eventType =
@@ -940,7 +975,25 @@ class _EventsPageState extends State<EventsPage> {
                         top: 12,
                         child: _shareButton(event),
                       ),
+                      if (isCancelled) _vervallenStamp(),
                     ],
+                  ),
+                ),
+              ),
+            if (!hasImage && isCancelled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.redAccent, width: 1.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'VERVALLEN',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
                   ),
                 ),
               ),
@@ -1019,7 +1072,8 @@ class _EventsPageState extends State<EventsPage> {
                       ),
                       const Spacer(),
                       if (isOwner &&
-                          eventId.isNotEmpty)
+                          eventId.isNotEmpty &&
+                          !isCancelled)
                         GestureDetector(
                           onTap: () {
                             final id =
@@ -1137,6 +1191,8 @@ class _EventsPageState extends State<EventsPage> {
     final imageUrl =
         event['image_asset']?.toString().trim();
 
+    final isCancelled = event['status']?.toString() == 'cancelled';
+
     final eventDate = _getEventDate(event);
 
     showModalBottomSheet(
@@ -1252,6 +1308,7 @@ class _EventsPageState extends State<EventsPage> {
                           ),
                         ),
                       ),
+                      if (isCancelled) _vervallenStamp(),
                       Positioned(
                         left: 20,
                         right: 20,
@@ -1397,7 +1454,31 @@ class _EventsPageState extends State<EventsPage> {
                             ),
                           ),
                         ],
-                        if (eventId != null && !isOwner) ...[
+                        if (eventId != null && !isOwner && isCancelled) ...[
+                          const SizedBox(height: 28),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.event_busy_outlined, color: Colors.redAccent),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Dit evenement is vervallen. Aanmelden is niet meer mogelijk.',
+                                    style: GoogleFonts.inter(color: textColor, fontSize: 13, height: 1.4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (eventId != null && !isOwner && !isCancelled) ...[
                           const SizedBox(height: 28),
                           Text(
                             'Aanmelden',
