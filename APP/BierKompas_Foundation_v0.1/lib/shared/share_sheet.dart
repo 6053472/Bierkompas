@@ -13,10 +13,10 @@ const _onSurfaceVariant = Color(0xFF9E8A7D);
 const _borderColor = Color(0xFF3E312A);
 
 /// Herbruikbaar deelmenu: "Meer opties" (systeem-deelvenster), WhatsApp (web),
-/// Instagram/TikTok (kopieer tekst + open de app, native only -- deze
-/// platforms hebben geen "deel tekst/link"-functie zoals Facebook/WhatsApp)
-/// en "Tekst kopiëren". Gebruikt door zowel evenementen als Bierfeed-posts,
-/// zodat delen overal in de app hetzelfde werkt.
+/// Facebook/Instagram/TikTok (kopieer tekst + open de app, native only -- deze
+/// platforms hebben geen "deel tekst"-deeplink zoals WhatsApp) en "Tekst
+/// kopiëren". Gebruikt door zowel evenementen als Bierfeed-posts, zodat delen
+/// overal in de app hetzelfde werkt.
 Future<void> showAppShareSheet(
   BuildContext context, {
   required String shareText,
@@ -66,6 +66,23 @@ Future<void> showAppShareSheet(
                   },
                 ),
               if (!kIsWeb) ...[
+                ListTile(
+                  leading: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
+                  title: Text('Facebook', style: GoogleFonts.inter(color: _onSurface)),
+                  subtitle: Text(
+                    'Kopieert de tekst en opent Facebook',
+                    style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 11),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _copyAndOpenApp(
+                      context,
+                      shareText: shareText,
+                      appUrls: const ['fb://', 'https://www.facebook.com'],
+                      appName: 'Facebook',
+                    );
+                  },
+                ),
                 ListTile(
                   leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFFE1306C)),
                   title: Text('Instagram', style: GoogleFonts.inter(color: _onSurface)),
