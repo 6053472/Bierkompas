@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../books/books_page.dart';
+import '../music/music_page.dart';
 import '../scan/scanned_beers_page.dart';
 
 const _background = Color(0xFF1E1712);
@@ -56,11 +57,8 @@ class VindenProevenPage extends StatelessWidget {
             _OptionCard(
               icon: Icons.music_note_outlined,
               title: 'Muziek',
-              subtitle: 'Bier en muziek',
-              badge: 'BINNENKORT',
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Muziek komt binnenkort beschikbaar.')),
-              ),
+              subtitle: 'Brouwers Beats: de ultieme bier-taplijst',
+              onTap: () => _open(context, const MusicPage()),
             ),
           ],
         ),
@@ -75,14 +73,12 @@ class _OptionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.badge,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -108,21 +104,7 @@ class _OptionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 20, fontWeight: FontWeight.w600)),
-                      ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: _primary.withOpacity(0.15), borderRadius: BorderRadius.circular(999)),
-                          child: Text(badge!, style: GoogleFonts.openSans(color: _primary, fontSize: 9, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ],
-                  ),
+                  Text(title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 20, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text(subtitle, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13, height: 1.4)),
                 ],
