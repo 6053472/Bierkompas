@@ -430,6 +430,37 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
+  /// "Vervallen"-stempel, schuin over de afbeelding van een geannuleerd
+  /// evenement, zodat het zichtbaar blijft i.p.v. verwijderd te worden.
+  Widget _vervallenStamp() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.45),
+        alignment: Alignment.center,
+        child: Transform.rotate(
+          angle: -0.2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.redAccent, width: 2),
+              borderRadius: BorderRadius.circular(6),
+              color: Colors.black.withOpacity(0.35),
+            ),
+            child: Text(
+              'VERVALLEN',
+              style: GoogleFonts.inter(
+                color: Colors.redAccent,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   String _shareText(Map<String, dynamic> event) {
     final name = event['name']?.toString() ?? 'Evenement';
     final location =
