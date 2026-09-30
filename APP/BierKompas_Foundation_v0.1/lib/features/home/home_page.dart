@@ -524,29 +524,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Zelfde breedte als de profielknop rechts, zodat het logo in het midden blijft.
-          const SizedBox(width: 36),
-          Expanded(
-            child: Center(
-              child: SizedBox(
-                height: 40,
-                child: _networkImage(
-                  _logoImage,
-                  fit: BoxFit.contain,
-                  fallback: Center(
-                    child: Text(
-                      'BIERKOMPAS',
-                      style: GoogleFonts.playfairDisplay(
-                        color: _primary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Aan de linkerkant staat de streak, in het spiegelbeeld van de
+          // profielknop rechts -- zonder streak houdt een even brede
+          // plaatshouder het logo alsnog in het midden.
           if (widget.streak > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -559,7 +539,29 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 '🔥 ${widget.streak}',
                 style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.bold),
               ),
+            )
+          else
+            const SizedBox(width: 36),
+          Expanded(
+            child: SizedBox(
+              height: 48,
+              width: double.infinity,
+              child: _networkImage(
+                _logoImage,
+                fit: BoxFit.contain,
+                fallback: Center(
+                  child: Text(
+                    'BIERKOMPAS',
+                    style: GoogleFonts.playfairDisplay(
+                      color: _primary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
             ),
+          ),
           ProfileAvatarButton(
             onTap: () => _goTo(_tabProfile),
             avatarUrl: widget.avatarUrl,
