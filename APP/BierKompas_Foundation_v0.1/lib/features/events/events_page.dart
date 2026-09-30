@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../profile/chat_service.dart';
 import '../profile/friends_service.dart';
@@ -83,7 +84,7 @@ class _EventsPageState extends State<EventsPage> {
       final response = await _supabase
           .from('events')
           .select()
-          .eq('status', 'approved')
+          .inFilter('status', ['approved', 'cancelled'])
           .order('start_date', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
@@ -1352,7 +1353,9 @@ class _EventsPageState extends State<EventsPage> {
 
     final isCancelled = event['status']?.toString() == 'cancelled';
 
-    final name = event['name']?.toString() ?? 'Naamloos';
+    final name =
+        event['name']?.toString() ??
+            'Naamloos';
 
     final eventType =
         event['event_type']?.toString() ??
@@ -1481,6 +1484,7 @@ class _EventsPageState extends State<EventsPage> {
                             event,
                           ),
                         ),
+                        if (isCancelled) _vervallenStamp(),
                       ],
                     ),
                   ),
@@ -1501,43 +1505,63 @@ class _EventsPageState extends State<EventsPage> {
                       _eventTypeBadge(
                         eventType,
                       ),
-                      if (isCancelled) _vervallenStamp(),
                     ],
                   ),
                 ),
-              ),
-            if (!hasImage && isCancelled)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.redAccent, width: 1.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'VERVALLEN',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
+              if (!hasImage && isCancelled)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.redAccent, width: 1.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'VERVALLEN',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
+                    ),
                   ),
                 ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          name,
-                          style: GoogleFonts.playfairDisplay(
-                            color: textColor,
-                            fontSize: 21,
-                            fontWeight: FontWeight.bold,
+              Padding(
+                padding:
+                    const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    if (!hasImage)
+                      Align(
+                        alignment:
+                            Alignment.centerRight,
+                        child:
+                            _shareButton(event),
+                      ),
+                    if (!hasImage)
+                      const SizedBox(height: 6),
+                    Text(
+                      name,
+                      style:
+                          GoogleFonts.playfairDisplay(
+                        color: textColor,
+                        fontSize: 21,
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
+                    ),
+                    if (locationName
+                            .isNotEmpty ||
+                        city.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons
+                                .location_on_outlined,
+                            color: beigeColor,
+                            size: 16,
                           ),
                           const SizedBox(width: 5),
                           Expanded(
@@ -1665,20 +1689,15 @@ class _EventsPageState extends State<EventsPage> {
                           color: beigeColor,
                           size: 14,
                         ),
-                      ),
-                      const Spacer(),
-                      if (isOwner &&
-                          eventId.isNotEmpty &&
-                          !isCancelled)
-                        GestureDetector(
-                          onTap: () {
-                            final id =
-                                int.tryParse(eventId);
-
-                            if (id != null) {
-                              _cancelEvent(
-                                id,
-                                name,
+                        const Spacer(),
+                        if (isOwner &&
+                            eventId.isNotEmpty &&
+                            !isCancelled)
+                          GestureDetector(
+                            onTap: () {
+                              final id =
+                                  int.tryParse(
+                                eventId,
                               );
 
                               if (id != null) {
@@ -2064,7 +2083,24 @@ class _EventsPageState extends State<EventsPage> {
 
     final isCancelled = event['status']?.toString() == 'cancelled';
 
-    final eventDate = _getEventDate(event);
+    final hasImage =
+        imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        imageUrl != 'null';
+
+    final tickets = <String>[];
+
+    if (event['ticket_regular'] == true) {
+      tickets.add('Regulier ticket');
+    }
+
+    if (event['ticket_beer'] == true) {
+      tickets.add('Bier-ticket');
+    }
+
+    if (event['ticket_vip'] == true) {
+      tickets.add('VIP-ticket');
+    }
 
     showModalBottomSheet(
       context: context,
@@ -2102,14 +2138,10 @@ class _EventsPageState extends State<EventsPage> {
                           26,
                         ),
                       ),
-                      if (isCancelled) _vervallenStamp(),
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: 20,
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                      child: SizedBox(
+                        height: 220,
+                        child: Stack(
+                          fit: StackFit.expand,
                           children: [
                             Image.network(
                               imageUrl!,
@@ -2156,6 +2188,7 @@ class _EventsPageState extends State<EventsPage> {
                                 ),
                               ),
                             ),
+                            if (isCancelled) _vervallenStamp(),
                           ],
                         ),
                       ),
@@ -2199,6 +2232,22 @@ class _EventsPageState extends State<EventsPage> {
                               fontWeight:
                                   FontWeight
                                       .bold,
+                            ),
+                          ),
+                        ],
+                        if (!hasImage && isCancelled) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.redAccent, width: 1.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'VERVALLEN',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
                             ),
                           ),
                         ],
@@ -2277,33 +2326,9 @@ class _EventsPageState extends State<EventsPage> {
                                   FontWeight.bold,
                             ),
                           ),
-                        ],
-                        if (eventId != null && !isOwner && isCancelled) ...[
-                          const SizedBox(height: 28),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.event_busy_outlined, color: Colors.redAccent),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Dit evenement is vervallen. Aanmelden is niet meer mogelijk.',
-                                    style: GoogleFonts.inter(color: textColor, fontSize: 13, height: 1.4),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          const SizedBox(
+                            height: 8,
                           ),
-                        ],
-                        if (eventId != null && !isOwner && !isCancelled) ...[
-                          const SizedBox(height: 28),
                           Text(
                             description,
                             style:
