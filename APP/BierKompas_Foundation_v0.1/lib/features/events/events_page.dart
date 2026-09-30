@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -8,7 +11,6 @@ import '../profile/friends_service.dart';
 import 'admin_events_page.dart';
 import 'event_create.dart';
 import '../../shared/profile_avatar_button.dart';
-import '../../shared/share_sheet.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({
@@ -77,8 +79,6 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  // Ook vervallen evenementen blijven zichtbaar (met een "Vervallen"-stempel)
-  // i.p.v. te verdwijnen zodra de organisator ze laat vervallen.
   Future<List<Map<String, dynamic>>> _fetchApprovedEvents() async {
     try {
       final response = await _supabase
@@ -430,37 +430,6 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  /// "Vervallen"-stempel, schuin over de afbeelding van een geannuleerd
-  /// evenement, zodat het zichtbaar blijft i.p.v. verwijderd te worden.
-  Widget _vervallenStamp() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withOpacity(0.45),
-        alignment: Alignment.center,
-        child: Transform.rotate(
-          angle: -0.2,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.redAccent, width: 2),
-              borderRadius: BorderRadius.circular(6),
-              color: Colors.black.withOpacity(0.35),
-            ),
-            child: Text(
-              'VERVALLEN',
-              style: GoogleFonts.inter(
-                color: Colors.redAccent,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 3,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   String _shareText(Map<String, dynamic> event) {
     final name = event['name']?.toString() ?? 'Evenement';
     final location =
@@ -473,20 +442,185 @@ class _EventsPageState extends State<EventsPage> {
         'Bekijk het in BierKompas! 🍻';
   }
 
-  void _openShareSheet(Map<String, dynamic> event) {
-    showAppShareSheet(
-      context,
-      shareText: _shareText(event),
-      subject: event['name']?.toString(),
-      title: 'Evenement delen',
-      extraOption: (sheetContext) => ListTile(
-        leading: const Icon(Icons.person_outline, color: beigeColor),
-        title: Text('Deel met een Biervriend', style: GoogleFonts.inter(color: textColor)),
-        onTap: () {
-          Navigator.pop(sheetContext);
-          _shareWithFriend(event);
-        },
+  Future<void> _shareViaUrl(String url) async {
+    final uri = Uri.parse(url);
+
+    final opened = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Kon geen deelvenster openen.',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _openShareSheet(
+    Map<String, dynamic> event,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
       ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              12,
+              12,
+              12,
+              20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: secondaryTextColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Evenement delen',
+                  style: GoogleFonts.playfairDisplay(
+                    color: textColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ListTile(
+                  leading: const Icon(
+                    Icons.person_outline,
+                    color: beigeColor,
+                  ),
+                  title: Text(
+                    'Deel met een Biervriend',
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _shareWithFriend(event);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.ios_share,
+                    color: beigeColor,
+                  ),
+                  title: Text(
+                    'Meer opties',
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+
+                    Share.share(
+                      _shareText(event),
+                      subject: event['name']?.toString(),
+                    );
+                  },
+                ),
+                if (kIsWeb) ...[
+                  ListTile(
+                    leading: const Icon(
+                      Icons.chat,
+                      color: Color(0xFF25D366),
+                    ),
+                    title: Text(
+                      'WhatsApp',
+                      style: GoogleFonts.inter(
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+
+                      _shareViaUrl(
+                        'https://wa.me/?text='
+                        '${Uri.encodeComponent(_shareText(event))}',
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.facebook,
+                      color: Color(0xFF1877F2),
+                    ),
+                    title: Text(
+                      'Facebook',
+                      style: GoogleFonts.inter(
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+
+                      _shareViaUrl(
+                        'https://www.facebook.com/sharer/sharer.php?quote='
+                        '${Uri.encodeComponent(_shareText(event))}',
+                      );
+                    },
+                  ),
+                ],
+                ListTile(
+                  leading: const Icon(
+                    Icons.copy_all_outlined,
+                    color: beigeColor,
+                  ),
+                  title: Text(
+                    'Tekst kopiëren',
+                    style: GoogleFonts.inter(
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+
+                    await Clipboard.setData(
+                      ClipboardData(
+                        text: _shareText(event),
+                      ),
+                    );
+
+                    if (!mounted) return;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Tekst gekopieerd.',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
