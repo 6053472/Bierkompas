@@ -1,16 +1,13 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../profile/chat_service.dart';
 import '../profile/friends_service.dart';
 import 'admin_events_page.dart';
 import 'event_create.dart';
 import '../../shared/profile_avatar_button.dart';
+import '../../shared/share_sheet.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({
@@ -79,6 +76,8 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
+  // Ook vervallen evenementen blijven zichtbaar (met een "Vervallen"-stempel)
+  // i.p.v. te verdwijnen zodra de organisator ze laat vervallen.
   Future<List<Map<String, dynamic>>> _fetchApprovedEvents() async {
     try {
       final response = await _supabase
@@ -430,6 +429,37 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
+  /// "Vervallen"-stempel, schuin over de afbeelding van een geannuleerd
+  /// evenement, zodat het zichtbaar blijft i.p.v. verwijderd te worden.
+  Widget _vervallenStamp() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.45),
+        alignment: Alignment.center,
+        child: Transform.rotate(
+          angle: -0.2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.redAccent, width: 2),
+              borderRadius: BorderRadius.circular(6),
+              color: Colors.black.withOpacity(0.35),
+            ),
+            child: Text(
+              'VERVALLEN',
+              style: GoogleFonts.inter(
+                color: Colors.redAccent,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   String _shareText(Map<String, dynamic> event) {
     final name = event['name']?.toString() ?? 'Evenement';
     final location =
@@ -442,185 +472,20 @@ class _EventsPageState extends State<EventsPage> {
         'Bekijk het in BierKompas! 🍻';
   }
 
-  Future<void> _shareViaUrl(String url) async {
-    final uri = Uri.parse(url);
-
-    final opened = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
-
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Kon geen deelvenster openen.',
-          ),
-        ),
-      );
-    }
-  }
-
-  void _openShareSheet(
-    Map<String, dynamic> event,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+  void _openShareSheet(Map<String, dynamic> event) {
+    showAppShareSheet(
+      context,
+      shareText: _shareText(event),
+      subject: event['name']?.toString(),
+      title: 'Evenement delen',
+      extraOption: (sheetContext) => ListTile(
+        leading: const Icon(Icons.person_outline, color: beigeColor),
+        title: Text('Deel met een Biervriend', style: GoogleFonts.inter(color: textColor)),
+        onTap: () {
+          Navigator.pop(sheetContext);
+          _shareWithFriend(event);
+        },
       ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              12,
-              12,
-              12,
-              20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: secondaryTextColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Evenement delen',
-                  style: GoogleFonts.playfairDisplay(
-                    color: textColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ListTile(
-                  leading: const Icon(
-                    Icons.person_outline,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Deel met een Biervriend',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _shareWithFriend(event);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.ios_share,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Meer opties',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-
-                    Share.share(
-                      _shareText(event),
-                      subject: event['name']?.toString(),
-                    );
-                  },
-                ),
-                if (kIsWeb) ...[
-                  ListTile(
-                    leading: const Icon(
-                      Icons.chat,
-                      color: Color(0xFF25D366),
-                    ),
-                    title: Text(
-                      'WhatsApp',
-                      style: GoogleFonts.inter(
-                        color: textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-
-                      _shareViaUrl(
-                        'https://wa.me/?text='
-                        '${Uri.encodeComponent(_shareText(event))}',
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.facebook,
-                      color: Color(0xFF1877F2),
-                    ),
-                    title: Text(
-                      'Facebook',
-                      style: GoogleFonts.inter(
-                        color: textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-
-                      _shareViaUrl(
-                        'https://www.facebook.com/sharer/sharer.php?quote='
-                        '${Uri.encodeComponent(_shareText(event))}',
-                      );
-                    },
-                  ),
-                ],
-                ListTile(
-                  leading: const Icon(
-                    Icons.copy_all_outlined,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Tekst kopiëren',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-
-                    await Clipboard.setData(
-                      ClipboardData(
-                        text: _shareText(event),
-                      ),
-                    );
-
-                    if (!mounted) return;
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Tekst gekopieerd.',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -1485,9 +1350,9 @@ class _EventsPageState extends State<EventsPage> {
         currentUser != null &&
         eventUserId == currentUser.id;
 
-    final name =
-        event['name']?.toString() ??
-            'Naamloos';
+    final isCancelled = event['status']?.toString() == 'cancelled';
+
+    final name = event['name']?.toString() ?? 'Naamloos';
 
     final eventType =
         event['event_type']?.toString() ??
@@ -1636,46 +1501,43 @@ class _EventsPageState extends State<EventsPage> {
                       _eventTypeBadge(
                         eventType,
                       ),
+                      if (isCancelled) _vervallenStamp(),
                     ],
                   ),
                 ),
+              ),
+            if (!hasImage && isCancelled)
               Padding(
-                padding:
-                    const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    if (!hasImage)
-                      Align(
-                        alignment:
-                            Alignment.centerRight,
-                        child:
-                            _shareButton(event),
-                      ),
-                    if (!hasImage)
-                      const SizedBox(height: 6),
-                    Text(
-                      name,
-                      style:
-                          GoogleFonts.playfairDisplay(
-                        color: textColor,
-                        fontSize: 21,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
-                    ),
-                    if (locationName
-                            .isNotEmpty ||
-                        city.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons
-                                .location_on_outlined,
-                            color: beigeColor,
-                            size: 16,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.redAccent, width: 1.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'VERVALLEN',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: GoogleFonts.playfairDisplay(
+                            color: textColor,
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(width: 5),
                           Expanded(
@@ -1803,14 +1665,20 @@ class _EventsPageState extends State<EventsPage> {
                           color: beigeColor,
                           size: 14,
                         ),
-                        const Spacer(),
-                        if (isOwner &&
-                            eventId.isNotEmpty)
-                          GestureDetector(
-                            onTap: () {
-                              final id =
-                                  int.tryParse(
-                                eventId,
+                      ),
+                      const Spacer(),
+                      if (isOwner &&
+                          eventId.isNotEmpty &&
+                          !isCancelled)
+                        GestureDetector(
+                          onTap: () {
+                            final id =
+                                int.tryParse(eventId);
+
+                            if (id != null) {
+                              _cancelEvent(
+                                id,
+                                name,
                               );
 
                               if (id != null) {
@@ -2194,24 +2062,9 @@ class _EventsPageState extends State<EventsPage> {
     final imageUrl =
         event['image_asset']?.toString().trim();
 
-    final hasImage =
-        imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        imageUrl != 'null';
+    final isCancelled = event['status']?.toString() == 'cancelled';
 
-    final tickets = <String>[];
-
-    if (event['ticket_regular'] == true) {
-      tickets.add('Regulier ticket');
-    }
-
-    if (event['ticket_beer'] == true) {
-      tickets.add('Bier-ticket');
-    }
-
-    if (event['ticket_vip'] == true) {
-      tickets.add('VIP-ticket');
-    }
+    final eventDate = _getEventDate(event);
 
     showModalBottomSheet(
       context: context,
@@ -2249,10 +2102,14 @@ class _EventsPageState extends State<EventsPage> {
                           26,
                         ),
                       ),
-                      child: SizedBox(
-                        height: 220,
-                        child: Stack(
-                          fit: StackFit.expand,
+                      if (isCancelled) _vervallenStamp(),
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 20,
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
                             Image.network(
                               imageUrl!,
@@ -2420,9 +2277,33 @@ class _EventsPageState extends State<EventsPage> {
                                   FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(
-                            height: 8,
+                        ],
+                        if (eventId != null && !isOwner && isCancelled) ...[
+                          const SizedBox(height: 28),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.event_busy_outlined, color: Colors.redAccent),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Dit evenement is vervallen. Aanmelden is niet meer mogelijk.',
+                                    style: GoogleFonts.inter(color: textColor, fontSize: 13, height: 1.4),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                        ],
+                        if (eventId != null && !isOwner && !isCancelled) ...[
+                          const SizedBox(height: 28),
                           Text(
                             description,
                             style:

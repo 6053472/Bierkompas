@@ -20,6 +20,13 @@ class BeerScanLogResult {
   });
 }
 
+class ScannedBeer {
+  final Beer beer;
+  final DateTime scannedAt;
+
+  const ScannedBeer({required this.beer, required this.scannedAt});
+}
+
 class BeerScanException implements Exception {
   final String message;
   const BeerScanException(this.message);
@@ -48,6 +55,34 @@ class BeerScanService {
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Alle bieren die de gebruiker gescand heeft (nieuwste eerst), uit
+  /// `user_beer_logs`. Bieren die niet meer in de bierlijst staan worden
+  /// overgeslagen.
+  Future<List<ScannedBeer>> listScannedBeers() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return const [];
+    try {
+      final rows = await _client
+          .from('user_beer_logs')
+          .select('beer_id, logged_at')
+          .eq('user_id', userId)
+          .order('logged_at', ascending: false);
+      final result = <ScannedBeer>[];
+      for (final row in rows as List) {
+        final id = row['beer_id'] as int;
+        for (final beer in beers) {
+          if (beer.id == id) {
+            result.add(ScannedBeer(beer: beer, scannedAt: DateTime.parse(row['logged_at'] as String).toLocal()));
+            break;
+          }
+        }
+      }
+      return result;
+    } catch (_) {
+      throw const BeerScanException('Kon je gescande bieren niet laden.');
     }
   }
 
