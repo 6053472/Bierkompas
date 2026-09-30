@@ -84,7 +84,7 @@ class _EventsPageState extends State<EventsPage> {
       final response = await _supabase
           .from('events')
           .select()
-          .eq('status', 'approved')
+          .inFilter('status', ['approved', 'cancelled'])
           .order('start_date', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
@@ -1485,6 +1485,8 @@ class _EventsPageState extends State<EventsPage> {
         currentUser != null &&
         eventUserId == currentUser.id;
 
+    final isCancelled = event['status']?.toString() == 'cancelled';
+
     final name =
         event['name']?.toString() ??
             'Naamloos';
@@ -1616,6 +1618,7 @@ class _EventsPageState extends State<EventsPage> {
                             event,
                           ),
                         ),
+                        if (isCancelled) _vervallenStamp(),
                       ],
                     ),
                   ),
@@ -1637,6 +1640,23 @@ class _EventsPageState extends State<EventsPage> {
                         eventType,
                       ),
                     ],
+                  ),
+                ),
+              if (!hasImage && isCancelled)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.redAccent, width: 1.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'VERVALLEN',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
+                    ),
                   ),
                 ),
               Padding(
@@ -1805,7 +1825,8 @@ class _EventsPageState extends State<EventsPage> {
                         ),
                         const Spacer(),
                         if (isOwner &&
-                            eventId.isNotEmpty)
+                            eventId.isNotEmpty &&
+                            !isCancelled)
                           GestureDetector(
                             onTap: () {
                               final id =
@@ -2194,6 +2215,8 @@ class _EventsPageState extends State<EventsPage> {
     final imageUrl =
         event['image_asset']?.toString().trim();
 
+    final isCancelled = event['status']?.toString() == 'cancelled';
+
     final hasImage =
         imageUrl != null &&
         imageUrl.isNotEmpty &&
@@ -2299,6 +2322,7 @@ class _EventsPageState extends State<EventsPage> {
                                 ),
                               ),
                             ),
+                            if (isCancelled) _vervallenStamp(),
                           ],
                         ),
                       ),
@@ -2342,6 +2366,22 @@ class _EventsPageState extends State<EventsPage> {
                               fontWeight:
                                   FontWeight
                                       .bold,
+                            ),
+                          ),
+                        ],
+                        if (!hasImage && isCancelled) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.redAccent, width: 1.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'VERVALLEN',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 3),
                             ),
                           ),
                         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'beer_photo_log_page.dart';
 import 'beer_scan_page.dart';
 import 'beer_scan_service.dart';
 
@@ -59,6 +60,11 @@ class _ScannedBeersPageState extends State<ScannedBeersPage> {
     if (mounted) _load();
   }
 
+  Future<void> _openPhotoLog() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BeerPhotoLogPage()));
+    if (mounted) _load();
+  }
+
   String _formatDate(DateTime date) {
     const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
@@ -82,7 +88,7 @@ class _ScannedBeersPageState extends State<ScannedBeersPage> {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
             children: [
               Text(
-                'Scan de barcode van een biertje om het in je Bier-paspoort te loggen. Alles wat je scant vind je hieronder terug.',
+                'Scan de barcode van een biertje, of maak zelf een foto als je geen barcode bij de hand hebt. Alles wat je logt vind je hieronder terug.',
                 style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 20),
@@ -95,6 +101,20 @@ class _ScannedBeersPageState extends State<ScannedBeersPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primary,
                     foregroundColor: _onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _openPhotoLog,
+                  icon: const Icon(Icons.add_a_photo_outlined, color: _primary),
+                  label: Text('Foto van je bier', style: GoogleFonts.openSans(color: _primary, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: _primary),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -173,9 +193,9 @@ class _ScannedBeersPageState extends State<ScannedBeersPage> {
           child: SizedBox(
             width: 48,
             height: 48,
-            child: beer.imageUrl != null
+            child: (item.photoUrl ?? beer.imageUrl) != null
                 ? Image.network(
-                    beer.imageUrl!,
+                    (item.photoUrl ?? beer.imageUrl)!,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const ColoredBox(color: _background, child: Icon(Icons.sports_bar_outlined, color: _primary)),
                   )
