@@ -524,24 +524,28 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Aan de linkerkant staat de streak, in het spiegelbeeld van de
-          // profielknop rechts -- zonder streak houdt een even brede
-          // plaatshouder het logo alsnog in het midden.
-          if (widget.streak > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _primary.withOpacity(0.4)),
-              ),
-              child: Text(
-                '🔥 ${widget.streak}',
-                style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-            )
-          else
-            const SizedBox(width: 36),
+          // Links en rechts exact even breed (48), anders staat het logo er
+          // niet precies in het midden van omdat de streak-badge en de
+          // profielknop van nature niet even breed zijn.
+          SizedBox(
+            width: 48,
+            child: Center(
+              child: widget.streak > 0
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _primary.withOpacity(0.4)),
+                      ),
+                      child: Text(
+                        '🔥 ${widget.streak}',
+                        style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : null,
+            ),
+          ),
           Expanded(
             child: SizedBox(
               height: 48,
@@ -562,9 +566,14 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               ),
             ),
           ),
-          ProfileAvatarButton(
-            onTap: () => _goTo(_tabProfile),
-            avatarUrl: widget.avatarUrl,
+          SizedBox(
+            width: 48,
+            child: Center(
+              child: ProfileAvatarButton(
+                onTap: () => _goTo(_tabProfile),
+                avatarUrl: widget.avatarUrl,
+              ),
+            ),
           ),
         ],
       ),
