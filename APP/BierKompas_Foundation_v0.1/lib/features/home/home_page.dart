@@ -524,12 +524,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Links en rechts exact even breed (48), anders staat het logo er
+          // Links en rechts exact even breed (72), anders staat het logo er
           // niet precies in het midden van omdat de streak-badge en de
           // profielknop van nature niet even breed zijn.
           SizedBox(
-            width: 48,
-            child: Center(
+            width: 72,
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: widget.streak > 0
                   ? Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -540,6 +541,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                       ),
                       child: Text(
                         '🔥 ${widget.streak}',
+                        maxLines: 1,
+                        softWrap: false,
                         style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                     )
@@ -567,8 +570,9 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             ),
           ),
           SizedBox(
-            width: 48,
-            child: Center(
+            width: 72,
+            child: Align(
+              alignment: Alignment.centerRight,
               child: ProfileAvatarButton(
                 onTap: () => _goTo(_tabProfile),
                 avatarUrl: widget.avatarUrl,
