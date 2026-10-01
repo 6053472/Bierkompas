@@ -854,9 +854,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ],
             ),
           ),
+
+          if (_selectedIndex != null &&
+              _selectedIndex! < _results.length &&
+              (_activeTab == _MapTab.breweries || _activeTab == _MapTab.all))
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 24,
+              child: _buildBreweryDetailCard(_results[_selectedIndex!]),
+            ),
         ],
       ),
-      floatingActionButton: _buildFab(),
+      floatingActionButton: _selectedIndex != null && _activeTab == _MapTab.breweries ? null : _buildFab(),
     );
   }
 
@@ -1233,6 +1243,129 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return _buildCompactList(
       itemCount: _nearbyFriends.length,
       itemBuilder: (context, index) => _buildNearbyFriendTile(_nearbyFriends[index]),
+    );
+  }
+
+  // Detailkaart die onderaan verschijnt na een tik op een brouwerij-pin.
+  Widget _buildBreweryDetailCard(BreweryResult result) {
+    final brewery = result.brewery;
+    final isFavorite = _favoriteIds.contains(brewery.id);
+    final subtitle = _searchedLocation.isEmpty ? brewery.location : '${_formatDistance(result.distance)} vanaf $_searchedLocation';
+    String? website;
+    final otherFacts = <String>[];
+    for (final fact in brewery.facts) {
+      if (fact.startsWith('Website: ')) {
+        website = fact.substring('Website: '.length);
+      } else {
+        otherFacts.add(fact);
+      }
+    }
+
+    Future<void> openUrl(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 340),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C221C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF3E312A)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (brewery.imageUrl != null)
+              Container(
+                height: 120,
+                width: double.infinity,
+                clipBehavior: Clip.antiAlias,
+                decoration: const BoxDecoration(color: Color(0xFF3E312A), borderRadius: BorderRadius.vertical(top: Radius.circular(15))),
+                child: Image.network(brewery.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(brewery.title, style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      IconButton(
+                        onPressed: () => _toggleFavorite(brewery),
+                        icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? const Color(0xFFD4B28C) : Colors.white, size: 20),
+                      ),
+                      IconButton(
+                        onPressed: _deselectBrewery,
+                        icon: const Icon(Icons.close, color: Color(0xFF9E8A7D), size: 20),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.navigation, color: Color(0xFF9E8A7D), size: 12),
+                      const SizedBox(width: 4),
+                      Expanded(child: Text(subtitle, style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 12))),
+                    ],
+                  ),
+                  if (brewery.tags.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: brewery.tags
+                          .map((tag) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFF1E1712), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF3E312A))),
+                                child: Text(tag, style: GoogleFonts.inter(color: const Color(0xFFC4A482), fontSize: 10, fontWeight: FontWeight.bold)),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                  if (brewery.about.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(brewery.about, style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontSize: 12, height: 1.4)),
+                  ],
+                  for (final fact in otherFacts) ...[
+                    const SizedBox(height: 6),
+                    Text(fact, style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontSize: 12)),
+                  ],
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => openUrl('https://www.google.com/maps/dir/?api=1&destination=${brewery.latitude},${brewery.longitude}'),
+                            icon: const Icon(Icons.directions, color: Color(0xFFD4B28C), size: 18),
+                            label: Text('Route', style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFD4B28C)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                        if (website != null) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => openUrl(website!),
+                              icon: const Icon(Icons.language, color: Color(0xFFD4B28C), size: 18),
+                              label: Text('Website', style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFD4B28C)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
