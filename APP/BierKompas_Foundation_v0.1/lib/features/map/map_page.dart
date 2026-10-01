@@ -149,6 +149,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // de kaart blijft zo vrij voor knijp-zoomen.
   static const _maxPanelHeight = 230.0;
 
+  // Het lijstje is standaard ingeklapt: met honderden brouwerijen bedekte het
+  // anders de kaart. Opent vanzelf na een zoekopdracht.
+  bool _panelExpanded = false;
+
   // Highlight van het aangetikte item (lijst + pin).
   int? _selectedIndex;
   int? _selectedHorecaIndex;
@@ -641,6 +645,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     setState(() {
       _searchedLocation = _getShortLocationName(location.displayName, 'deze locatie');
+      _panelExpanded = true;
       _results = sortedResults;
       _horecaResults = sortedHoreca;
       _suggestions = [];
@@ -813,14 +818,32 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 // nodig. Horizontaal vegen erop wisselt van tab. Geen
                 // TabBarView/Expanded: dat claimt de hele kaart als veeggebied
                 // en blokkeert het knijp-zoomen.
-                GestureDetector(
-                  onHorizontalDragEnd: _onPanelSwipe,
-                  behavior: HitTestBehavior.deferToChild,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: _maxPanelHeight),
-                    child: _buildActivePanel(),
+                if (_activeTab != _MapTab.nearby)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => setState(() => _panelExpanded = !_panelExpanded),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFF2C221C),
+                          foregroundColor: const Color(0xFFD4B28C),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        ),
+                        icon: Icon(_panelExpanded ? Icons.expand_less : Icons.expand_more, size: 18),
+                        label: Text(_panelExpanded ? 'Lijst verbergen' : 'Lijst tonen', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
                   ),
-                ),
+                if (_panelExpanded || _activeTab == _MapTab.nearby)
+                  GestureDetector(
+                    onHorizontalDragEnd: _onPanelSwipe,
+                    behavior: HitTestBehavior.deferToChild,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: _maxPanelHeight),
+                      child: _buildActivePanel(),
+                    ),
+                  ),
 
                 const Spacer(),
 
