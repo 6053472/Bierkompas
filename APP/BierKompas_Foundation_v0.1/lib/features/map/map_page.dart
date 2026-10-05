@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
@@ -149,6 +150,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // de kaart blijft zo vrij voor knijp-zoomen.
   static const _maxPanelHeight = 230.0;
 
+  // Zodra bekend (met toestemming): sorteert brouwerijen/horeca automatisch
+  // op afstand, i.p.v. de willekeurige volgorde uit de datalijst te tonen.
+  Position? _myPosition;
+
   // Highlight van het aangetikte item (lijst + pin).
   int? _selectedIndex;
   int? _selectedHorecaIndex;
@@ -169,8 +174,68 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _loadFavorites();
     _loadEvents();
     _startNearbyRefresh();
+    _tryUseCurrentLocation();
 
     _searchController.addListener(_onSearchChanged);
+  }
+
+  // Herberekent de afstand van elk resultaat tot [_myPosition] en sorteert
+  // van dichtbij naar ver. Zonder bekende locatie blijft de lijst ongewijzigd
+  // (dan staat de volgorde uit de databron, zie _tryUseCurrentLocation).
+  List<BreweryResult> _sortedBreweryResults(List<BreweryResult> results) {
+    final pos = _myPosition;
+    if (pos == null) return results;
+    return results
+        .map((r) => BreweryResult(
+              brewery: r.brewery,
+              distance: _calculateDistance(pos.latitude, pos.longitude, r.brewery.latitude, r.brewery.longitude),
+            ))
+        .toList()
+      ..sort((a, b) => a.distance.compareTo(b.distance));
+  }
+
+  List<HorecaResult> _sortedHorecaResults(List<HorecaResult> results) {
+    final pos = _myPosition;
+    if (pos == null) return results;
+    return results
+        .map((r) => HorecaResult(
+              venue: r.venue,
+              distance: _calculateDistance(pos.latitude, pos.longitude, r.venue.latitude, r.venue.longitude),
+            ))
+        .toList()
+      ..sort((a, b) => a.distance.compareTo(b.distance));
+  }
+
+  // Vraagt (stil, zonder foutmeldingen) de locatie van het toestel op zodat
+  // brouwerijen/horeca standaard op afstand gesorteerd staan i.p.v. in de
+  // willekeurige volgorde van de databron. Lukt dit niet (geen toestemming,
+  // locatievoorziening uit, geen GPS-fix), dan blijft de lijst gewoon
+  // ongesorteerd -- dit mag de kaart nooit blokkeren of een foutmelding geven.
+  Future<void> _tryUseCurrentLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _myPosition = position;
+        _results = _sortedBreweryResults(_results);
+        _horecaResults = _sortedHorecaResults(_horecaResults);
+        if (_searchedLocation.isEmpty) _searchedLocation = 'jouw locatie';
+      });
+    } catch (e) {
+      debugPrint('Locatie ophalen voor kaart-sortering mislukt: $e');
+    }
   }
 
   // Vrienden-locaties zijn zichtbaar op de "Alles"- en "Bierliefhebbers"-tab.
@@ -349,7 +414,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         unique[key] = brewery;
       }
 
-      final result = unique.values.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList();
+      final result = _sortedBreweryResults(unique.values.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
 
       if (!mounted) return;
       setState(() {
@@ -381,7 +446,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     try {
       final venues = await _horecaSubmissionService.fetchApproved();
-      final result = venues.map((venue) => HorecaResult(venue: venue, distance: 0)).toList();
+      final result = _sortedHorecaResults(venues.map((venue) => HorecaResult(venue: venue, distance: 0)).toList());
 
       if (!mounted) return;
       setState(() {
@@ -714,11 +779,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _resetSearch() {
     _searchController.clear();
 
-    final resetResults = breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList();
-    final resetHoreca = _horecaResults.map((result) => HorecaResult(venue: result.venue, distance: 0)).toList();
+    final resetResults = _sortedBreweryResults(breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
+    final resetHoreca = _sortedHorecaResults(_horecaResults.map((result) => HorecaResult(venue: result.venue, distance: 0)).toList());
 
     setState(() {
-      _searchedLocation = '';
+      _searchedLocation = _myPosition != null ? 'jouw locatie' : '';
       _suggestions = [];
       _results = resetResults;
       _horecaResults = resetHoreca;
