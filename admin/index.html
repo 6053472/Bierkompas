@@ -117,16 +117,39 @@
 
 <!-- ===================== DASHBOARD VIEW ===================== -->
 <div id="dashboard-view" class="hidden flex flex-col md:flex-row min-h-screen">
-  <!-- Sidebar (horizontale balk op mobiel, verticale zijbalk vanaf md) -->
-  <aside class="flex md:flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 items-center md:items-stretch gap-2 md:gap-1 z-10">
-    <div class="mb-0 md:mb-8 px-2 mr-auto md:mr-0 shrink-0 flex items-center gap-2">
+  <!-- Sidebar (op mobiel: titel + dropdown-keuzemenu; vanaf md: volledige verticale zijbalk) -->
+  <aside class="flex flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 gap-2 md:gap-1 z-10">
+    <div class="mb-0 md:mb-8 px-2 shrink-0 flex items-center gap-2">
       <span class="material-symbols-outlined text-primary text-2xl hidden md:inline">sports_bar</span>
       <div>
         <h1 class="font-display text-lg md:text-xl text-primary leading-tight">Bierkompas</h1>
         <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Beheer</p>
       </div>
     </div>
-    <nav class="flex md:flex-col gap-1 flex-1 min-w-0 overflow-x-auto md:overflow-visible">
+
+    <!-- Mobiel: dropdown i.p.v. een scrollende knoppenrij, zodat elke optie altijd met volledige tekst leesbaar is. -->
+    <div class="md:hidden px-2 pb-1">
+      <select id="mobile-panel-select"
+        class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+        <optgroup label="Goedkeuringen">
+          <option value="events">Evenementen</option>
+          <option value="brouwerijen">Brouwerij-aanmeldingen</option>
+          <option value="horeca">Horeca-aanmeldingen</option>
+        </optgroup>
+        <optgroup label="Content">
+          <option value="feed">Ontdek-feed</option>
+          <option value="bieren">Bieren &amp; barcodes</option>
+          <option value="pairings">Bier &amp; Spijs</option>
+          <option value="videos">Video's</option>
+        </optgroup>
+        <optgroup label="Overzicht &amp; beheer">
+          <option value="stats">Statistieken</option>
+          <option value="locationbadges">Locatie-badges</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <nav class="hidden md:flex md:flex-col gap-1 flex-1 min-w-0">
       <p class="hidden md:block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-3 pb-1">Goedkeuringen</p>
       <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">event</span>
@@ -683,11 +706,15 @@
     locationbadges: document.getElementById("panel-locationbadges"),
   };
 
+  const mobilePanelSelect = document.getElementById("mobile-panel-select");
+
   function setActivePanel(name) {
     Object.entries(panels).forEach(([key, el]) => el.classList.toggle("hidden", key !== name));
     navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.panel === name));
+    mobilePanelSelect.value = name;
   }
   navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
+  mobilePanelSelect.addEventListener("change", () => setActivePanel(mobilePanelSelect.value));
   setActivePanel("events");
 
   // ---------- Evenementen goedkeuren ----------
