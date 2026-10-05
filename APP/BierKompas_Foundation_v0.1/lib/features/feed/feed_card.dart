@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../shared/share_sheet.dart';
+import 'feed_comments_sheet.dart';
 import 'feed_service.dart';
 
 // Zelfde kleurenpalet als de rest van de app.
@@ -86,6 +87,15 @@ class FeedCard extends StatelessWidget {
                   children: [
                     _buildLabel(label, icon),
                     const Spacer(),
+                    if (_feedItemId != null)
+                      GestureDetector(
+                        onTap: () => showFeedCommentsSheet(context, feedItemId: _feedItemId!, itemType: item.type),
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.mode_comment_outlined, color: _onSurfaceVariant, size: 20),
+                        ),
+                      ),
                     GestureDetector(
                       onTap: () => showAppShareSheet(
                         context,
@@ -218,6 +228,14 @@ class FeedCard extends StatelessWidget {
         final author = item.author;
         return author == null ? null : Text(author, style: metaStyle);
     }
+  }
+
+  /// Het numerieke id voor `feed_comments.feed_item_id`, of null als dit een
+  /// evenement is (die komen uit de `events`-tabel, niet uit `feed_items`, en
+  /// zijn dus niet op deze manier te becommentariëren).
+  int? get _feedItemId {
+    if (!item.key.startsWith('item-')) return null;
+    return int.tryParse(item.key.substring('item-'.length));
   }
 
   String _buildShareText() {
