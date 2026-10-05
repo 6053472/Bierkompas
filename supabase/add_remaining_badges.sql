@@ -14,6 +14,10 @@
 -- te koppelen. Nieuwe catalogusbieren toegevoegd zodat ze echt te proeven/
 -- scannen zijn (zelfde opzet als de bestaande placeholder-bieren zonder
 -- specifieke brouwerij in add_bieren_tabel.sql).
+-- (Defensief hier ook toegevoegd, voor het geval add_scan_achievements.sql
+-- nog niet is uitgevoerd.)
+alter table public.badges add column if not exists target_style text;
+
 update public.badges set target_style = 'Vlaams Roodbruin' where id = 'flanders_red_ale';
 update public.badges set target_style = 'NEIPA' where id = 'haze_for_days';
 update public.badges set target_style = 'Kölsch' where id = 'respect_the_kolsch';
