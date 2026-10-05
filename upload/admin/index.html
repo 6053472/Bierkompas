@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html class="dark" lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bierkompas Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&amp;family=Open+Sans:wght@400;600&amp;family=Hanken+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#1c110a",
+          "surface": "#1c110a",
+          "surface-container-lowest": "#160c06",
+          "surface-container-low": "#251911",
+          "surface-container": "#291d15",
+          "surface-container-high": "#35271f",
+          "surface-container-highest": "#403229",
+          "on-surface": "#f6ded1",
+          "on-surface-variant": "#d6c3b5",
+          "outline": "#9e8e81",
+          "outline-variant": "#51443a",
+          "primary": "#fbb97b",
+          "on-primary": "#4b2800",
+          "primary-container": "#d4975c",
+          "on-primary-container": "#583000",
+          "secondary": "#e3bfb2",
+          "success": "#8bc98b",
+          "error": "#ffb4ab",
+          "error-container": "#93000a",
+          "on-error": "#690005",
+          "on-error-container": "#ffdad6",
+        },
+        fontFamily: {
+          "display": ["\"Playfair Display\""],
+          "body": ["\"Open Sans\""],
+          "label": ["\"Hanken Grotesk\""],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body {
+    background: radial-gradient(ellipse at top, #251911 0%, #1c110a 55%) fixed;
+    color: #f6ded1;
+  }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  .copper-glow { box-shadow: 0px 4px 20px rgba(251, 185, 123, 0.15); }
+  .hidden { display: none !important; }
+  .nav-item.active { background-color: #d4975c22; color: #fbb97b; font-weight: 600; }
+  .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #403229; border-radius: 999px; }
+  .spinner {
+    width: 16px; height: 16px; border-radius: 999px;
+    border: 2px solid rgba(251,185,123,0.25); border-top-color: #fbb97b;
+    animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fade-in { animation: fadeIn 0.2s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body class="font-body antialiased min-h-screen">
+
+<!-- ===================== LOGIN VIEW ===================== -->
+<main id="login-view" class="min-h-screen flex items-center justify-center px-6">
+  <div class="w-full max-w-sm flex flex-col items-center">
+    <div class="w-24 h-24 mb-6 rounded-full bg-surface-container flex items-center justify-center border border-primary/20 shadow-2xl">
+      <span class="material-symbols-outlined text-primary text-5xl" style="font-variation-settings: 'FILL' 1;">shield_lock</span>
+    </div>
+    <h1 class="font-display text-3xl text-primary tracking-tight mb-1 text-center">BEVEILIGDE TOEGANG</h1>
+    <h2 class="font-label text-xs text-on-surface-variant tracking-widest uppercase mb-6 text-center">Bierkompas &middot; Geautoriseerde zone</h2>
+
+    <div class="w-full bg-primary text-on-primary py-2 px-4 rounded-lg mb-6 flex items-center justify-center gap-2 shadow-lg">
+      <span class="material-symbols-outlined text-[20px]">lock</span>
+      <span class="font-label text-xs tracking-widest uppercase">Secure Zone</span>
+    </div>
+
+    <form id="login-form" class="w-full bg-surface-container/70 border border-primary/20 rounded-xl p-6 flex flex-col gap-4 backdrop-blur-md shadow-2xl">
+      <div class="flex flex-col gap-1">
+        <label class="font-label text-xs text-on-surface-variant uppercase tracking-wide" for="email">E-mailadres</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">mail</span>
+          <input id="email" type="email" required autocomplete="username"
+            class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-12 pr-4 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors"/>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="font-label text-xs text-on-surface-variant uppercase tracking-wide" for="password">Wachtwoord</label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">dialpad</span>
+          <input id="password" type="password" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+            class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-12 pr-4 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors"/>
+        </div>
+      </div>
+      <p id="login-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2"></p>
+      <button type="submit" id="login-button"
+        class="w-full mt-2 bg-primary text-on-primary font-label text-xs py-4 rounded-lg hover:opacity-90 transition-colors copper-glow uppercase tracking-widest flex items-center justify-center gap-2">
+        <span id="login-button-label">Toegang verlenen</span>
+      </button>
+    </form>
+    <div class="mt-8 flex items-center gap-2 text-on-surface-variant/50 font-label text-[11px]">
+      <span class="material-symbols-outlined text-[16px]">verified_user</span>
+      <span>Alleen voor beheerders met is_admin-rechten</span>
+    </div>
+  </div>
+</main>
+
+<!-- ===================== DASHBOARD VIEW ===================== -->
+<div id="dashboard-view" class="hidden flex flex-col md:flex-row min-h-screen">
+  <!-- Sidebar (horizontale balk op mobiel, verticale zijbalk vanaf md) -->
+  <aside class="flex md:flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 items-center md:items-stretch gap-2 md:gap-1 z-10">
+    <div class="mb-0 md:mb-8 px-2 mr-auto md:mr-0 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary text-2xl hidden md:inline">sports_bar</span>
+      <div>
+        <h1 class="font-display text-lg md:text-xl text-primary leading-tight">Bierkompas</h1>
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Beheer</p>
+      </div>
+    </div>
+    <nav class="flex md:flex-col gap-1 md:flex-1">
+      <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">event</span>
+        <span class="font-body text-sm hidden md:inline">Evenementen</span>
+        <span id="events-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
+      </button>
+      <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">sports_bar</span>
+        <span class="font-body text-sm hidden md:inline">Bieren &amp; barcodes</span>
+        <span id="bieren-count-badge" class="hidden ml-auto bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
+      </button>
+      <button data-panel="brouwerijen" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">add_business</span>
+        <span class="font-body text-sm hidden md:inline">Brouwerij-aanmeldingen</span>
+        <span id="brouwerijen-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
+      </button>
+      <button data-panel="horeca" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">restaurant</span>
+        <span class="font-body text-sm hidden md:inline">Horeca-aanmeldingen</span>
+        <span id="horeca-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
+      </button>
+      <button data-panel="feed" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">dynamic_feed</span>
+        <span class="font-body text-sm hidden md:inline">Ontdek-feed</span>
+      </button>
+      <button data-panel="pairings" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">restaurant_menu</span>
+        <span class="font-body text-sm hidden md:inline">Bier &amp; Spijs</span>
+      </button>
+      <button data-panel="videos" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">smart_display</span>
+        <span class="font-body text-sm hidden md:inline">Video's</span>
+      </button>
+      <button data-panel="stats" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">query_stats</span>
+        <span class="font-body text-sm hidden md:inline">Statistieken</span>
+      </button>
+      <button data-panel="locationbadges" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">emoji_events</span>
+        <span class="font-body text-sm hidden md:inline">Locatie-badges</span>
+      </button>
+    </nav>
+    <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
+      <span class="material-symbols-outlined">logout</span>
+      <span class="font-body text-sm hidden md:inline">Uitloggen</span>
+    </button>
+  </aside>
+
+  <div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+    <div class="w-full bg-primary text-on-primary py-2 px-6 flex items-center gap-2">
+      <span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">lock</span>
+      <span class="font-label text-xs uppercase tracking-widest">Secure Admin Zone</span>
+      <span id="admin-email" class="ml-auto text-xs opacity-80"></span>
+    </div>
+
+    <!-- Events panel -->
+    <section id="panel-events" class="panel p-6 md:p-10 fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Evenement aanmeldingen</h2>
+            <p class="text-on-surface-variant text-sm">Controleer nieuwe evenementen voordat ze zichtbaar worden in de agenda.</p>
+          </div>
+          <button id="events-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div id="events-list" class="lg:col-span-5 flex flex-col gap-3"></div>
+          <div id="events-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[280px] flex items-center justify-center text-on-surface-variant text-sm text-center">
+            Selecteer een evenement om details te bekijken.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bieren panel -->
+    <section id="panel-bieren" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Bieren &amp; barcodes</h2>
+            <p class="text-on-surface-variant text-sm">Stel de barcode van een bier in zodat gebruikers het kunnen scannen in de app. Laat leeg om scannen voor dat bier uit te schakelen.</p>
+          </div>
+          <button id="bier-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw bier
+          </button>
+        </div>
+
+        <!-- Nieuw bier toevoegen (ingeklapt totdat je op de knop klikt) -->
+        <div id="bier-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-4">Nieuw bier toevoegen</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span>
+              <input id="bier-new-naam" type="text" placeholder="Bijv. Gouden Hop Tripel"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Stijl</span>
+              <input id="bier-new-stijl" type="text" placeholder="Bijv. Tripel"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Brouwerij</span>
+              <input id="bier-new-brouwerij" type="text" placeholder="Bijv. Brouwerij De Gouden Hop"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">ABV</span>
+              <input id="bier-new-abv" type="text" placeholder="Bijv. 8.0% ABV"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beschrijving</span>
+              <textarea id="bier-new-beschrijving" rows="2" placeholder="Wat is dit voor bier?"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Hoe het gemaakt wordt</span>
+              <textarea id="bier-new-hoegemaakt" rows="2" placeholder="Brouwproces / ingrediënten"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Over deze bierstijl</span>
+              <textarea id="bier-new-stijlinfo" rows="2" placeholder="Algemene uitleg over de bierstijl"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL</span>
+              <input id="bier-new-foto" type="text" placeholder="https://.../afbeelding.jpg"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Let op: dit moet een link zijn die rechtstreeks naar een afbeeldingsbestand wijst (eindigt meestal op .jpg/.png/.webp), niet een link naar een webpagina.</span>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Barcode (optioneel)</span>
+              <input id="bier-new-barcode" type="text" placeholder="EAN-13, bv. 8710400000013"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm font-mono"/>
+            </label>
+          </div>
+          <p id="bier-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="bier-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="bier-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="bier-new-save-label">Bier opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mb-6 mt-4 flex-wrap">
+          <div class="relative flex-1 min-w-[200px] max-w-sm">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+            <input id="bieren-search" type="text" placeholder="Zoek op biernaam..."
+              class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-10 pr-4 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm"/>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
+            <input id="bieren-filter-missing" type="checkbox" class="rounded accent-primary"/>
+            Alleen zonder barcode
+          </label>
+          <span id="bieren-summary" class="ml-auto text-xs text-on-surface-variant"></span>
+        </div>
+        <div id="bieren-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Brouwerij-aanmeldingen panel -->
+    <section id="panel-brouwerijen" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Brouwerij-aanmeldingen</h2>
+            <p class="text-on-surface-variant text-sm">Zelf aangemelde brouwerijen verschijnen pas op de kaart nadat je ze hier goedkeurt.</p>
+          </div>
+          <button id="brouwerijen-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div id="brouwerijen-list" class="lg:col-span-5 flex flex-col gap-3"></div>
+          <div id="brouwerijen-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[280px] flex items-center justify-center text-on-surface-variant text-sm text-center">
+            Selecteer een aanmelding om details te bekijken.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Horeca-aanmeldingen panel -->
+    <section id="panel-horeca" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Horeca-aanmeldingen</h2>
+            <p class="text-on-surface-variant text-sm">Zelf aangemelde cafés/proeflokalen verschijnen pas op de kaart nadat je ze hier goedkeurt.</p>
+          </div>
+          <button id="horeca-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div id="horeca-list" class="lg:col-span-5 flex flex-col gap-3"></div>
+          <div id="horeca-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[280px] flex items-center justify-center text-on-surface-variant text-sm text-center">
+            Selecteer een aanmelding om details te bekijken.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ontdek-feed panel -->
+    <section id="panel-feed" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Ontdek-feed</h2>
+            <p class="text-on-surface-variant text-sm">Mini-reviews, biertips en weetjes die op de Ontdek-pagina in de app verschijnen. Posts van gebruikers zelf staan hier niet bij en kun je hier niet beheren.</p>
+          </div>
+          <button id="feed-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw item
+          </button>
+        </div>
+
+        <!-- Nieuw/bewerk feed-item (ingeklapt totdat je op de knop klikt) -->
+        <div id="feed-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="feed-form-title" class="font-display text-lg text-on-surface mb-4">Nieuw feed-item</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
+              <select id="feed-new-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="tip">Biertip</option>
+                <option value="weetje">Weetje</option>
+                <option value="review">Mini-review</option>
+                <option value="brouwerij">Brouwerij-post</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Auteur (optioneel)</span>
+              <input id="feed-new-author" type="text" placeholder="Bijv. Bierkompas Redactie"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="feed-new-titel" type="text" placeholder="Bijv. Wist je dat..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Tekst*</span>
+              <textarea id="feed-new-body" rows="3" placeholder="De inhoud van dit feed-item"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span>
+              <input id="feed-new-foto" type="text" placeholder="https://.../afbeelding.jpg"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Let op: dit moet een link zijn die rechtstreeks naar een afbeeldingsbestand wijst (eindigt meestal op .jpg/.png/.webp), niet een link naar een webpagina of artikel. Rechtermuisknop op de foto &rarr; "Afbeeldingsadres kopiëren" geeft meestal de juiste link.</span>
+            </label>
+            <label id="feed-new-rating-wrap" class="flex flex-col gap-1 hidden">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beoordeling (0-5, alleen bij mini-review)</span>
+              <input id="feed-new-rating" type="number" min="0" max="5" step="0.5" placeholder="4.5"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+          </div>
+          <p id="feed-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="feed-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="feed-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="feed-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 mt-8 mb-2">
+          <h3 class="font-display text-lg text-on-surface">Posts wachtend op goedkeuring</h3>
+          <span id="feed-pending-count-badge" class="hidden bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center"></span>
+        </div>
+        <p class="text-on-surface-variant text-sm mb-3">Eigen posts van gebruikers verschijnen pas in ieders Ontdek-feed nadat je ze hier goedkeurt.</p>
+        <div id="feed-pending-list" class="flex flex-col gap-2 mb-8"></div>
+
+        <h3 class="font-display text-lg text-on-surface mb-3">Redactionele content</h3>
+        <div id="feed-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Bier & Spijs panel -->
+    <section id="panel-pairings" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Bier &amp; Spijs</h2>
+            <p class="text-on-surface-variant text-sm">Combinaties van bier en gerecht die in de Foodpairing Hub van de app verschijnen.</p>
+          </div>
+          <button id="pairing-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe combinatie
+          </button>
+        </div>
+
+        <div id="pairing-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-4">Nieuwe combinatie toevoegen</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Brouwerij*</span>
+              <input id="pairing-new-brouwerij" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Biernaam*</span>
+              <input id="pairing-new-biernaam" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Aanbevolen gerecht*</span>
+              <input id="pairing-new-gerecht" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Aankoop-context</span>
+              <input id="pairing-new-context" type="text" placeholder="Bijv. Webshop / Slijterij" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Prijs</span>
+              <input id="pairing-new-prijs" type="text" placeholder="Bijv. € 3" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Website (optioneel)</span>
+              <input id="pairing-new-link" type="text" placeholder="https://..." class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+          </div>
+          <p id="pairing-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="pairing-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="pairing-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="pairing-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mb-6 mt-4 flex-wrap">
+          <div class="relative flex-1 min-w-[200px] max-w-sm">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+            <input id="pairings-search" type="text" placeholder="Zoek op bier of brouwerij..."
+              class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-10 pr-4 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm"/>
+          </div>
+          <span id="pairings-summary" class="ml-auto text-xs text-on-surface-variant"></span>
+        </div>
+        <div id="pairings-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Video's panel -->
+    <section id="panel-videos" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Video's</h2>
+            <p class="text-on-surface-variant text-sm">Korte video's (brouwerijtours, proeverijen) die als "Brouwerij Highlights" in de app verschijnen.</p>
+          </div>
+          <button id="video-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe video
+          </button>
+        </div>
+
+        <div id="video-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-4">Nieuwe video toevoegen</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="video-new-title" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Categorie</span>
+              <input id="video-new-category" type="text" placeholder="Bijv. New Pour, Tour, Tasting" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Thumbnail-URL*</span>
+              <input id="video-new-thumbnail" type="text" placeholder="https://.../thumbnail.jpg" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Video-URL* (.mp4)</span>
+              <input id="video-new-url" type="text" placeholder="https://.../video.mp4" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een .mp4-bestand, bijv. via Supabase Storage.</span>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span>
+              <input id="video-new-sort" type="number" value="0" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+          </div>
+          <p id="video-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="video-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="video-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="video-new-save-label">Video opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="videos-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></div>
+      </div>
+    </section>
+
+    <!-- Statistieken panel -->
+    <section id="panel-stats" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Statistieken</h2>
+            <p class="text-on-surface-variant text-sm">Overzicht van actieve gebruikers en openstaande goedkeuringen.</p>
+          </div>
+          <button id="stats-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div id="stats-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- Locatie-badges panel -->
+    <section id="panel-locationbadges" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Locatie-badges</h2>
+          <p class="text-on-surface-variant text-sm">
+            Markeer welke brouwerij of horecagelegenheid een boerderijbrouwerij of een "beer garden" is.
+            Een gebruiker die zo'n locatie favorieten krijgt de bijbehorende badge. Alleen jij weet welke
+            locaties dit echt zijn -- zonder tag hieronder blijft die badge voor iedereen vergrendeld.
+          </p>
+        </div>
+
+        <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort</span>
+              <select id="locbadge-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="brewery">Brouwerij</option>
+                <option value="horeca">Horeca</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam</span>
+              <input id="locbadge-name" type="text" list="locbadge-options" placeholder="Typ om te zoeken..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <datalist id="locbadge-options"></datalist>
+            </label>
+          </div>
+          <div class="flex items-center gap-6 mt-4">
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="locbadge-farm" type="checkbox" class="rounded accent-primary"/> Boerderijbrouwerij
+            </label>
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="locbadge-garden" type="checkbox" class="rounded accent-primary"/> Beer garden
+            </label>
+          </div>
+          <p id="locbadge-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <button id="locbadge-save" class="mt-4 flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            <span id="locbadge-save-label">Tags opslaan</span>
+          </button>
+        </div>
+
+        <h3 class="font-display text-lg text-on-surface mb-3">Huidige tags</h3>
+        <div id="locbadge-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // Zelfde publieke Supabase-project als de Flutter-app (lib/core/config/supabase_config.dart).
+  const SUPABASE_URL = "https://dxuyftojqavpnfnvwhvt.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_htSvs_sOUI7uVbQknHpg1Q_U4L9Hej_";
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginView = document.getElementById("login-view");
+  const dashboardView = document.getElementById("dashboard-view");
+  const loginForm = document.getElementById("login-form");
+  const loginError = document.getElementById("login-error");
+  const loginButton = document.getElementById("login-button");
+  const loginButtonLabel = document.getElementById("login-button-label");
+  const adminEmailLabel = document.getElementById("admin-email");
+
+  function showLoginError(message) {
+    loginError.textContent = message;
+    loginError.classList.remove("hidden");
+  }
+
+  function setLoginBusy(busy) {
+    loginButton.disabled = busy;
+    loginButtonLabel.innerHTML = busy ? '<span class="spinner"></span> Bezig...' : "Toegang verlenen";
+  }
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    loginError.classList.add("hidden");
+    setLoginBusy(true);
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      showLoginError("Inloggen mislukt: onjuiste combinatie van e-mail en wachtwoord.");
+      setLoginBusy(false);
+      return;
+    }
+
+    const { data: profile, error: profileError } = await client
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.is_admin !== true) {
+      await client.auth.signOut();
+      showLoginError("Dit account heeft geen beheerdersrechten.");
+      setLoginBusy(false);
+      return;
+    }
+
+    enterDashboard(email);
+  });
+
+  function enterDashboard(email) {
+    adminEmailLabel.textContent = email;
+    loginView.classList.add("hidden");
+    dashboardView.classList.remove("hidden");
+    loadEvents();
+    loadBieren();
+    loadBrouwerijen();
+    loadHoreca();
+    loadFeed();
+    loadPairings();
+    loadVideos();
+    loadStats();
+    loadLocationBadgeOptions();
+  }
+
+  document.getElementById("logout-button").addEventListener("click", async () => {
+    await client.auth.signOut();
+    dashboardView.classList.add("hidden");
+    loginView.classList.remove("hidden");
+    loginForm.reset();
+    setLoginBusy(false);
+  });
+
+  // ---------- Navigatie tussen panelen ----------
+  const navItems = document.querySelectorAll(".nav-item");
+  const panels = {
+    events: document.getElementById("panel-events"),
+    bieren: document.getElementById("panel-bieren"),
+    brouwerijen: document.getElementById("panel-brouwerijen"),
+    horeca: document.getElementById("panel-horeca"),
+    feed: document.getElementById("panel-feed"),
+    pairings: document.getElementById("panel-pairings"),
+    videos: document.getElementById("panel-videos"),
+    stats: document.getElementById("panel-stats"),
+    locationbadges: document.getElementById("panel-locationbadges"),
+  };
+
+  function setActivePanel(name) {
+    Object.entries(panels).forEach(([key, el]) => el.classList.toggle("hidden", key !== name));
+    navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.panel === name));
+  }
+  navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
+  setActivePanel("events");
+
+  // ---------- Evenementen goedkeuren ----------
+  const eventsListEl = document.getElementById("events-list");
+  const eventsDetailEl = document.getElementById("events-detail");
+  const eventsCountBadge = document.getElementById("events-count-badge");
+  document.getElementById("events-refresh").addEventListener("click", loadEvents);
+
+  function setBadge(el, count, tone) {
+    if (count > 0) {
+      el.textContent = count;
+      el.classList.remove("hidden");
+      el.classList.add("flex");
+      if (tone) el.className = el.className.replace(/bg-\S+/, tone);
+    } else {
+      el.classList.add("hidden");
+      el.classList.remove("flex");
+    }
+  }
+
+  async function loadEvents() {
+    eventsListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm px-2 py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("events")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at");
+
+    if (error) {
+      eventsListEl.innerHTML = `<p class="text-error text-sm px-2">Kon evenementen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(eventsCountBadge, data.length);
+
+    if (!data.length) {
+      eventsListEl.innerHTML = '<div class="flex flex-col items-center text-center gap-2 py-10 text-on-surface-variant"><span class="material-symbols-outlined text-3xl opacity-50">task_alt</span><p class="text-sm">Geen evenementen die wachten op goedkeuring.</p></div>';
+      eventsDetailEl.innerHTML = 'Selecteer een evenement om details te bekijken.';
+      return;
+    }
+
+    eventsListEl.innerHTML = "";
+    data.forEach((event, index) => {
+      const card = document.createElement("div");
+      card.dataset.eventCard = event.id;
+      card.className = "bg-surface-container p-4 rounded-xl border cursor-pointer transition-colors " + (index === 0 ? "border-primary/40 bg-surface-container-high" : "border-outline-variant/20 hover:bg-surface-container-high");
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <h4 class="font-display text-lg text-on-surface">${escapeHtml(event.name || "Naamloos")}</h4>
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-surface-container-highest text-on-surface-variant">${escapeHtml(event.event_type || "")}</span>
+        </div>
+        <div class="flex items-center gap-4 text-on-surface-variant text-xs mt-2">
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_today</span>${formatDate(event.start_date)}</span>
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span>${escapeHtml(event.city || "")}</span>
+        </div>`;
+      card.addEventListener("click", () => {
+        eventsListEl.querySelectorAll("[data-event-card]").forEach((el) => {
+          el.classList.remove("border-primary/40", "bg-surface-container-high");
+          el.classList.add("border-outline-variant/20");
+        });
+        card.classList.remove("border-outline-variant/20");
+        card.classList.add("border-primary/40", "bg-surface-container-high");
+        showEventDetail(event);
+      });
+      eventsListEl.appendChild(card);
+    });
+
+    showEventDetail(data[0]);
+  }
+
+  function showEventDetail(event) {
+    eventsDetailEl.classList.remove("items-center", "justify-center", "text-center");
+    eventsDetailEl.innerHTML = `
+      <div class="w-full fade-in">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-[10px] uppercase tracking-widest font-label px-2 py-1 rounded-full bg-primary-container/20 text-primary border border-primary/20">${escapeHtml(event.event_type || "Evenement")}</span>
+        </div>
+        <h3 class="font-display text-2xl text-on-surface mb-4">${escapeHtml(event.name || "Naamloos")}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 text-sm">
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Locatie</span>
+            <p class="text-on-surface mt-1">${escapeHtml(event.street || "")} ${escapeHtml(event.house_number || "")}, ${escapeHtml(event.postal_code || "")} ${escapeHtml(event.city || "")}</p>
+            <p class="text-on-surface-variant mt-1">${escapeHtml(event.location_name || "")}</p>
+          </div>
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Datum &amp; tijd</span>
+            <p class="text-on-surface mt-1">${formatDate(event.start_date)} &ndash; ${formatDate(event.end_date)}</p>
+            <p class="text-on-surface-variant mt-1">${escapeHtml(event.opening_hours || "")}</p>
+          </div>
+        </div>
+        <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
+          <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Afwijzen
+          </button>
+          <button class="approve-btn flex-1 mt-4 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Goedkeuren
+          </button>
+        </div>
+      </div>`;
+
+    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget));
+    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
+      if (!confirm(`"${event.name}" definitief afwijzen? Dit evenement is nog nooit gepubliceerd en wordt verwijderd.`)) return;
+      moderateEvent(event.id, "reject", e.currentTarget);
+    });
+  }
+
+  async function moderateEvent(eventId, action, buttonEl) {
+    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+    buttonEl.disabled = true;
+    otherBtn.disabled = true;
+    const originalLabel = buttonEl.innerHTML;
+    buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
+
+    const rpcName = action === "approve" ? "approve_event" : "reject_event";
+    const { error } = await client.rpc(rpcName, { p_event_id: eventId });
+    if (error) {
+      const errorBox = document.getElementById("event-action-error");
+      errorBox.textContent = `Actie mislukt: ${error.message}`;
+      errorBox.classList.remove("hidden");
+      buttonEl.disabled = false;
+      otherBtn.disabled = false;
+      buttonEl.innerHTML = originalLabel;
+      return;
+    }
+    loadEvents();
+  }
+
+  // Controleert of een foto-URL ook echt als afbeelding laadt (en geen link
+  // naar een gewone webpagina is), zodat je dit meteen bij het opslaan ziet
+  // i.p.v. pas achteraf in de app. Geen URL ingevuld telt als geldig (optioneel veld).
+  function checkImageUrl(url) {
+    return new Promise((resolve) => {
+      if (!url) {
+        resolve(true);
+        return;
+      }
+      const img = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      img.src = url;
+    });
+  }
+
+  // ---------- Nieuw bier toevoegen ----------
+  const bierNewToggle = document.getElementById("bier-new-toggle");
+  const bierNewForm = document.getElementById("bier-new-form");
+  const bierNewError = document.getElementById("bier-new-error");
+  const bierNewSaveBtn = document.getElementById("bier-new-save");
+  const bierNewSaveLabel = document.getElementById("bier-new-save-label");
+
+  bierNewToggle.addEventListener("click", () => bierNewForm.classList.toggle("hidden"));
+  document.getElementById("bier-new-cancel").addEventListener("click", () => {
+    bierNewForm.classList.add("hidden");
+    clearBierNewForm();
+  });
+
+  function clearBierNewForm() {
+    ["naam", "stijl", "brouwerij", "abv", "beschrijving", "hoegemaakt", "stijlinfo", "foto", "barcode"].forEach((field) => {
+      document.getElementById(`bier-new-${field}`).value = "";
+    });
+    bierNewError.classList.add("hidden");
+  }
+
+  bierNewSaveBtn.addEventListener("click", async () => {
+    const naam = document.getElementById("bier-new-naam").value.trim();
+    if (!naam) {
+      bierNewError.textContent = "Naam is verplicht.";
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    bierNewSaveBtn.disabled = true;
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
+    bierNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("bier-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      bierNewSaveBtn.disabled = false;
+      bierNewSaveLabel.textContent = "Bier opslaan";
+      bierNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is (geen link naar een webpagina).";
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const { error } = await client.from("bieren").insert({
+      naam,
+      stijl: document.getElementById("bier-new-stijl").value.trim() || null,
+      brouwerij: document.getElementById("bier-new-brouwerij").value.trim() || null,
+      abv: document.getElementById("bier-new-abv").value.trim() || null,
+      beschrijving: document.getElementById("bier-new-beschrijving").value.trim() || null,
+      hoe_gemaakt: document.getElementById("bier-new-hoegemaakt").value.trim() || null,
+      stijl_info: document.getElementById("bier-new-stijlinfo").value.trim() || null,
+      foto_url: fotoUrl,
+      barcode: document.getElementById("bier-new-barcode").value.trim() || null,
+    });
+
+    bierNewSaveBtn.disabled = false;
+    bierNewSaveLabel.textContent = "Bier opslaan";
+
+    if (error) {
+      bierNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearBierNewForm();
+    bierNewForm.classList.add("hidden");
+    loadBieren();
+  });
+
+  // ---------- Bieren & barcodes ----------
+  const bierenListEl = document.getElementById("bieren-list");
+  const bierenSearchEl = document.getElementById("bieren-search");
+  const bierenFilterMissingEl = document.getElementById("bieren-filter-missing");
+  const bierenSummaryEl = document.getElementById("bieren-summary");
+  const bierenCountBadge = document.getElementById("bieren-count-badge");
+  let allBieren = [];
+
+  bierenSearchEl.addEventListener("input", renderBieren);
+  bierenFilterMissingEl.addEventListener("change", renderBieren);
+
+  async function loadBieren() {
+    bierenListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("bieren").select("*").order("naam");
+
+    if (error) {
+      bierenListEl.innerHTML = `<p class="text-error text-sm">Kon bieren niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    allBieren = data;
+    const missingCount = data.filter((b) => !b.barcode).length;
+    setBadge(bierenCountBadge, missingCount, "bg-error-container");
+    if (missingCount === 0) bierenCountBadge.classList.add("hidden");
+    renderBieren();
+  }
+
+  function renderBieren() {
+    const query = bierenSearchEl.value.trim().toLowerCase();
+    const onlyMissing = bierenFilterMissingEl.checked;
+    const filtered = allBieren.filter((b) => {
+      if (onlyMissing && b.barcode) return false;
+      if (query && !b.naam.toLowerCase().includes(query)) return false;
+      return true;
+    });
+
+    const missingTotal = allBieren.filter((b) => !b.barcode).length;
+    bierenSummaryEl.textContent = `${filtered.length} van ${allBieren.length} bieren · ${missingTotal} zonder barcode`;
+
+    if (!filtered.length) {
+      bierenListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Geen bieren gevonden.</p>';
+      return;
+    }
+
+    bierenListEl.innerHTML = "";
+    filtered.forEach((bier) => {
+      const hasBarcode = Boolean(bier.barcode);
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="w-2 h-2 rounded-full shrink-0 ${hasBarcode ? "bg-success" : "bg-error"}" title="${hasBarcode ? "Barcode ingesteld" : "Nog geen barcode"}"></span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(bier.naam)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(bier.stijl || "")}${bier.brouwerij ? " &middot; " + escapeHtml(bier.brouwerij) : ""}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-1">
+          <input type="text" value="${escapeHtml(bier.barcode || "")}" placeholder="Nog geen barcode"
+            class="barcode-input flex-1 bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm font-mono"/>
+          <button class="save-btn px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-label uppercase tracking-wide hover:opacity-90 transition-opacity flex items-center gap-2 shrink-0">
+            <span class="save-btn-label">Opslaan</span>
+          </button>
+          <span class="save-status text-xs shrink-0"></span>
+        </div>`;
+
+      const input = row.querySelector(".barcode-input");
+      const status = row.querySelector(".save-status");
+      const saveBtn = row.querySelector(".save-btn");
+      const saveBtnLabel = row.querySelector(".save-btn-label");
+      saveBtn.addEventListener("click", async () => {
+        saveBtn.disabled = true;
+        saveBtnLabel.innerHTML = '<span class="spinner"></span>';
+        status.textContent = "";
+        const value = input.value.trim() || null;
+        const { error: saveError } = await client.from("bieren").update({ barcode: value, updated_at: new Date().toISOString() }).eq("id", bier.id);
+        saveBtn.disabled = false;
+        saveBtnLabel.textContent = "Opslaan";
+        if (saveError) {
+          status.textContent = `Fout: ${saveError.message}`;
+          status.className = "save-status text-xs shrink-0 text-error";
+        } else {
+          bier.barcode = value;
+          status.innerHTML = '<span class="text-success">Opgeslagen &#10003;</span>';
+          const dot = row.querySelector("span[title]");
+          dot.className = `w-2 h-2 rounded-full shrink-0 ${value ? "bg-success" : "bg-error"}`;
+          dot.title = value ? "Barcode ingesteld" : "Nog geen barcode";
+          const missingCount = allBieren.filter((b) => !b.barcode).length;
+          setBadge(bierenCountBadge, missingCount, "bg-error-container");
+          if (missingCount === 0) bierenCountBadge.classList.add("hidden");
+        }
+        setTimeout(() => (status.textContent = ""), 3000);
+      });
+
+      bierenListEl.appendChild(row);
+    });
+  }
+
+  // ---------- Brouwerij-aanmeldingen ----------
+  const brouwerijenListEl = document.getElementById("brouwerijen-list");
+  const brouwerijenDetailEl = document.getElementById("brouwerijen-detail");
+  const brouwerijenCountBadge = document.getElementById("brouwerijen-count-badge");
+  document.getElementById("brouwerijen-refresh").addEventListener("click", loadBrouwerijen);
+
+  async function loadBrouwerijen() {
+    brouwerijenListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm px-2 py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("brewery_submissions")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at");
+
+    if (error) {
+      brouwerijenListEl.innerHTML = `<p class="text-error text-sm px-2">Kon aanmeldingen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(brouwerijenCountBadge, data.length);
+
+    if (!data.length) {
+      brouwerijenListEl.innerHTML = '<div class="flex flex-col items-center text-center gap-2 py-10 text-on-surface-variant"><span class="material-symbols-outlined text-3xl opacity-50">task_alt</span><p class="text-sm">Geen aanmeldingen die wachten op goedkeuring.</p></div>';
+      brouwerijenDetailEl.innerHTML = 'Selecteer een aanmelding om details te bekijken.';
+      return;
+    }
+
+    brouwerijenListEl.innerHTML = "";
+    data.forEach((sub, index) => {
+      const card = document.createElement("div");
+      card.dataset.brouwerijCard = sub.id;
+      card.className = "bg-surface-container p-4 rounded-xl border cursor-pointer transition-colors flex gap-3 items-center " + (index === 0 ? "border-primary/40 bg-surface-container-high" : "border-outline-variant/20 hover:bg-surface-container-high");
+      card.innerHTML = `
+        ${sub.photo_url
+          ? `<img src="${escapeHtml(sub.photo_url)}" class="w-14 h-14 rounded-lg object-cover shrink-0" alt=""/>`
+          : `<div class="w-14 h-14 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-surface-variant">local_bar</span></div>`}
+        <div class="min-w-0">
+          <h4 class="font-display text-lg text-on-surface truncate">${escapeHtml(sub.naam)}</h4>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(sub.city || "")}</p>
+        </div>`;
+      card.addEventListener("click", () => {
+        brouwerijenListEl.querySelectorAll("[data-brouwerij-card]").forEach((el) => {
+          el.classList.remove("border-primary/40", "bg-surface-container-high");
+          el.classList.add("border-outline-variant/20");
+        });
+        card.classList.remove("border-outline-variant/20");
+        card.classList.add("border-primary/40", "bg-surface-container-high");
+        showBrouwerijDetail(sub);
+      });
+      brouwerijenListEl.appendChild(card);
+    });
+
+    showBrouwerijDetail(data[0]);
+  }
+
+  function showBrouwerijDetail(sub) {
+    brouwerijenDetailEl.classList.remove("items-center", "justify-center", "text-center");
+    const hasCoords = sub.latitude != null && sub.longitude != null;
+    brouwerijenDetailEl.innerHTML = `
+      <div class="w-full fade-in">
+        ${sub.photo_url ? `<img src="${escapeHtml(sub.photo_url)}" class="w-full h-48 object-cover rounded-xl mb-4"/>` : ""}
+        <h3 class="font-display text-2xl text-on-surface mb-2">${escapeHtml(sub.naam)}</h3>
+        <p class="text-on-surface-variant text-sm mb-4">${escapeHtml(sub.beschrijving || "")}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 text-sm">
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Adres</span>
+            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}</p>
+          </div>
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Positie op kaart</span>
+            <p class="mt-1 ${hasCoords ? "text-on-surface" : "text-error"}">${hasCoords ? `${sub.latitude.toFixed(5)}, ${sub.longitude.toFixed(5)}` : "Niet gevonden -- verschijnt niet op de kaart totdat het adres klopt"}</p>
+          </div>
+        </div>
+        <div id="brouwerij-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
+          <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Afwijzen
+          </button>
+          <button class="approve-btn flex-1 mt-4 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Goedkeuren
+          </button>
+        </div>
+      </div>`;
+
+    brouwerijenDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateBrouwerij(sub.id, "approve", e.currentTarget));
+    brouwerijenDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
+      const reason = prompt(`Reden voor afwijzen van "${sub.naam}" (optioneel):`);
+      if (reason === null) return; // geannuleerd
+      moderateBrouwerij(sub.id, "reject", e.currentTarget, reason || null);
+    });
+  }
+
+  async function moderateBrouwerij(id, action, buttonEl, reason) {
+    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+    buttonEl.disabled = true;
+    otherBtn.disabled = true;
+    const originalLabel = buttonEl.innerHTML;
+    buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
+
+    const { error } = action === "approve"
+      ? await client.rpc("approve_brewery_submission", { p_submission_id: id })
+      : await client.rpc("reject_brewery_submission", { p_submission_id: id, p_reason: reason ?? null });
+
+    if (error) {
+      const errorBox = document.getElementById("brouwerij-action-error");
+      errorBox.textContent = `Actie mislukt: ${error.message}`;
+      errorBox.classList.remove("hidden");
+      buttonEl.disabled = false;
+      otherBtn.disabled = false;
+      buttonEl.innerHTML = originalLabel;
+      return;
+    }
+    loadBrouwerijen();
+  }
+
+  // ---------- Horeca-aanmeldingen ----------
+  const horecaListEl = document.getElementById("horeca-list");
+  const horecaDetailEl = document.getElementById("horeca-detail");
+  const horecaCountBadge = document.getElementById("horeca-count-badge");
+  document.getElementById("horeca-refresh").addEventListener("click", loadHoreca);
+
+  async function loadHoreca() {
+    horecaListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm px-2 py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("horeca_submissions")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at");
+
+    if (error) {
+      horecaListEl.innerHTML = `<p class="text-error text-sm px-2">Kon aanmeldingen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(horecaCountBadge, data.length);
+
+    if (!data.length) {
+      horecaListEl.innerHTML = '<div class="flex flex-col items-center text-center gap-2 py-10 text-on-surface-variant"><span class="material-symbols-outlined text-3xl opacity-50">task_alt</span><p class="text-sm">Geen aanmeldingen die wachten op goedkeuring.</p></div>';
+      horecaDetailEl.innerHTML = 'Selecteer een aanmelding om details te bekijken.';
+      return;
+    }
+
+    horecaListEl.innerHTML = "";
+    data.forEach((sub, index) => {
+      const card = document.createElement("div");
+      card.dataset.horecaCard = sub.id;
+      card.className = "bg-surface-container p-4 rounded-xl border cursor-pointer transition-colors flex gap-3 items-center " + (index === 0 ? "border-primary/40 bg-surface-container-high" : "border-outline-variant/20 hover:bg-surface-container-high");
+      card.innerHTML = `
+        ${sub.photo_url
+          ? `<img src="${escapeHtml(sub.photo_url)}" class="w-14 h-14 rounded-lg object-cover shrink-0" alt=""/>`
+          : `<div class="w-14 h-14 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-surface-variant">restaurant</span></div>`}
+        <div class="min-w-0">
+          <h4 class="font-display text-lg text-on-surface truncate">${escapeHtml(sub.naam)}</h4>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(sub.city || "")}</p>
+        </div>`;
+      card.addEventListener("click", () => {
+        horecaListEl.querySelectorAll("[data-horeca-card]").forEach((el) => {
+          el.classList.remove("border-primary/40", "bg-surface-container-high");
+          el.classList.add("border-outline-variant/20");
+        });
+        card.classList.remove("border-outline-variant/20");
+        card.classList.add("border-primary/40", "bg-surface-container-high");
+        showHorecaDetail(sub);
+      });
+      horecaListEl.appendChild(card);
+    });
+
+    showHorecaDetail(data[0]);
+  }
+
+  function showHorecaDetail(sub) {
+    horecaDetailEl.classList.remove("items-center", "justify-center", "text-center");
+    const hasCoords = sub.latitude != null && sub.longitude != null;
+    horecaDetailEl.innerHTML = `
+      <div class="w-full fade-in">
+        ${sub.photo_url ? `<img src="${escapeHtml(sub.photo_url)}" class="w-full h-48 object-cover rounded-xl mb-4"/>` : ""}
+        <h3 class="font-display text-2xl text-on-surface mb-2">${escapeHtml(sub.naam)}</h3>
+        <p class="text-on-surface-variant text-sm mb-4">${escapeHtml(sub.beschrijving || "")}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 text-sm">
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Adres</span>
+            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}</p>
+          </div>
+          <div>
+            <span class="text-primary uppercase tracking-widest text-xs font-label">Positie op kaart</span>
+            <p class="mt-1 ${hasCoords ? "text-on-surface" : "text-error"}">${hasCoords ? `${sub.latitude.toFixed(5)}, ${sub.longitude.toFixed(5)}` : "Niet gevonden -- verschijnt niet op de kaart totdat het adres klopt"}</p>
+          </div>
+        </div>
+        <div id="horeca-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
+          <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Afwijzen
+          </button>
+          <button class="approve-btn flex-1 mt-4 py-3 rounded-lg bg-primary text-on-primary copper-glow hover:opacity-90 transition-opacity font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            Goedkeuren
+          </button>
+        </div>
+      </div>`;
+
+    horecaDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateHoreca(sub.id, "approve", e.currentTarget));
+    horecaDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
+      const reason = prompt(`Reden voor afwijzen van "${sub.naam}" (optioneel):`);
+      if (reason === null) return; // geannuleerd
+      moderateHoreca(sub.id, "reject", e.currentTarget, reason || null);
+    });
+  }
+
+  async function moderateHoreca(id, action, buttonEl, reason) {
+    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+    buttonEl.disabled = true;
+    otherBtn.disabled = true;
+    const originalLabel = buttonEl.innerHTML;
+    buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
+
+    const { error } = action === "approve"
+      ? await client.rpc("approve_horeca_submission", { p_submission_id: id })
+      : await client.rpc("reject_horeca_submission", { p_submission_id: id, p_reason: reason ?? null });
+
+    if (error) {
+      const errorBox = document.getElementById("horeca-action-error");
+      errorBox.textContent = `Actie mislukt: ${error.message}`;
+      errorBox.classList.remove("hidden");
+      buttonEl.disabled = false;
+      otherBtn.disabled = false;
+      buttonEl.innerHTML = originalLabel;
+      return;
+    }
+    loadHoreca();
+  }
+
+  // ---------- Ontdek-feed ----------
+  const feedListEl = document.getElementById("feed-list");
+  const feedNewToggle = document.getElementById("feed-new-toggle");
+  const feedNewForm = document.getElementById("feed-new-form");
+  const feedFormTitle = document.getElementById("feed-form-title");
+  const feedNewError = document.getElementById("feed-new-error");
+  const feedNewSaveBtn = document.getElementById("feed-new-save");
+  const feedNewSaveLabel = document.getElementById("feed-new-save-label");
+  const feedTypeSelect = document.getElementById("feed-new-type");
+  const feedRatingWrap = document.getElementById("feed-new-rating-wrap");
+  let feedItems = [];
+  let feedEditingId = null;
+
+  const feedTypeLabels = { tip: "Biertip", weetje: "Weetje", review: "Mini-review", brouwerij: "Brouwerij-post" };
+
+  feedNewToggle.addEventListener("click", () => {
+    feedEditingId = null;
+    clearFeedForm();
+    feedFormTitle.textContent = "Nieuw feed-item";
+    feedNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("feed-new-cancel").addEventListener("click", () => {
+    feedNewForm.classList.add("hidden");
+    clearFeedForm();
+  });
+  feedTypeSelect.addEventListener("change", () => {
+    feedRatingWrap.classList.toggle("hidden", feedTypeSelect.value !== "review");
+  });
+
+  function clearFeedForm() {
+    feedEditingId = null;
+    feedTypeSelect.value = "tip";
+    feedRatingWrap.classList.add("hidden");
+    ["author", "titel", "body", "foto", "rating"].forEach((field) => {
+      document.getElementById(`feed-new-${field}`).value = "";
+    });
+    feedNewError.classList.add("hidden");
+  }
+
+  feedNewSaveBtn.addEventListener("click", async () => {
+    const titel = document.getElementById("feed-new-titel").value.trim();
+    const body = document.getElementById("feed-new-body").value.trim();
+    if (!titel || !body) {
+      feedNewError.textContent = "Titel en tekst zijn verplicht.";
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    feedNewSaveBtn.disabled = true;
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
+    feedNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("feed-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      feedNewSaveBtn.disabled = false;
+      feedNewSaveLabel.textContent = "Opslaan";
+      feedNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is (geen link naar een webpagina).";
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const ratingValue = document.getElementById("feed-new-rating").value.trim();
+    const payload = {
+      item_type: feedTypeSelect.value,
+      title: titel,
+      body,
+      author: document.getElementById("feed-new-author").value.trim() || null,
+      image_url: fotoUrl,
+      rating: feedTypeSelect.value === "review" && ratingValue ? parseFloat(ratingValue) : null,
+    };
+
+    const { error } = feedEditingId
+      ? await client.from("feed_items").update(payload).eq("id", feedEditingId)
+      : await client.from("feed_items").insert(payload);
+
+    feedNewSaveBtn.disabled = false;
+    feedNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      feedNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearFeedForm();
+    feedNewForm.classList.add("hidden");
+    loadFeed();
+  });
+
+  const feedPendingListEl = document.getElementById("feed-pending-list");
+  const feedPendingCountBadge = document.getElementById("feed-pending-count-badge");
+
+  async function loadPendingPosts() {
+    feedPendingListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("feed_items")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      feedPendingListEl.innerHTML = `<p class="text-error text-sm">Kon aanmeldingen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(feedPendingCountBadge, data.length);
+
+    if (!data.length) {
+      feedPendingListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-4 text-center">Geen posts die wachten op goedkeuring.</p>';
+      return;
+    }
+
+    feedPendingListEl.innerHTML = "";
+    data.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-primary/30 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-primary/20 text-primary">${escapeHtml(feedTypeLabels[item.item_type] || item.item_type)}</span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(item.title)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(item.body)}</p>
+            <p class="text-on-surface-variant text-xs truncate">Door ${escapeHtml(item.author || "Onbekend")}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="feed-reject-btn px-3 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors text-sm">Afwijzen</button>
+          <button class="feed-approve-btn px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-label uppercase tracking-wide hover:opacity-90 transition-opacity">Goedkeuren</button>
+        </div>`;
+
+      row.querySelector(".feed-approve-btn").addEventListener("click", async () => {
+        const { error: approveError } = await client.from("feed_items").update({ status: "approved" }).eq("id", item.id);
+        if (approveError) {
+          alert(`Goedkeuren mislukt: ${approveError.message}`);
+          return;
+        }
+        loadPendingPosts();
+      });
+
+      row.querySelector(".feed-reject-btn").addEventListener("click", async () => {
+        if (!confirm(`Post van ${item.author || "deze gebruiker"} afwijzen en verwijderen?`)) return;
+        const { error: rejectError } = await client.from("feed_items").delete().eq("id", item.id);
+        if (rejectError) {
+          alert(`Afwijzen mislukt: ${rejectError.message}`);
+          return;
+        }
+        loadPendingPosts();
+      });
+
+      feedPendingListEl.appendChild(row);
+    });
+  }
+
+  async function loadFeed() {
+    loadPendingPosts();
+    feedListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("feed_items")
+      .select("*")
+      .is("user_id", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      feedListEl.innerHTML = `<p class="text-error text-sm">Kon de feed niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    feedItems = data;
+    if (!feedItems.length) {
+      feedListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen feed-items. Voeg er een toe zodat de Ontdek-pagina content heeft.</p>';
+      return;
+    }
+
+    feedListEl.innerHTML = "";
+    feedItems.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-surface-container-highest text-on-surface-variant">${escapeHtml(feedTypeLabels[item.item_type] || item.item_type)}</span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(item.title)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(item.body)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="feed-edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">Bewerken</button>
+          <button class="feed-delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-sm">Verwijderen</button>
+        </div>`;
+
+      row.querySelector(".feed-edit-btn").addEventListener("click", () => {
+        feedEditingId = item.id;
+        feedFormTitle.textContent = "Feed-item bewerken";
+        feedTypeSelect.value = item.item_type;
+        feedRatingWrap.classList.toggle("hidden", item.item_type !== "review");
+        document.getElementById("feed-new-author").value = item.author || "";
+        document.getElementById("feed-new-titel").value = item.title || "";
+        document.getElementById("feed-new-body").value = item.body || "";
+        document.getElementById("feed-new-foto").value = item.image_url || "";
+        document.getElementById("feed-new-rating").value = item.rating ?? "";
+        feedNewError.classList.add("hidden");
+        feedNewForm.classList.remove("hidden");
+        feedNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      row.querySelector(".feed-delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${item.title}" verwijderen uit de Ontdek-feed?`)) return;
+        const { error: deleteError } = await client.from("feed_items").delete().eq("id", item.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadFeed();
+      });
+
+      feedListEl.appendChild(row);
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    try {
+      return new Date(value).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+    } catch (_e) {
+      return value;
+    }
+  }
+
+  // ---------- Nieuwe bier-spijscombinatie toevoegen ----------
+  const pairingNewToggle = document.getElementById("pairing-new-toggle");
+  const pairingNewForm = document.getElementById("pairing-new-form");
+  const pairingNewError = document.getElementById("pairing-new-error");
+  const pairingNewSaveBtn = document.getElementById("pairing-new-save");
+  const pairingNewSaveLabel = document.getElementById("pairing-new-save-label");
+
+  pairingNewToggle.addEventListener("click", () => pairingNewForm.classList.toggle("hidden"));
+  document.getElementById("pairing-new-cancel").addEventListener("click", () => {
+    pairingNewForm.classList.add("hidden");
+    clearPairingNewForm();
+  });
+
+  function clearPairingNewForm() {
+    ["brouwerij", "biernaam", "gerecht", "context", "prijs", "link"].forEach((field) => {
+      document.getElementById(`pairing-new-${field}`).value = "";
+    });
+    pairingNewError.classList.add("hidden");
+  }
+
+  pairingNewSaveBtn.addEventListener("click", async () => {
+    const brouwerij = document.getElementById("pairing-new-brouwerij").value.trim();
+    const biernaam = document.getElementById("pairing-new-biernaam").value.trim();
+    const gerecht = document.getElementById("pairing-new-gerecht").value.trim();
+    if (!brouwerij || !biernaam || !gerecht) {
+      pairingNewError.textContent = "Brouwerij, biernaam en gerecht zijn verplicht.";
+      pairingNewError.classList.remove("hidden");
+      return;
+    }
+
+    pairingNewSaveBtn.disabled = true;
+    pairingNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    pairingNewError.classList.add("hidden");
+
+    const { error } = await client.from("beer_pairings").insert({
+      brouwerij,
+      biernaam,
+      aanbevolen_gerecht: gerecht,
+      aankoop_context: document.getElementById("pairing-new-context").value.trim() || null,
+      prijs: document.getElementById("pairing-new-prijs").value.trim() || null,
+      link_website: document.getElementById("pairing-new-link").value.trim() || null,
+    });
+
+    pairingNewSaveBtn.disabled = false;
+    pairingNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      pairingNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      pairingNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearPairingNewForm();
+    pairingNewForm.classList.add("hidden");
+    loadPairings();
+  });
+
+  // ---------- Bier & Spijs ----------
+  const pairingsListEl = document.getElementById("pairings-list");
+  const pairingsSearchEl = document.getElementById("pairings-search");
+  const pairingsSummaryEl = document.getElementById("pairings-summary");
+  let allPairings = [];
+
+  pairingsSearchEl.addEventListener("input", renderPairings);
+
+  async function loadPairings() {
+    pairingsListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("beer_pairings").select("*").order("brouwerij");
+
+    if (error) {
+      pairingsListEl.innerHTML = `<p class="text-error text-sm">Kon combinaties niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    allPairings = data;
+    renderPairings();
+  }
+
+  function renderPairings() {
+    const query = pairingsSearchEl.value.trim().toLowerCase();
+    const filtered = allPairings.filter((p) => {
+      if (!query) return true;
+      return p.biernaam.toLowerCase().includes(query) || p.brouwerij.toLowerCase().includes(query);
+    });
+
+    pairingsSummaryEl.textContent = `${filtered.length} van ${allPairings.length} combinaties`;
+
+    if (!filtered.length) {
+      pairingsListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Geen combinaties gevonden.</p>';
+      return;
+    }
+
+    pairingsListEl.innerHTML = "";
+    filtered.slice(0, 200).forEach((pairing) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <p class="font-display text-lg text-on-surface truncate">${escapeHtml(pairing.biernaam)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(pairing.brouwerij)}</p>
+          <p class="text-on-surface text-sm mt-1 truncate">${escapeHtml(pairing.aanbevolen_gerecht)}</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
+          </button>
+        </div>`;
+
+      row.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${pairing.biernaam}" verwijderen?`)) return;
+        const { error: deleteError } = await client.from("beer_pairings").delete().eq("id", pairing.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadPairings();
+      });
+
+      pairingsListEl.appendChild(row);
+    });
+  }
+
+  // ---------- Nieuwe video toevoegen ----------
+  const videoNewToggle = document.getElementById("video-new-toggle");
+  const videoNewForm = document.getElementById("video-new-form");
+  const videoNewError = document.getElementById("video-new-error");
+  const videoNewSaveBtn = document.getElementById("video-new-save");
+  const videoNewSaveLabel = document.getElementById("video-new-save-label");
+
+  videoNewToggle.addEventListener("click", () => videoNewForm.classList.toggle("hidden"));
+  document.getElementById("video-new-cancel").addEventListener("click", () => {
+    videoNewForm.classList.add("hidden");
+    clearVideoNewForm();
+  });
+
+  function clearVideoNewForm() {
+    ["title", "category", "thumbnail", "url"].forEach((field) => {
+      document.getElementById(`video-new-${field}`).value = "";
+    });
+    document.getElementById("video-new-sort").value = "0";
+    videoNewError.classList.add("hidden");
+  }
+
+  videoNewSaveBtn.addEventListener("click", async () => {
+    const title = document.getElementById("video-new-title").value.trim();
+    const thumbnailUrl = document.getElementById("video-new-thumbnail").value.trim();
+    const videoUrl = document.getElementById("video-new-url").value.trim();
+    if (!title || !thumbnailUrl || !videoUrl) {
+      videoNewError.textContent = "Titel, thumbnail-URL en video-URL zijn verplicht.";
+      videoNewError.classList.remove("hidden");
+      return;
+    }
+
+    videoNewSaveBtn.disabled = true;
+    videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Thumbnail controleren...';
+    videoNewError.classList.add("hidden");
+
+    const thumbOk = await checkImageUrl(thumbnailUrl);
+    if (!thumbOk) {
+      videoNewSaveBtn.disabled = false;
+      videoNewSaveLabel.textContent = "Video opslaan";
+      videoNewError.textContent = "De thumbnail-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.";
+      videoNewError.classList.remove("hidden");
+      return;
+    }
+
+    videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const { error } = await client.from("videos").insert({
+      title,
+      category: document.getElementById("video-new-category").value.trim() || "Tasting",
+      thumbnail_url: thumbnailUrl,
+      video_url: videoUrl,
+      sort_order: Number(document.getElementById("video-new-sort").value) || 0,
+    });
+
+    videoNewSaveBtn.disabled = false;
+    videoNewSaveLabel.textContent = "Video opslaan";
+
+    if (error) {
+      videoNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      videoNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearVideoNewForm();
+    videoNewForm.classList.add("hidden");
+    loadVideos();
+  });
+
+  // ---------- Video's ----------
+  const videosListEl = document.getElementById("videos-list");
+  let allVideos = [];
+
+  async function loadVideos() {
+    videosListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4 col-span-full"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("videos").select("*").order("sort_order").order("created_at", { ascending: false });
+
+    if (error) {
+      videosListEl.innerHTML = `<p class="text-error text-sm col-span-full">Kon video's niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    allVideos = data;
+    renderVideos();
+  }
+
+  function renderVideos() {
+    if (!allVideos.length) {
+      videosListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center col-span-full">Nog geen video\'s toegevoegd.</p>';
+      return;
+    }
+
+    videosListEl.innerHTML = "";
+    allVideos.forEach((video) => {
+      const card = document.createElement("div");
+      card.className = "bg-surface-container rounded-xl border border-outline-variant/20 overflow-hidden fade-in";
+      card.innerHTML = `
+        <img src="${escapeHtml(video.thumbnail_url)}" class="w-full h-32 object-cover" alt=""/>
+        <div class="p-3">
+          <p class="font-display text-base text-on-surface truncate">${escapeHtml(video.title)}</p>
+          <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(video.category)}</p>
+          <button class="delete-btn w-full px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
+          </button>
+        </div>`;
+
+      card.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${video.title}" verwijderen?`)) return;
+        const { error: deleteError } = await client.from("videos").delete().eq("id", video.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadVideos();
+      });
+
+      videosListEl.appendChild(card);
+    });
+  }
+
+  // ---------- Statistieken ----------
+  const statsGridEl = document.getElementById("stats-grid");
+  const statsErrorEl = document.getElementById("stats-error");
+  document.getElementById("stats-refresh").addEventListener("click", loadStats);
+
+  async function loadStats() {
+    statsErrorEl.classList.add("hidden");
+    statsGridEl.innerHTML = '<div class="col-span-full flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.rpc("admin_stats");
+
+    if (error) {
+      statsGridEl.innerHTML = "";
+      statsErrorEl.textContent = `Kon statistieken niet laden: ${error.message}. Is supabase/add_admin_stats_rpc.sql al uitgevoerd?`;
+      statsErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    const tiles = [
+      { label: "Totaal gebruikers", value: data.total_users },
+      { label: "Actief afgelopen 7 dagen", value: data.active_7d },
+      { label: "Actief afgelopen 30 dagen", value: data.active_30d },
+      { label: "Langste streak (dagen)", value: data.longest_streak },
+      { label: "Bieren geproefd (totaal)", value: data.total_beers_tasted },
+      { label: "Brouwerijen verkend (totaal)", value: data.total_breweries_explored },
+      { label: "Badges behaald", value: data.total_badges_earned },
+      { label: "Wachtend: evenementen", value: data.pending_events },
+      { label: "Wachtend: brouwerijen", value: data.pending_breweries },
+      { label: "Wachtend: horeca", value: data.pending_horeca },
+      { label: "Wachtend: posts", value: data.pending_posts },
+    ];
+
+    statsGridEl.innerHTML = tiles.map((t) => `
+      <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-4 fade-in">
+        <p class="text-on-surface-variant text-xs uppercase tracking-wide mb-1">${escapeHtml(t.label)}</p>
+        <p class="font-display text-2xl text-primary">${t.value ?? 0}</p>
+      </div>
+    `).join("");
+  }
+
+  // ---------- Locatie-badges ----------
+  const locbadgeTypeEl = document.getElementById("locbadge-type");
+  const locbadgeNameEl = document.getElementById("locbadge-name");
+  const locbadgeOptionsEl = document.getElementById("locbadge-options");
+  const locbadgeFarmEl = document.getElementById("locbadge-farm");
+  const locbadgeGardenEl = document.getElementById("locbadge-garden");
+  const locbadgeErrorEl = document.getElementById("locbadge-error");
+  const locbadgeSaveBtn = document.getElementById("locbadge-save");
+  const locbadgeSaveLabelEl = document.getElementById("locbadge-save-label");
+  const locbadgeListEl = document.getElementById("locbadge-list");
+
+  // { brewery: Map(naam-lowercase -> {id, title}), horeca: Map(...) }
+  let locbadgeOptionsByType = { brewery: new Map(), horeca: new Map() };
+  let allLocationBadges = [];
+
+  async function loadLocationBadgeOptions() {
+    try {
+      const res = await fetch("breweries.json");
+      const breweries = await res.json();
+      locbadgeOptionsByType.brewery = new Map(breweries.map((b) => [b.title.toLowerCase(), b]));
+    } catch (e) {
+      console.warn("Kon breweries.json niet laden:", e);
+    }
+
+    const { data, error } = await client.from("horeca_submissions").select("id, naam").eq("status", "approved");
+    if (!error && data) {
+      locbadgeOptionsByType.horeca = new Map(data.map((h) => [h.naam.toLowerCase(), { id: h.id, title: h.naam }]));
+    }
+
+    renderLocationBadgeOptions();
+    loadLocationBadges();
+  }
+
+  function renderLocationBadgeOptions() {
+    const options = locbadgeOptionsByType[locbadgeTypeEl.value] || new Map();
+    locbadgeOptionsEl.innerHTML = "";
+    for (const { title } of options.values()) {
+      const opt = document.createElement("option");
+      opt.value = title;
+      locbadgeOptionsEl.appendChild(opt);
+    }
+  }
+
+  locbadgeTypeEl.addEventListener("change", () => {
+    locbadgeNameEl.value = "";
+    renderLocationBadgeOptions();
+  });
+
+  locbadgeSaveBtn.addEventListener("click", async () => {
+    locbadgeErrorEl.classList.add("hidden");
+    const type = locbadgeTypeEl.value;
+    const name = locbadgeNameEl.value.trim();
+    const options = locbadgeOptionsByType[type] || new Map();
+    const match = options.get(name.toLowerCase());
+
+    if (!match) {
+      locbadgeErrorEl.textContent = `Geen ${type === "brewery" ? "brouwerij" : "horecagelegenheid"} gevonden met die naam. Kies een naam uit de suggesties.`;
+      locbadgeErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    locbadgeSaveBtn.disabled = true;
+    locbadgeSaveLabelEl.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const wantedTags = [];
+    if (locbadgeFarmEl.checked) wantedTags.push("farm");
+    if (locbadgeGardenEl.checked) wantedTags.push("beer_garden");
+
+    const { error: deleteError } = await client
+      .from("location_badge_tags")
+      .delete()
+      .eq("item_type", type)
+      .eq("item_id", match.id);
+
+    let saveError = deleteError;
+    if (!saveError && wantedTags.length) {
+      const rows = wantedTags.map((tag) => ({ item_type: type, item_id: match.id, tag }));
+      const { error: insertError } = await client.from("location_badge_tags").insert(rows);
+      saveError = insertError;
+    }
+
+    locbadgeSaveBtn.disabled = false;
+    locbadgeSaveLabelEl.textContent = "Tags opslaan";
+
+    if (saveError) {
+      locbadgeErrorEl.textContent = `Opslaan mislukt: ${saveError.message}`;
+      locbadgeErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    locbadgeNameEl.value = "";
+    locbadgeFarmEl.checked = false;
+    locbadgeGardenEl.checked = false;
+    loadLocationBadges();
+  });
+
+  async function loadLocationBadges() {
+    locbadgeListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("location_badge_tags").select("*").order("item_type").order("item_id");
+
+    if (error) {
+      locbadgeListEl.innerHTML = `<p class="text-error text-sm">Kon tags niet laden: ${escapeHtml(error.message)}. Is supabase/add_remaining_badges.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allLocationBadges = data;
+    renderLocationBadges();
+  }
+
+  function nameForLocationBadge(row) {
+    const options = locbadgeOptionsByType[row.item_type] || new Map();
+    for (const entry of options.values()) {
+      if (entry.id === row.item_id) return entry.title;
+    }
+    return `#${row.item_id}`;
+  }
+
+  function renderLocationBadges() {
+    if (!allLocationBadges.length) {
+      locbadgeListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen locaties getagd.</p>';
+      return;
+    }
+
+    locbadgeListEl.innerHTML = "";
+    allLocationBadges.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center justify-between gap-3 fade-in";
+      const typeLabel = row.item_type === "brewery" ? "Brouwerij" : "Horeca";
+      const tagLabel = row.tag === "farm" ? "Boerderijbrouwerij" : "Beer garden";
+      item.innerHTML = `
+        <div class="min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(nameForLocationBadge(row))}</p>
+          <p class="text-on-surface-variant text-xs">${typeLabel} &middot; ${tagLabel}</p>
+        </div>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1 shrink-0">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        const { error: deleteError } = await client.from("location_badge_tags").delete().eq("id", row.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadLocationBadges();
+      });
+
+      locbadgeListEl.appendChild(item);
+    });
+  }
+
+  // Al ingelogd? (bv. na een refresh) -- meteen doorschakelen als het een beheerder is.
+  (async () => {
+    const { data } = await client.auth.getSession();
+    if (!data.session) return;
+    const { data: profile } = await client.from("profiles").select("is_admin").eq("id", data.session.user.id).maybeSingle();
+    if (profile && profile.is_admin === true) {
+      enterDashboard(data.session.user.email || "");
+    }
+  })();
+</script>
+</body>
+</html>
