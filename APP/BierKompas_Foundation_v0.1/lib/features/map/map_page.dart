@@ -150,6 +150,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // de kaart blijft zo vrij voor knijp-zoomen.
   static const _maxPanelHeight = 230.0;
 
+  // De lijst onder de zoekbalk verschijnt pas na een tik op de knop, zodat
+  // de kaart standaard meer ruimte krijgt.
+  bool _showPanel = false;
+
   // Zodra bekend (met toestemming): sorteert brouwerijen/horeca automatisch
   // op afstand, i.p.v. de willekeurige volgorde uit de datalijst te tonen.
   Position? _myPosition;
@@ -897,18 +901,32 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 if ((_activeTab == _MapTab.horeca || _activeTab == _MapTab.all) && _loadingHoreca) _buildLoadingHint('Horeca laden...'),
                 if (_activeTab == _MapTab.nearby && _loadingNearby) _buildLoadingHint('Bierliefhebbers zoeken...'),
 
-                // Compact lijstje direct onder de zoekbalk; alleen zo hoog als
-                // nodig. Horizontaal vegen erop wisselt van tab. Geen
-                // TabBarView/Expanded: dat claimt de hele kaart als veeggebied
-                // en blokkeert het knijp-zoomen.
-                GestureDetector(
-                  onHorizontalDragEnd: _onPanelSwipe,
-                  behavior: HitTestBehavior.deferToChild,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: _maxPanelHeight),
-                    child: _buildActivePanel(),
+                // De lijst blijft ingeklapt tot de gebruiker er zelf om vraagt,
+                // zodat de kaart standaard zoveel mogelijk ruimte krijgt.
+                if (!_showPanel)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildShowPanelButton(),
+                  )
+                else
+                  // Compact lijstje direct onder de zoekbalk; alleen zo hoog als
+                  // nodig. Horizontaal vegen erop wisselt van tab. Geen
+                  // TabBarView/Expanded: dat claimt de hele kaart als veeggebied
+                  // en blokkeert het knijp-zoomen.
+                  GestureDetector(
+                    onHorizontalDragEnd: _onPanelSwipe,
+                    behavior: HitTestBehavior.deferToChild,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: _maxPanelHeight),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildHidePanelButton(),
+                          Flexible(child: _buildActivePanel()),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
 
                 const Spacer(),
 
@@ -948,6 +966,57 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case _MapTab.nearby:
         return null;
     }
+  }
+
+  String _panelToggleLabel() {
+    switch (_activeTab) {
+      case _MapTab.all:
+        return 'Toon overzicht';
+      case _MapTab.breweries:
+        return 'Brouwerijen in de buurt';
+      case _MapTab.horeca:
+        return 'Horeca in de buurt';
+      case _MapTab.events:
+        return 'Evenementen bekijken';
+      case _MapTab.nearby:
+        return 'Bierliefhebbers bekijken';
+    }
+  }
+
+  Widget _buildShowPanelButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => setState(() => _showPanel = true),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFD4B28C),
+          side: const BorderSide(color: Color(0xFF3E312A)),
+          backgroundColor: const Color(0xFF2C221C),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        icon: const Icon(Icons.list),
+        label: Text(_panelToggleLabel(), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _buildHidePanelButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(_panelToggleLabel(),
+              style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontWeight: FontWeight.bold, fontSize: 13)),
+          TextButton.icon(
+            onPressed: () => setState(() => _showPanel = false),
+            icon: const Icon(Icons.keyboard_arrow_up, color: Color(0xFF9E8A7D), size: 18),
+            label: Text('Verbergen', style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 12)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLoadingHint(String label) {
