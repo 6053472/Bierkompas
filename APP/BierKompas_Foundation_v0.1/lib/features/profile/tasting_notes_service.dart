@@ -74,6 +74,14 @@ class TastingNotesService {
           })
           .select()
           .single();
+      // Kent 'Super Model' toe bij een hoog gemiddelde (zie
+      // supabase/add_remaining_badges.sql); mag het opslaan van de
+      // proefnotitie zelf niet blokkeren als dit faalt.
+      try {
+        await _client.rpc('record_tasting_note_created', params: {'p_user_id': user.id});
+      } catch (_) {
+        // Negeren: badge is secundair aan de proefnotitie zelf.
+      }
       return TastingNote.fromJson(row);
     } on PostgrestException catch (e) {
       throw TastingNoteException(e.message);

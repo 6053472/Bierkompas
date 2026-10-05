@@ -163,6 +163,10 @@
         <span class="material-symbols-outlined">query_stats</span>
         <span class="font-body text-sm hidden md:inline">Statistieken</span>
       </button>
+      <button data-panel="locationbadges" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">emoji_events</span>
+        <span class="font-body text-sm hidden md:inline">Locatie-badges</span>
+      </button>
     </nav>
     <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
       <span class="material-symbols-outlined">logout</span>
@@ -532,6 +536,53 @@
         <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
       </div>
     </section>
+
+    <!-- Locatie-badges panel -->
+    <section id="panel-locationbadges" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Locatie-badges</h2>
+          <p class="text-on-surface-variant text-sm">
+            Markeer welke brouwerij of horecagelegenheid een boerderijbrouwerij of een "beer garden" is.
+            Een gebruiker die zo'n locatie favorieten krijgt de bijbehorende badge. Alleen jij weet welke
+            locaties dit echt zijn -- zonder tag hieronder blijft die badge voor iedereen vergrendeld.
+          </p>
+        </div>
+
+        <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort</span>
+              <select id="locbadge-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="brewery">Brouwerij</option>
+                <option value="horeca">Horeca</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam</span>
+              <input id="locbadge-name" type="text" list="locbadge-options" placeholder="Typ om te zoeken..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <datalist id="locbadge-options"></datalist>
+            </label>
+          </div>
+          <div class="flex items-center gap-6 mt-4">
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="locbadge-farm" type="checkbox" class="rounded accent-primary"/> Boerderijbrouwerij
+            </label>
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="locbadge-garden" type="checkbox" class="rounded accent-primary"/> Beer garden
+            </label>
+          </div>
+          <p id="locbadge-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <button id="locbadge-save" class="mt-4 flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            <span id="locbadge-save-label">Tags opslaan</span>
+          </button>
+        </div>
+
+        <h3 class="font-display text-lg text-on-surface mb-3">Huidige tags</h3>
+        <div id="locbadge-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -602,6 +653,7 @@
     loadPairings();
     loadVideos();
     loadStats();
+    loadLocationBadgeOptions();
   }
 
   document.getElementById("logout-button").addEventListener("click", async () => {
@@ -623,6 +675,7 @@
     pairings: document.getElementById("panel-pairings"),
     videos: document.getElementById("panel-videos"),
     stats: document.getElementById("panel-stats"),
+    locationbadges: document.getElementById("panel-locationbadges"),
   };
 
   function setActivePanel(name) {
@@ -1693,6 +1746,157 @@
         <p class="font-display text-2xl text-primary">${t.value ?? 0}</p>
       </div>
     `).join("");
+  }
+
+  // ---------- Locatie-badges ----------
+  const locbadgeTypeEl = document.getElementById("locbadge-type");
+  const locbadgeNameEl = document.getElementById("locbadge-name");
+  const locbadgeOptionsEl = document.getElementById("locbadge-options");
+  const locbadgeFarmEl = document.getElementById("locbadge-farm");
+  const locbadgeGardenEl = document.getElementById("locbadge-garden");
+  const locbadgeErrorEl = document.getElementById("locbadge-error");
+  const locbadgeSaveBtn = document.getElementById("locbadge-save");
+  const locbadgeSaveLabelEl = document.getElementById("locbadge-save-label");
+  const locbadgeListEl = document.getElementById("locbadge-list");
+
+  // { brewery: Map(naam-lowercase -> {id, title}), horeca: Map(...) }
+  let locbadgeOptionsByType = { brewery: new Map(), horeca: new Map() };
+  let allLocationBadges = [];
+
+  async function loadLocationBadgeOptions() {
+    try {
+      const res = await fetch("breweries.json");
+      const breweries = await res.json();
+      locbadgeOptionsByType.brewery = new Map(breweries.map((b) => [b.title.toLowerCase(), b]));
+    } catch (e) {
+      console.warn("Kon breweries.json niet laden:", e);
+    }
+
+    const { data, error } = await client.from("horeca_submissions").select("id, naam").eq("status", "approved");
+    if (!error && data) {
+      locbadgeOptionsByType.horeca = new Map(data.map((h) => [h.naam.toLowerCase(), { id: h.id, title: h.naam }]));
+    }
+
+    renderLocationBadgeOptions();
+    loadLocationBadges();
+  }
+
+  function renderLocationBadgeOptions() {
+    const options = locbadgeOptionsByType[locbadgeTypeEl.value] || new Map();
+    locbadgeOptionsEl.innerHTML = "";
+    for (const { title } of options.values()) {
+      const opt = document.createElement("option");
+      opt.value = title;
+      locbadgeOptionsEl.appendChild(opt);
+    }
+  }
+
+  locbadgeTypeEl.addEventListener("change", () => {
+    locbadgeNameEl.value = "";
+    renderLocationBadgeOptions();
+  });
+
+  locbadgeSaveBtn.addEventListener("click", async () => {
+    locbadgeErrorEl.classList.add("hidden");
+    const type = locbadgeTypeEl.value;
+    const name = locbadgeNameEl.value.trim();
+    const options = locbadgeOptionsByType[type] || new Map();
+    const match = options.get(name.toLowerCase());
+
+    if (!match) {
+      locbadgeErrorEl.textContent = `Geen ${type === "brewery" ? "brouwerij" : "horecagelegenheid"} gevonden met die naam. Kies een naam uit de suggesties.`;
+      locbadgeErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    locbadgeSaveBtn.disabled = true;
+    locbadgeSaveLabelEl.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const wantedTags = [];
+    if (locbadgeFarmEl.checked) wantedTags.push("farm");
+    if (locbadgeGardenEl.checked) wantedTags.push("beer_garden");
+
+    const { error: deleteError } = await client
+      .from("location_badge_tags")
+      .delete()
+      .eq("item_type", type)
+      .eq("item_id", match.id);
+
+    let saveError = deleteError;
+    if (!saveError && wantedTags.length) {
+      const rows = wantedTags.map((tag) => ({ item_type: type, item_id: match.id, tag }));
+      const { error: insertError } = await client.from("location_badge_tags").insert(rows);
+      saveError = insertError;
+    }
+
+    locbadgeSaveBtn.disabled = false;
+    locbadgeSaveLabelEl.textContent = "Tags opslaan";
+
+    if (saveError) {
+      locbadgeErrorEl.textContent = `Opslaan mislukt: ${saveError.message}`;
+      locbadgeErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    locbadgeNameEl.value = "";
+    locbadgeFarmEl.checked = false;
+    locbadgeGardenEl.checked = false;
+    loadLocationBadges();
+  });
+
+  async function loadLocationBadges() {
+    locbadgeListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("location_badge_tags").select("*").order("item_type").order("item_id");
+
+    if (error) {
+      locbadgeListEl.innerHTML = `<p class="text-error text-sm">Kon tags niet laden: ${escapeHtml(error.message)}. Is supabase/add_remaining_badges.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allLocationBadges = data;
+    renderLocationBadges();
+  }
+
+  function nameForLocationBadge(row) {
+    const options = locbadgeOptionsByType[row.item_type] || new Map();
+    for (const entry of options.values()) {
+      if (entry.id === row.item_id) return entry.title;
+    }
+    return `#${row.item_id}`;
+  }
+
+  function renderLocationBadges() {
+    if (!allLocationBadges.length) {
+      locbadgeListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen locaties getagd.</p>';
+      return;
+    }
+
+    locbadgeListEl.innerHTML = "";
+    allLocationBadges.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center justify-between gap-3 fade-in";
+      const typeLabel = row.item_type === "brewery" ? "Brouwerij" : "Horeca";
+      const tagLabel = row.tag === "farm" ? "Boerderijbrouwerij" : "Beer garden";
+      item.innerHTML = `
+        <div class="min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(nameForLocationBadge(row))}</p>
+          <p class="text-on-surface-variant text-xs">${typeLabel} &middot; ${tagLabel}</p>
+        </div>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1 shrink-0">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        const { error: deleteError } = await client.from("location_badge_tags").delete().eq("id", row.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadLocationBadges();
+      });
+
+      locbadgeListEl.appendChild(item);
+    });
   }
 
   // Al ingelogd? (bv. na een refresh) -- meteen doorschakelen als het een beheerder is.

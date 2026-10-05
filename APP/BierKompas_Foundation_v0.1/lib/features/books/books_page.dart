@@ -401,6 +401,7 @@ class _BookSheetState extends State<_BookSheet> {
                   shareText: '${book.title} van ${book.author}\n\nBekijk het in Bierkompas! \u{1F37B}',
                   subject: book.title,
                   title: 'Boek delen',
+                  onShared: recordBadgeShareAction,
                 ),
                 icon: const Icon(Icons.ios_share, color: _primary, size: 18),
                 label: Text('Delen', style: GoogleFonts.openSans(color: _primary, fontWeight: FontWeight.bold)),

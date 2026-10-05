@@ -128,13 +128,23 @@ class StatsService {
     // geen voortgang tonen voor die badges i.p.v. de pagina te laten crashen.
     var tastedStyles = <String>{};
     var stylesToday = <String>{};
+    // Hoeveel unieke bieren per stijl ('The Century Club') en per brouwerij
+    // ('Draft City') -- het hoogste aantal daarvan bepaalt de voortgang.
+    var beersPerStyle = <String, Set<int>>{};
+    var beersPerBrewery = <String, Set<int>>{};
     try {
-      final logs = await _client.from('user_beer_logs').select('logged_at, bieren(stijl)').eq('user_id', userId);
+      final logs = await _client.from('user_beer_logs').select('beer_id, brewery, logged_at, bieren(stijl)').eq('user_id', userId);
       final today = DateTime.now();
       for (final row in (logs as List)) {
+        final beerId = (row['beer_id'] as num?)?.toInt();
+        final brewery = row['brewery'] as String?;
+        if (beerId != null && brewery != null) {
+          beersPerBrewery.putIfAbsent(brewery, () => {}).add(beerId);
+        }
         final stijl = (row['bieren'] as Map<String, dynamic>?)?['stijl'] as String?;
         if (stijl == null) continue;
         tastedStyles.add(stijl);
+        if (beerId != null) beersPerStyle.putIfAbsent(stijl, () => {}).add(beerId);
         final loggedAt = DateTime.tryParse(row['logged_at'] as String? ?? '')?.toLocal();
         if (loggedAt != null && loggedAt.year == today.year && loggedAt.month == today.month && loggedAt.day == today.day) {
           stylesToday.add(stijl);
@@ -143,6 +153,8 @@ class StatsService {
     } catch (_) {
       // Migratie (add_bieren_tabel.sql) nog niet gedraaid -- geen voortgang tonen.
     }
+    final maxBeersPerStyle = beersPerStyle.values.fold(0, (max, s) => s.length > max ? s.length : max);
+    final maxBeersPerBrewery = beersPerBrewery.values.fold(0, (max, s) => s.length > max ? s.length : max);
 
     final allBadges = await _client.from('badges').select().order('requirement_value');
     final earnedRows = await _client.from('user_badges').select('badge_id').eq('user_id', userId);
@@ -151,6 +163,7 @@ class StatsService {
     final badges = (allBadges as List).map((row) {
       final requirementType = row['requirement_type'] as String?;
       final targetStyle = row['target_style'] as String?;
+      final badgeId = row['id'] as String;
       int? currentValue;
       switch (requirementType) {
         case 'streak':
@@ -164,6 +177,12 @@ class StatsService {
           break;
         case 'taster_flight':
           currentValue = stylesToday.length;
+          break;
+        case 'taps':
+          currentValue = maxBeersPerBrewery;
+          break;
+        case 'style_count':
+          currentValue = badgeId == 'wheel_of_styles' ? tastedStyles.length : maxBeersPerStyle;
           break;
       }
       return ProfileBadge(

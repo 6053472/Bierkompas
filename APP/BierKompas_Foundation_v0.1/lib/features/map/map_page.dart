@@ -113,6 +113,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final _searchController = TextEditingController();
 
   final Set<int> _favoriteIds = {};
+  final Set<int> _favoriteHorecaIds = {};
 
   List<BreweryResult> _results = [];
   List<HorecaResult> _horecaResults = [];
@@ -314,11 +315,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _openHorecaDetail(HorecaVenue venue) async {
+    final isFavorite = _favoriteHorecaIds.contains(venue.id);
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF2C221C),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => _HorecaDetailSheet(venue: venue),
+      builder: (context) => _HorecaDetailSheet(
+        venue: venue,
+        isFavorite: isFavorite,
+        onFavoriteTap: () => _toggleHorecaFavorite(venue),
+      ),
     );
   }
 
@@ -535,9 +541,52 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ..addAll(
             favorites.where((favorite) => favorite.itemType == breweryItemType).map((favorite) => favorite.itemId),
           );
+        _favoriteHorecaIds
+          ..clear()
+          ..addAll(
+            favorites.where((favorite) => favorite.itemType == horecaItemType).map((favorite) => favorite.itemId),
+          );
       });
     } on FavoritesException catch (e) {
       debugPrint('Fout bij ophalen favorieten: $e');
+    }
+  }
+
+  Future<void> _toggleHorecaFavorite(HorecaVenue venue) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Je moet ingelogd zijn om favorieten te gebruiken.')),
+      );
+      return;
+    }
+
+    final wasFavorite = _favoriteHorecaIds.contains(venue.id);
+
+    setState(() {
+      if (wasFavorite) {
+        _favoriteHorecaIds.remove(venue.id);
+      } else {
+        _favoriteHorecaIds.add(venue.id);
+      }
+    });
+
+    try {
+      if (wasFavorite) {
+        await _favoritesService.remove(userId: user.id, itemType: horecaItemType, itemId: venue.id);
+      } else {
+        await _favoritesService.add(userId: user.id, itemType: horecaItemType, itemId: venue.id);
+      }
+    } on FavoritesException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorite) {
+          _favoriteHorecaIds.add(venue.id);
+        } else {
+          _favoriteHorecaIds.remove(venue.id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Favoriet opslaan mislukt: $e')));
     }
   }
 
@@ -1792,10 +1841,13 @@ class _BreweryDetailSheet extends StatelessWidget {
 
 /// Bottomsheet met horeca-details, geopend vanaf een pin of lijstrij.
 class _HorecaDetailSheet extends StatelessWidget {
-  const _HorecaDetailSheet({required this.venue});
+  const _HorecaDetailSheet({required this.venue, required this.isFavorite, required this.onFavoriteTap});
 
   final HorecaVenue venue;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
 
+  static const _primary = Color(0xFFD4B28C);
   static const _onSurface = Color(0xFFEFE6DD);
   static const _onSurfaceVariant = Color(0xFF9E8A7D);
 
@@ -1807,19 +1859,35 @@ class _HorecaDetailSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              child: SizedBox(
-                height: 180,
-                width: double.infinity,
-                child: venue.imageUrl != null
-                    ? Image.network(
-                        venue.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48))),
-                      )
-                    : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48)))),
-              ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: venue.imageUrl != null
+                        ? Image.network(
+                            venue.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48))),
+                          )
+                        : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48)))),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: onFavoriteTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? _primary : Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),

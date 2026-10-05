@@ -1,3 +1,5 @@
+const horecaItemType = 'horeca';
+
 /// Een horecagelegenheid (café, proeflokaal, bierbar) die via "Horeca
 /// toevoegen" is aangemeld en door een beheerder is goedgekeurd
 /// (zie horeca_submission_service.dart en supabase/add_horeca_submissions.sql).

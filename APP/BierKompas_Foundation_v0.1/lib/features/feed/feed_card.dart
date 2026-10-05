@@ -91,6 +91,7 @@ class FeedCard extends StatelessWidget {
                         context,
                         shareText: _buildShareText(),
                         subject: item.title,
+                        onShared: recordBadgeShareAction,
                       ),
                       behavior: HitTestBehavior.opaque,
                       child: const Padding(

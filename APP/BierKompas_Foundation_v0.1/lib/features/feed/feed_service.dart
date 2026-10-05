@@ -171,6 +171,17 @@ class FeedService {
         'beer_id': beerId,
         'status': 'pending',
       });
+      if (itemType == FeedItemType.post) {
+        // Een eigen post plaatsen is de dichtstbijzijnde bestaande "eigen
+        // gemaakte content"-actie voor de 'Home Brewed Goodness'-badge (zie
+        // supabase/add_remaining_badges.sql). Mag het plaatsen van de post
+        // zelf niet blokkeren als dit faalt.
+        try {
+          await _client.rpc('record_own_post', params: {'p_user_id': user.id});
+        } catch (_) {
+          // Negeren: badge is secundair aan de post zelf.
+        }
+      }
     } on PostgrestException catch (e) {
       throw FeedException(e.message);
     }
