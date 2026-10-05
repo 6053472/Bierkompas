@@ -28,6 +28,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
   final _feedService = FeedService();
   final _bodyController = TextEditingController();
 
+  // 'brouwerij' is bewust geen optie: dat type blijft redactioneel/alleen
+  // voor beheerders (zie supabase/add_feed_post_moderation.sql).
+  static const _typeOptions = [FeedItemType.post, FeedItemType.review, FeedItemType.tip, FeedItemType.weetje];
+  FeedItemType _selectedType = FeedItemType.post;
+  double _rating = 4;
+
   Uint8List? _imageBytes;
   String? _imageExt;
   bool _posting = false;
@@ -63,6 +69,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
+  String _typeLabel(FeedItemType type) => switch (type) {
+        FeedItemType.post => 'Post',
+        FeedItemType.review => 'Mini-review',
+        FeedItemType.tip => 'Biertip',
+        FeedItemType.weetje => 'Weetje',
+        _ => type.name,
+      };
+
   void _removeImage() => setState(() {
         _imageBytes = null;
         _imageExt = null;
@@ -78,10 +92,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (bytes != null) {
         imageUrl = await _feedService.uploadImage(bytes: bytes, fileExt: _imageExt ?? 'jpg');
       }
-      final post = await _feedService.createPost(body: body, imageUrl: imageUrl);
+      await _feedService.createPost(
+        body: body,
+        itemType: _selectedType,
+        imageUrl: imageUrl,
+        rating: _selectedType == FeedItemType.review ? _rating : null,
+      );
       await _recordStreakActivity();
       if (!mounted) return;
-      Navigator.of(context).pop(post);
+      Navigator.of(context).pop(true);
     } on FeedException catch (e) {
       if (!mounted) return;
       setState(() => _posting = false);
@@ -145,9 +164,60 @@ class _CreatePostPageState extends State<CreatePostPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Deel iets met de BierKompas-gemeenschap: een biertip, een ervaring of gewoon een gedachte.',
+                "Deel iets met de BierKompas-gemeenschap: een biertip, een ervaring of gewoon een gedachte. "
+                "Je post wordt eerst beoordeeld door een beheerder voordat 'm anderen zien.",
                 style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13),
               ),
+              const SizedBox(height: 16),
+              Text('Soort post', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final type in _typeOptions)
+                    GestureDetector(
+                      onTap: () => setState(() => _selectedType = type),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: _selectedType == type ? _primary : _cardColor,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: _selectedType == type ? _primary : _outlineVariant),
+                        ),
+                        child: Text(
+                          _typeLabel(type),
+                          style: GoogleFonts.openSans(
+                            color: _selectedType == type ? _onPrimary : _onSurfaceVariant,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (_selectedType == FeedItemType.review) ...[
+                const SizedBox(height: 16),
+                Text('Beoordeling', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    for (var i = 1; i <= 5; i++)
+                      GestureDetector(
+                        onTap: () => setState(() => _rating = i.toDouble()),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            i <= _rating ? Icons.star : Icons.star_border,
+                            color: _primary,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(

@@ -379,7 +379,15 @@
           </div>
         </div>
 
-        <div id="feed-list" class="flex flex-col gap-2 mt-4"></div>
+        <div class="flex items-center gap-2 mt-8 mb-2">
+          <h3 class="font-display text-lg text-on-surface">Posts wachtend op goedkeuring</h3>
+          <span id="feed-pending-count-badge" class="hidden bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center"></span>
+        </div>
+        <p class="text-on-surface-variant text-sm mb-3">Eigen posts van gebruikers verschijnen pas in ieders Ontdek-feed nadat je ze hier goedkeurt.</p>
+        <div id="feed-pending-list" class="flex flex-col gap-2 mb-8"></div>
+
+        <h3 class="font-display text-lg text-on-surface mb-3">Redactionele content</h3>
+        <div id="feed-list" class="flex flex-col gap-2"></div>
       </div>
     </section>
   </div>
@@ -1116,7 +1124,72 @@
     loadFeed();
   });
 
+  const feedPendingListEl = document.getElementById("feed-pending-list");
+  const feedPendingCountBadge = document.getElementById("feed-pending-count-badge");
+
+  async function loadPendingPosts() {
+    feedPendingListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("feed_items")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      feedPendingListEl.innerHTML = `<p class="text-error text-sm">Kon aanmeldingen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(feedPendingCountBadge, data.length);
+
+    if (!data.length) {
+      feedPendingListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-4 text-center">Geen posts die wachten op goedkeuring.</p>';
+      return;
+    }
+
+    feedPendingListEl.innerHTML = "";
+    data.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-primary/30 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-primary/20 text-primary">${escapeHtml(feedTypeLabels[item.item_type] || item.item_type)}</span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(item.title)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(item.body)}</p>
+            <p class="text-on-surface-variant text-xs truncate">Door ${escapeHtml(item.author || "Onbekend")}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="feed-reject-btn px-3 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors text-sm">Afwijzen</button>
+          <button class="feed-approve-btn px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-label uppercase tracking-wide hover:opacity-90 transition-opacity">Goedkeuren</button>
+        </div>`;
+
+      row.querySelector(".feed-approve-btn").addEventListener("click", async () => {
+        const { error: approveError } = await client.from("feed_items").update({ status: "approved" }).eq("id", item.id);
+        if (approveError) {
+          alert(`Goedkeuren mislukt: ${approveError.message}`);
+          return;
+        }
+        loadPendingPosts();
+      });
+
+      row.querySelector(".feed-reject-btn").addEventListener("click", async () => {
+        if (!confirm(`Post van ${item.author || "deze gebruiker"} afwijzen en verwijderen?`)) return;
+        const { error: rejectError } = await client.from("feed_items").delete().eq("id", item.id);
+        if (rejectError) {
+          alert(`Afwijzen mislukt: ${rejectError.message}`);
+          return;
+        }
+        loadPendingPosts();
+      });
+
+      feedPendingListEl.appendChild(row);
+    });
+  }
+
   async function loadFeed() {
+    loadPendingPosts();
     feedListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
     const { data, error } = await client
       .from("feed_items")

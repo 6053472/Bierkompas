@@ -436,11 +436,15 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   void _goTo(int tab) => widget.onNavigate?.call(tab);
 
   Future<void> _openCreatePost() async {
-    final post = await Navigator.of(context).push<FeedItem>(
+    final posted = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (context) => const CreatePostPage()),
     );
-    if (post == null || !mounted) return;
-    setState(() => _feedItems.insert(0, post));
+    if (posted != true || !mounted) return;
+    // De post is 'pending': die verschijnt pas in ieders Ontdek-feed nadat
+    // een beheerder 'm heeft goedgekeurd, dus niet meteen zelf invoegen.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Je post is verstuurd en wordt binnenkort beoordeeld.')),
+    );
     await _recordStreakActivity();
   }
 
