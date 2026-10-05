@@ -230,6 +230,29 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _openBreweryDetail(Brewery brewery) async {
+    final isFavorite = _favoriteIds.contains(brewery.id);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF2C221C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => _BreweryDetailSheet(
+        brewery: brewery,
+        isFavorite: isFavorite,
+        onFavoriteTap: () => _toggleFavorite(brewery),
+      ),
+    );
+  }
+
+  Future<void> _openHorecaDetail(HorecaVenue venue) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF2C221C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => _HorecaDetailSheet(venue: venue),
+    );
+  }
+
   @override
   void dispose() {
     _suggestionTimer?.cancel();
@@ -899,7 +922,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               width: entry.key == _selectedIndex ? 46 : 36,
               height: entry.key == _selectedIndex ? 46 : 36,
               child: GestureDetector(
-                onTap: () => _selectBrewery(entry.key, zoomIn: entry.key == _selectedIndex),
+                onTap: () {
+                  _selectBrewery(entry.key, zoomIn: entry.key == _selectedIndex);
+                  _openBreweryDetail(entry.value.brewery);
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOut,
@@ -926,7 +952,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               width: entry.key == _selectedHorecaIndex ? 46 : 36,
               height: entry.key == _selectedHorecaIndex ? 46 : 36,
               child: GestureDetector(
-                onTap: () => _selectHoreca(entry.key, zoomIn: entry.key == _selectedHorecaIndex),
+                onTap: () {
+                  _selectHoreca(entry.key, zoomIn: entry.key == _selectedHorecaIndex);
+                  _openHorecaDetail(entry.value.venue);
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOut,
@@ -1220,7 +1249,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final subtitle = _searchedLocation.isEmpty ? brewery.location : '${_formatDistance(result.distance)} vanaf $_searchedLocation';
 
     return InkWell(
-      onTap: () => _selectBrewery(index, zoomIn: true),
+      onTap: () {
+        _selectBrewery(index, zoomIn: true);
+        _openBreweryDetail(brewery);
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -1274,7 +1306,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final subtitle = _searchedLocation.isEmpty ? venue.location : '${_formatDistance(result.distance)} vanaf $_searchedLocation';
 
     return InkWell(
-      onTap: () => _selectHoreca(index, zoomIn: true),
+      onTap: () {
+        _selectHoreca(index, zoomIn: true);
+        _openHorecaDetail(venue);
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -1500,6 +1535,181 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
             const Icon(Icons.north_west, color: Color(0xFF7A6355), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottomsheet met brouwerij-details, geopend vanaf een pin of lijstrij.
+class _BreweryDetailSheet extends StatelessWidget {
+  const _BreweryDetailSheet({required this.brewery, required this.isFavorite, required this.onFavoriteTap});
+
+  final Brewery brewery;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
+
+  static const _primary = Color(0xFFD4B28C);
+  static const _onSurface = Color(0xFFEFE6DD);
+  static const _onSurfaceVariant = Color(0xFF9E8A7D);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: brewery.imageUrl != null
+                        ? Image.network(
+                            brewery.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 48))),
+                          )
+                        : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 48)))),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: onFavoriteTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? _primary : Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(brewery.title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, color: _onSurfaceVariant, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(brewery.location, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13))),
+                      if (brewery.founded != null) ...[
+                        const SizedBox(width: 12),
+                        const Icon(Icons.history_edu_outlined, color: _onSurfaceVariant, size: 16),
+                        const SizedBox(width: 4),
+                        Text('Sinds ${brewery.founded}', style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13)),
+                      ],
+                    ],
+                  ),
+                  if (brewery.about.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(brewery.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                  ],
+                  if (brewery.tags.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: brewery.tags
+                          .map((tag) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(color: const Color(0xFF1E1712), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0xFF3E312A))),
+                                child: Text(tag, style: GoogleFonts.inter(color: _primary, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                  if (brewery.facts.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text('WEETJES', style: GoogleFonts.inter(color: _primary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                    const SizedBox(height: 8),
+                    for (final fact in brewery.facts)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ', style: TextStyle(color: _primary)),
+                            Expanded(child: Text(fact, style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4))),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottomsheet met horeca-details, geopend vanaf een pin of lijstrij.
+class _HorecaDetailSheet extends StatelessWidget {
+  const _HorecaDetailSheet({required this.venue});
+
+  final HorecaVenue venue;
+
+  static const _onSurface = Color(0xFFEFE6DD);
+  static const _onSurfaceVariant = Color(0xFF9E8A7D);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: SizedBox(
+                height: 180,
+                width: double.infinity,
+                child: venue.imageUrl != null
+                    ? Image.network(
+                        venue.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48))),
+                      )
+                    : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48)))),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(venue.title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700)),
+                  if (venue.location.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, color: _onSurfaceVariant, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(venue.location, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13))),
+                      ],
+                    ),
+                  ],
+                  if (venue.about.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(venue.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
