@@ -16,6 +16,8 @@ import '../profile/profile_page.dart';
 import '../profile/stats_service.dart';
 import '../scan/beer_scan_page.dart';
 import '../events/events_page.dart';
+import '../pairing/pairing_hub_page.dart';
+import '../videos/video_reel_page.dart';
 import '../../shared/profile_avatar_button.dart';
 import 'social_page.dart';
 import 'vinden_proeven_page.dart';
@@ -653,6 +655,10 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           'BIER AGENDA', () => _goTo(_tabAgenda)),
       _buildActionTile(Icons.group_outlined, Icons.forum_outlined, 'Gezelligheid & Social',
           'GEMEENSCHAP', _openSocial),
+      _buildActionTile(Icons.restaurant_menu, Icons.local_dining_outlined, 'Bier & Spijs',
+          'FOODPAIRING HUB', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PairingHubPage()))),
+      _buildActionTile(Icons.play_circle_outline, Icons.movie_creation_outlined, 'Brouwerij Highlights',
+          'VIDEO\'S BEKIJKEN', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VideoReelPage()))),
     ];
 
     return Column(
@@ -670,6 +676,14 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             Expanded(child: tiles[2]),
             const SizedBox(width: 16),
             Expanded(child: tiles[3]),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: tiles[4]),
+            const SizedBox(width: 16),
+            Expanded(child: tiles[5]),
           ],
         ),
       ],
