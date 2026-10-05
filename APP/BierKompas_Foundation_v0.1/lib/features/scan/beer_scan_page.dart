@@ -417,7 +417,18 @@ class _BeerFoundSheet extends StatelessWidget {
                 if (beer.imageUrl != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(beer.imageUrl!, width: 64, height: 64, fit: BoxFit.cover),
+                    child: Image.network(
+                      beer.imageUrl!,
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(color: _primary.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.sports_bar_outlined, color: _primary),
+                      ),
+                    ),
                   )
                 else
                   Container(

@@ -2318,6 +2318,10 @@ class _EventsPageState extends State<EventsPage> {
                             Image.network(
                               imageUrl!,
                               fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: backgroundColor,
+                                child: const Icon(Icons.local_bar, color: beigeColor, size: 45),
+                              ),
                             ),
                             Positioned.fill(
                               child: DecoratedBox(
