@@ -147,6 +147,10 @@
         <span class="font-body text-sm hidden sm:inline">Horeca-aanmeldingen</span>
         <span id="horeca-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
+      <button data-panel="feed" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined">dynamic_feed</span>
+        <span class="font-body text-sm hidden sm:inline">Ontdek-feed</span>
+      </button>
     </nav>
     <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
       <span class="material-symbols-outlined">logout</span>
@@ -311,6 +315,71 @@
         </div>
       </div>
     </section>
+
+    <!-- Ontdek-feed panel -->
+    <section id="panel-feed" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Ontdek-feed</h2>
+            <p class="text-on-surface-variant text-sm">Mini-reviews, biertips en weetjes die op de Ontdek-pagina in de app verschijnen. Posts van gebruikers zelf staan hier niet bij en kun je hier niet beheren.</p>
+          </div>
+          <button id="feed-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw item
+          </button>
+        </div>
+
+        <!-- Nieuw/bewerk feed-item (ingeklapt totdat je op de knop klikt) -->
+        <div id="feed-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="feed-form-title" class="font-display text-lg text-on-surface mb-4">Nieuw feed-item</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
+              <select id="feed-new-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="tip">Biertip</option>
+                <option value="weetje">Weetje</option>
+                <option value="review">Mini-review</option>
+                <option value="brouwerij">Brouwerij-post</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Auteur (optioneel)</span>
+              <input id="feed-new-author" type="text" placeholder="Bijv. Bierkompas Redactie"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="feed-new-titel" type="text" placeholder="Bijv. Wist je dat..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Tekst*</span>
+              <textarea id="feed-new-body" rows="3" placeholder="De inhoud van dit feed-item"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span>
+              <input id="feed-new-foto" type="text" placeholder="https://..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label id="feed-new-rating-wrap" class="flex flex-col gap-1 hidden">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beoordeling (0-5, alleen bij mini-review)</span>
+              <input id="feed-new-rating" type="number" min="0" max="5" step="0.5" placeholder="4.5"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+          </div>
+          <p id="feed-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="feed-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="feed-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="feed-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="feed-list" class="flex flex-col gap-2 mt-4"></div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -377,6 +446,7 @@
     loadBieren();
     loadBrouwerijen();
     loadHoreca();
+    loadFeed();
   }
 
   document.getElementById("logout-button").addEventListener("click", async () => {
@@ -394,6 +464,7 @@
     bieren: document.getElementById("panel-bieren"),
     brouwerijen: document.getElementById("panel-brouwerijen"),
     horeca: document.getElementById("panel-horeca"),
+    feed: document.getElementById("panel-feed"),
   };
 
   function setActivePanel(name) {
@@ -914,6 +985,151 @@
       return;
     }
     loadHoreca();
+  }
+
+  // ---------- Ontdek-feed ----------
+  const feedListEl = document.getElementById("feed-list");
+  const feedNewToggle = document.getElementById("feed-new-toggle");
+  const feedNewForm = document.getElementById("feed-new-form");
+  const feedFormTitle = document.getElementById("feed-form-title");
+  const feedNewError = document.getElementById("feed-new-error");
+  const feedNewSaveBtn = document.getElementById("feed-new-save");
+  const feedNewSaveLabel = document.getElementById("feed-new-save-label");
+  const feedTypeSelect = document.getElementById("feed-new-type");
+  const feedRatingWrap = document.getElementById("feed-new-rating-wrap");
+  let feedItems = [];
+  let feedEditingId = null;
+
+  const feedTypeLabels = { tip: "Biertip", weetje: "Weetje", review: "Mini-review", brouwerij: "Brouwerij-post" };
+
+  feedNewToggle.addEventListener("click", () => {
+    feedEditingId = null;
+    clearFeedForm();
+    feedFormTitle.textContent = "Nieuw feed-item";
+    feedNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("feed-new-cancel").addEventListener("click", () => {
+    feedNewForm.classList.add("hidden");
+    clearFeedForm();
+  });
+  feedTypeSelect.addEventListener("change", () => {
+    feedRatingWrap.classList.toggle("hidden", feedTypeSelect.value !== "review");
+  });
+
+  function clearFeedForm() {
+    feedEditingId = null;
+    feedTypeSelect.value = "tip";
+    feedRatingWrap.classList.add("hidden");
+    ["author", "titel", "body", "foto", "rating"].forEach((field) => {
+      document.getElementById(`feed-new-${field}`).value = "";
+    });
+    feedNewError.classList.add("hidden");
+  }
+
+  feedNewSaveBtn.addEventListener("click", async () => {
+    const titel = document.getElementById("feed-new-titel").value.trim();
+    const body = document.getElementById("feed-new-body").value.trim();
+    if (!titel || !body) {
+      feedNewError.textContent = "Titel en tekst zijn verplicht.";
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    feedNewSaveBtn.disabled = true;
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    feedNewError.classList.add("hidden");
+
+    const ratingValue = document.getElementById("feed-new-rating").value.trim();
+    const payload = {
+      item_type: feedTypeSelect.value,
+      title: titel,
+      body,
+      author: document.getElementById("feed-new-author").value.trim() || null,
+      image_url: document.getElementById("feed-new-foto").value.trim() || null,
+      rating: feedTypeSelect.value === "review" && ratingValue ? parseFloat(ratingValue) : null,
+    };
+
+    const { error } = feedEditingId
+      ? await client.from("feed_items").update(payload).eq("id", feedEditingId)
+      : await client.from("feed_items").insert(payload);
+
+    feedNewSaveBtn.disabled = false;
+    feedNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      feedNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearFeedForm();
+    feedNewForm.classList.add("hidden");
+    loadFeed();
+  });
+
+  async function loadFeed() {
+    feedListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("feed_items")
+      .select("*")
+      .is("user_id", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      feedListEl.innerHTML = `<p class="text-error text-sm">Kon de feed niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    feedItems = data;
+    if (!feedItems.length) {
+      feedListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen feed-items. Voeg er een toe zodat de Ontdek-pagina content heeft.</p>';
+      return;
+    }
+
+    feedListEl.innerHTML = "";
+    feedItems.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-surface-container-highest text-on-surface-variant">${escapeHtml(feedTypeLabels[item.item_type] || item.item_type)}</span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(item.title)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(item.body)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="feed-edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">Bewerken</button>
+          <button class="feed-delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-sm">Verwijderen</button>
+        </div>`;
+
+      row.querySelector(".feed-edit-btn").addEventListener("click", () => {
+        feedEditingId = item.id;
+        feedFormTitle.textContent = "Feed-item bewerken";
+        feedTypeSelect.value = item.item_type;
+        feedRatingWrap.classList.toggle("hidden", item.item_type !== "review");
+        document.getElementById("feed-new-author").value = item.author || "";
+        document.getElementById("feed-new-titel").value = item.title || "";
+        document.getElementById("feed-new-body").value = item.body || "";
+        document.getElementById("feed-new-foto").value = item.image_url || "";
+        document.getElementById("feed-new-rating").value = item.rating ?? "";
+        feedNewError.classList.add("hidden");
+        feedNewForm.classList.remove("hidden");
+        feedNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      row.querySelector(".feed-delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${item.title}" verwijderen uit de Ontdek-feed?`)) return;
+        const { error: deleteError } = await client.from("feed_items").delete().eq("id", item.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadFeed();
+      });
+
+      feedListEl.appendChild(row);
+    });
   }
 
   function escapeHtml(value) {
