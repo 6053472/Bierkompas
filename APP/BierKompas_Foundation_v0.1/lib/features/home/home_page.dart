@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -342,7 +341,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       for (final item in page) {
         final url = item.imageUrl;
         if (url != null) {
-          precacheImage(CachedNetworkImageProvider(url), context, onError: (_, __) {});
+          precacheImage(NetworkImage(url), context, onError: (_, __) {});
         }
       }
       setState(() {

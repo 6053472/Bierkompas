@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -62,12 +61,17 @@ class FeedCard extends StatelessWidget {
           if (imageUrl != null)
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
+              child: Image.network(
+                imageUrl,
                 fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 200),
-                placeholder: (context, url) => Container(color: _surfaceContainer),
-                errorWidget: (context, url, error) => Container(
+                // Sommige externe fotobronnen (bijv. heinekencollection.com)
+                // sturen geen CORS-toestemming mee, waardoor de browser de
+                // afbeelding niet via canvas mag inladen. Deze fallback toont
+                // 'm dan alsnog via een gewoon <img>-element.
+                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                loadingBuilder: (context, child, progress) =>
+                    progress == null ? child : Container(color: _surfaceContainer),
+                errorBuilder: (context, error, stackTrace) => Container(
                   color: _surfaceContainer,
                   child: Icon(Icons.image_outlined, color: _onSurfaceVariant.withOpacity(0.4), size: 40),
                 ),
