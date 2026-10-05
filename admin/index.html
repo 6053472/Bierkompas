@@ -55,6 +55,18 @@
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   .copper-glow { box-shadow: 0px 4px 20px rgba(251, 185, 123, 0.15); }
   .hidden { display: none !important; }
+  /* Losse classes voor "alleen zichtbaar vanaf desktop / alleen op mobiel",
+     bewust NIET gecombineerd met .hidden: die heeft !important nodig voor
+     JS-geschakelde elementen (bv. #dashboard-view) en zou daardoor altijd
+     winnen van een gewone "@media (min-width: 768px) { display: ... }"
+     regel, ongeacht schermbreedte -- precies het probleem dat hier speelde. */
+  .only-desktop-inline, .only-desktop-block, .only-desktop-flex { display: none; }
+  @media (min-width: 768px) {
+    .only-desktop-inline { display: inline; }
+    .only-desktop-block { display: block; }
+    .only-desktop-flex { display: flex; }
+    .only-mobile { display: none; }
+  }
   .nav-item.active { background-color: #d4975c22; color: #fbb97b; font-weight: 600; }
   .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -120,15 +132,15 @@
   <!-- Sidebar (op mobiel: titel + dropdown-keuzemenu; vanaf md: volledige verticale zijbalk) -->
   <aside class="flex flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 gap-2 md:gap-1 z-10">
     <div class="mb-0 md:mb-8 px-2 shrink-0 flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary text-2xl hidden md:inline">sports_bar</span>
+      <span class="material-symbols-outlined text-primary text-2xl only-desktop-inline">sports_bar</span>
       <div>
         <h1 class="font-display text-lg md:text-xl text-primary leading-tight">Bierkompas</h1>
-        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Beheer</p>
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant only-desktop-block">Beheer</p>
       </div>
     </div>
 
     <!-- Mobiel: dropdown i.p.v. een scrollende knoppenrij, zodat elke optie altijd met volledige tekst leesbaar is. -->
-    <div class="md:hidden px-2 pb-1">
+    <div class="only-mobile px-2 pb-1">
       <select id="mobile-panel-select"
         class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
         <optgroup label="Goedkeuringen">
@@ -149,56 +161,56 @@
       </select>
     </div>
 
-    <nav class="hidden md:flex md:flex-col gap-1 flex-1 min-w-0">
-      <p class="hidden md:block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-3 pb-1">Goedkeuringen</p>
+    <nav class="only-desktop-flex flex-col gap-1 flex-1 min-w-0">
+      <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-3 pb-1">Goedkeuringen</p>
       <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">event</span>
-        <span class="font-body text-sm hidden md:inline">Evenementen</span>
+        <span class="font-body text-sm only-desktop-inline">Evenementen</span>
         <span id="events-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
       <button data-panel="brouwerijen" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">add_business</span>
-        <span class="font-body text-sm hidden md:inline">Brouwerij-aanmeldingen</span>
+        <span class="font-body text-sm only-desktop-inline">Brouwerij-aanmeldingen</span>
         <span id="brouwerijen-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
       <button data-panel="horeca" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">restaurant</span>
-        <span class="font-body text-sm hidden md:inline">Horeca-aanmeldingen</span>
+        <span class="font-body text-sm only-desktop-inline">Horeca-aanmeldingen</span>
         <span id="horeca-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
 
-      <p class="hidden md:block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Content</p>
+      <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Content</p>
       <button data-panel="feed" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">dynamic_feed</span>
-        <span class="font-body text-sm hidden md:inline">Ontdek-feed</span>
+        <span class="font-body text-sm only-desktop-inline">Ontdek-feed</span>
       </button>
       <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">sports_bar</span>
-        <span class="font-body text-sm hidden md:inline">Bieren &amp; barcodes</span>
+        <span class="font-body text-sm only-desktop-inline">Bieren &amp; barcodes</span>
         <span id="bieren-count-badge" class="hidden ml-auto bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
       <button data-panel="pairings" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">restaurant_menu</span>
-        <span class="font-body text-sm hidden md:inline">Bier &amp; Spijs</span>
+        <span class="font-body text-sm only-desktop-inline">Bier &amp; Spijs</span>
       </button>
       <button data-panel="videos" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">smart_display</span>
-        <span class="font-body text-sm hidden md:inline">Video's</span>
+        <span class="font-body text-sm only-desktop-inline">Video's</span>
       </button>
 
-      <p class="hidden md:block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Overzicht &amp; beheer</p>
+      <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Overzicht &amp; beheer</p>
       <button data-panel="stats" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">query_stats</span>
-        <span class="font-body text-sm hidden md:inline">Statistieken</span>
+        <span class="font-body text-sm only-desktop-inline">Statistieken</span>
       </button>
       <button data-panel="locationbadges" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">emoji_events</span>
-        <span class="font-body text-sm hidden md:inline">Locatie-badges</span>
+        <span class="font-body text-sm only-desktop-inline">Locatie-badges</span>
       </button>
     </nav>
     <button id="logout-button" class="md:mt-auto shrink-0 flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
       <span class="material-symbols-outlined">logout</span>
-      <span class="font-body text-sm hidden md:inline">Uitloggen</span>
+      <span class="font-body text-sm only-desktop-inline">Uitloggen</span>
     </button>
   </aside>
 
