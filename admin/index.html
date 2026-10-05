@@ -603,6 +603,29 @@
     loadEvents();
   }
 
+  // Controleert of een foto-URL ook echt als afbeelding laadt (en geen link
+  // naar een gewone webpagina is), zodat je dit meteen bij het opslaan ziet
+  // i.p.v. pas achteraf in de app. Geen URL ingevuld telt als geldig (optioneel veld).
+  function checkImageUrl(url) {
+    return new Promise((resolve) => {
+      if (!url) {
+        resolve(true);
+        return;
+      }
+      const img = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      img.src = url;
+    });
+  }
+
   // ---------- Nieuw bier toevoegen ----------
   const bierNewToggle = document.getElementById("bier-new-toggle");
   const bierNewForm = document.getElementById("bier-new-form");
@@ -632,8 +655,20 @@
     }
 
     bierNewSaveBtn.disabled = true;
-    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
     bierNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("bier-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      bierNewSaveBtn.disabled = false;
+      bierNewSaveLabel.textContent = "Bier opslaan";
+      bierNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is (geen link naar een webpagina).";
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
 
     const { error } = await client.from("bieren").insert({
       naam,
@@ -643,7 +678,7 @@
       beschrijving: document.getElementById("bier-new-beschrijving").value.trim() || null,
       hoe_gemaakt: document.getElementById("bier-new-hoegemaakt").value.trim() || null,
       stijl_info: document.getElementById("bier-new-stijlinfo").value.trim() || null,
-      foto_url: document.getElementById("bier-new-foto").value.trim() || null,
+      foto_url: fotoUrl,
       barcode: document.getElementById("bier-new-barcode").value.trim() || null,
     });
 
@@ -1038,8 +1073,20 @@
     }
 
     feedNewSaveBtn.disabled = true;
-    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
     feedNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("feed-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      feedNewSaveBtn.disabled = false;
+      feedNewSaveLabel.textContent = "Opslaan";
+      feedNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is (geen link naar een webpagina).";
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
 
     const ratingValue = document.getElementById("feed-new-rating").value.trim();
     const payload = {
@@ -1047,7 +1094,7 @@
       title: titel,
       body,
       author: document.getElementById("feed-new-author").value.trim() || null,
-      image_url: document.getElementById("feed-new-foto").value.trim() || null,
+      image_url: fotoUrl,
       rating: feedTypeSelect.value === "review" && ratingValue ? parseFloat(ratingValue) : null,
     };
 
