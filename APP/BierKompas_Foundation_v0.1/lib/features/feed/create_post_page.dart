@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shared/image_utils.dart';
+import '../favorites/beers.dart';
 import '../profile/stats_service.dart';
 import 'feed_service.dart';
 
@@ -33,6 +34,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
   static const _typeOptions = [FeedItemType.post, FeedItemType.review, FeedItemType.tip, FeedItemType.weetje];
   FeedItemType _selectedType = FeedItemType.post;
   double _rating = 4;
+  final _beerNameController = TextEditingController();
+  Beer? _selectedBeer;
 
   Uint8List? _imageBytes;
   String? _imageExt;
@@ -42,6 +45,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   @override
   void dispose() {
     _bodyController.dispose();
+    _beerNameController.dispose();
     super.dispose();
   }
 
@@ -92,11 +96,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (bytes != null) {
         imageUrl = await _feedService.uploadImage(bytes: bytes, fileExt: _imageExt ?? 'jpg');
       }
+      final beerName = _beerNameController.text.trim();
+      final beerId = _selectedType == FeedItemType.review && _selectedBeer?.name == beerName ? _selectedBeer?.id : null;
       await _feedService.createPost(
         body: body,
         itemType: _selectedType,
+        title: _selectedType == FeedItemType.review && beerName.isNotEmpty ? beerName : null,
         imageUrl: imageUrl,
         rating: _selectedType == FeedItemType.review ? _rating : null,
+        beerId: beerId,
       );
       await _recordStreakActivity();
       if (!mounted) return;
@@ -198,6 +206,65 @@ class _CreatePostPageState extends State<CreatePostPage> {
                 ],
               ),
               if (_selectedType == FeedItemType.review) ...[
+                const SizedBox(height: 16),
+                Text('Welk bier?', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Autocomplete<Beer>(
+                  textEditingController: _beerNameController,
+                  optionsBuilder: (value) {
+                    if (value.text.trim().isEmpty) return const Iterable<Beer>.empty();
+                    final query = value.text.toLowerCase();
+                    return beers.where((b) => b.name.toLowerCase().contains(query));
+                  },
+                  displayStringForOption: (b) => b.name,
+                  onSelected: (b) => setState(() => _selectedBeer = b),
+                  fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      onChanged: (text) => setState(() {
+                        if (text.trim() != _selectedBeer?.name) _selectedBeer = null;
+                      }),
+                      style: GoogleFonts.openSans(color: _onSurface, fontSize: 15),
+                      cursorColor: _primary,
+                      decoration: InputDecoration(
+                        hintText: 'Naam van het bier (optioneel)',
+                        hintStyle: GoogleFonts.openSans(color: _onSurfaceVariant),
+                        filled: true,
+                        fillColor: _cardColor,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _outlineVariant.withOpacity(0.6))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _outlineVariant.withOpacity(0.6))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _primary)),
+                      ),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) => Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      color: _cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 220, maxWidth: 400),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option.name, style: GoogleFonts.openSans(color: _onSurface)),
+                              subtitle: option.brewery != null
+                                  ? Text(option.brewery!, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12))
+                                  : null,
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Text('Beoordeling', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),

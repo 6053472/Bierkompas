@@ -145,6 +145,7 @@ class FeedService {
     String? title,
     String? imageUrl,
     double? rating,
+    int? beerId,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) throw FeedException('Je bent niet ingelogd.');
@@ -167,6 +168,7 @@ class FeedService {
         'user_id': user.id,
         'avatar_url': avatarUrl,
         'rating': itemType == FeedItemType.review ? rating : null,
+        'beer_id': beerId,
         'status': 'pending',
       });
     } on PostgrestException catch (e) {
