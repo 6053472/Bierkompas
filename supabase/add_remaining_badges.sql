@@ -235,6 +235,9 @@ grant execute on function public.record_item_favorited(uuid, text, integer) to a
 
 -- 9. log_beer_scan: nu ook 'draft_city' (5 verschillende bieren van dezelfde
 -- brouwerij gelogd) en 'style_count'-badges (century_club / wheel_of_styles).
+-- Drop eerst: Postgres staat geen wijziging van het returntype toe via
+-- create or replace.
+drop function if exists public.log_beer_scan(uuid, integer, text);
 create or replace function public.log_beer_scan(p_user_id uuid, p_beer_id integer, p_brewery text)
 returns table(
     beers_tasted integer,
