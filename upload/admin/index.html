@@ -158,6 +158,7 @@
         <optgroup label="Overzicht &amp; beheer">
           <option value="stats">Statistieken</option>
           <option value="locationbadges">Locatie-badges</option>
+          <option value="messages">Berichten</option>
         </optgroup>
       </select>
     </div>
@@ -211,6 +212,10 @@
       <button data-panel="locationbadges" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">emoji_events</span>
         <span class="font-body text-sm only-desktop-inline">Locatie-badges</span>
+      </button>
+      <button data-panel="messages" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">campaign</span>
+        <span class="font-body text-sm only-desktop-inline">Berichten</span>
       </button>
     </nav>
     <button id="logout-button" class="md:mt-auto shrink-0 flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
@@ -678,6 +683,64 @@
         <div id="locbadge-list" class="flex flex-col gap-2"></div>
       </div>
     </section>
+
+    <!-- Berichten panel -->
+    <section id="panel-messages" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Berichten</h2>
+          <p class="text-on-surface-variant text-sm">
+            Stuur een bericht naar het berichtencentrum van gebruikers -- geen OS-pushmelding, maar een
+            bericht dat ze zien in de app onder Profiel &gt; Berichten.
+          </p>
+        </div>
+
+        <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-5">
+          <div class="grid grid-cols-1 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="msg-title" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Bericht*</span>
+              <textarea id="msg-body" rows="3" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Doelgroep</span>
+              <select id="msg-target" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="all">Iedereen</option>
+                <option value="city">Op woonplaats</option>
+                <option value="favorites">Op favorieten (brouwerij/horeca)</option>
+              </select>
+            </label>
+            <label id="msg-city-wrap" class="hidden flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Woonplaats</span>
+              <input id="msg-city" type="text" placeholder="Bijv. Amsterdam" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Alleen gebruikers die zelf een woonplaats hebben ingesteld in hun profiel krijgen dit bericht.</span>
+            </label>
+            <div id="msg-favorites-wrap" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort</span>
+                <select id="msg-fav-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                  <option value="brewery">Brouwerij</option>
+                  <option value="horeca">Horeca</option>
+                </select>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam</span>
+                <input id="msg-fav-name" type="text" list="msg-fav-options" placeholder="Typ om te zoeken..." class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+                <datalist id="msg-fav-options"></datalist>
+              </label>
+            </div>
+          </div>
+          <p id="msg-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <p id="msg-success" class="hidden text-success text-sm bg-success/10 border border-success/30 rounded-lg px-3 py-2 mt-4"></p>
+          <button id="msg-send" class="mt-4 flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            <span id="msg-send-label">Versturen</span>
+          </button>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -773,6 +836,7 @@
     news: document.getElementById("panel-news"),
     stats: document.getElementById("panel-stats"),
     locationbadges: document.getElementById("panel-locationbadges"),
+    messages: document.getElementById("panel-messages"),
   };
 
   const mobilePanelSelect = document.getElementById("mobile-panel-select");
@@ -874,7 +938,17 @@
             <p class="text-on-surface-variant mt-1">${escapeHtml(event.opening_hours || "")}</p>
           </div>
         </div>
-        <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div id="event-reject-reason-wrap" class="hidden mt-4">
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Reden voor afwijzing (optioneel, de indiener ziet dit)</span>
+            <textarea id="event-reject-reason" rows="2" placeholder="Bijv. locatie onvolledig, probeer het opnieuw met adresgegevens"
+              class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+          </label>
+          <button class="reject-confirm-btn mt-2 w-full py-2 rounded-lg bg-error text-on-error font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            Afwijzing bevestigen
+          </button>
+        </div>
+        <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4 mt-4"></div>
         <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
           <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
             Afwijzen
@@ -885,28 +959,32 @@
         </div>
       </div>`;
 
-    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget));
-    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
-      if (!confirm(`"${event.name}" definitief afwijzen? Dit evenement is nog nooit gepubliceerd en wordt verwijderd.`)) return;
-      moderateEvent(event.id, "reject", e.currentTarget);
+    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget, null));
+    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", () => {
+      document.getElementById("event-reject-reason-wrap").classList.toggle("hidden");
+    });
+    eventsDetailEl.querySelector(".reject-confirm-btn").addEventListener("click", (e) => {
+      const reason = document.getElementById("event-reject-reason").value.trim();
+      moderateEvent(event.id, "reject", e.currentTarget, reason);
     });
   }
 
-  async function moderateEvent(eventId, action, buttonEl) {
-    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+  async function moderateEvent(eventId, action, buttonEl, reason) {
+    const otherBtn = eventsDetailEl.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
     buttonEl.disabled = true;
-    otherBtn.disabled = true;
+    if (otherBtn) otherBtn.disabled = true;
     const originalLabel = buttonEl.innerHTML;
     buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
 
     const rpcName = action === "approve" ? "approve_event" : "reject_event";
-    const { error } = await client.rpc(rpcName, { p_event_id: eventId });
+    const params = action === "approve" ? { p_event_id: eventId } : { p_event_id: eventId, p_reason: reason || null };
+    const { error } = await client.rpc(rpcName, params);
     if (error) {
       const errorBox = document.getElementById("event-action-error");
       errorBox.textContent = `Actie mislukt: ${error.message}`;
       errorBox.classList.remove("hidden");
       buttonEl.disabled = false;
-      otherBtn.disabled = false;
+      if (otherBtn) otherBtn.disabled = false;
       buttonEl.innerHTML = originalLabel;
       return;
     }
@@ -2141,6 +2219,94 @@
       locbadgeListEl.appendChild(item);
     });
   }
+
+  // ---------- Berichten ----------
+  const msgTitleEl = document.getElementById("msg-title");
+  const msgBodyEl = document.getElementById("msg-body");
+  const msgTargetEl = document.getElementById("msg-target");
+  const msgCityWrapEl = document.getElementById("msg-city-wrap");
+  const msgCityEl = document.getElementById("msg-city");
+  const msgFavoritesWrapEl = document.getElementById("msg-favorites-wrap");
+  const msgFavTypeEl = document.getElementById("msg-fav-type");
+  const msgFavNameEl = document.getElementById("msg-fav-name");
+  const msgFavOptionsEl = document.getElementById("msg-fav-options");
+  const msgErrorEl = document.getElementById("msg-error");
+  const msgSuccessEl = document.getElementById("msg-success");
+  const msgSendBtn = document.getElementById("msg-send");
+  const msgSendLabelEl = document.getElementById("msg-send-label");
+
+  function renderMsgFavOptions() {
+    const options = locbadgeOptionsByType[msgFavTypeEl.value] || new Map();
+    msgFavOptionsEl.innerHTML = "";
+    for (const { title } of options.values()) {
+      const opt = document.createElement("option");
+      opt.value = title;
+      msgFavOptionsEl.appendChild(opt);
+    }
+  }
+
+  msgTargetEl.addEventListener("change", () => {
+    msgCityWrapEl.classList.toggle("hidden", msgTargetEl.value !== "city");
+    msgFavoritesWrapEl.classList.toggle("hidden", msgTargetEl.value !== "favorites");
+    if (msgTargetEl.value === "favorites") renderMsgFavOptions();
+  });
+  msgFavTypeEl.addEventListener("change", renderMsgFavOptions);
+
+  msgSendBtn.addEventListener("click", async () => {
+    msgErrorEl.classList.add("hidden");
+    msgSuccessEl.classList.add("hidden");
+
+    const title = msgTitleEl.value.trim();
+    const body = msgBodyEl.value.trim();
+    if (!title || !body) {
+      msgErrorEl.textContent = "Titel en bericht zijn verplicht.";
+      msgErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    const target = msgTargetEl.value;
+    const params = { p_title: title, p_body: body, p_target: target };
+
+    if (target === "city") {
+      const city = msgCityEl.value.trim();
+      if (!city) {
+        msgErrorEl.textContent = "Vul een woonplaats in.";
+        msgErrorEl.classList.remove("hidden");
+        return;
+      }
+      params.p_city = city;
+    } else if (target === "favorites") {
+      const favType = msgFavTypeEl.value;
+      const favName = msgFavNameEl.value.trim();
+      const match = (locbadgeOptionsByType[favType] || new Map()).get(favName.toLowerCase());
+      if (!match) {
+        msgErrorEl.textContent = `Geen ${favType === "brewery" ? "brouwerij" : "horecagelegenheid"} gevonden met die naam. Kies een naam uit de suggesties.`;
+        msgErrorEl.classList.remove("hidden");
+        return;
+      }
+      params.p_item_type = favType;
+      params.p_item_id = match.id;
+    }
+
+    msgSendBtn.disabled = true;
+    msgSendLabelEl.innerHTML = '<span class="spinner"></span> Versturen...';
+
+    const { data, error } = await client.rpc("send_admin_notification", params);
+
+    msgSendBtn.disabled = false;
+    msgSendLabelEl.textContent = "Versturen";
+
+    if (error) {
+      msgErrorEl.textContent = `Versturen mislukt: ${error.message}. Is supabase/add_notifications.sql al uitgevoerd?`;
+      msgErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    msgSuccessEl.textContent = `Bericht verstuurd naar ${data} ${data === 1 ? "gebruiker" : "gebruikers"}.`;
+    msgSuccessEl.classList.remove("hidden");
+    msgTitleEl.value = "";
+    msgBodyEl.value = "";
+  });
 
   // Al ingelogd? (bv. na een refresh) -- meteen doorschakelen als het een beheerder is.
   (async () => {
