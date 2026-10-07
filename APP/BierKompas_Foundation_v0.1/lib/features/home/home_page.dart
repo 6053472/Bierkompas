@@ -1,3 +1,4 @@
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -25,7 +26,6 @@ import 'vinden_proeven_page.dart';
 import '../feed/create_post_page.dart';
 import '../news/news_article_page.dart';
 
-// Tab-indexen van de onderste navigatiebalk.
 const _tabAgenda = 1;
 const _tabFavorites = 2;
 const _tabMap = 3;
@@ -279,10 +279,12 @@ class DiscoveryContentPage extends StatefulWidget {
   });
 
   @override
-  State<DiscoveryContentPage> createState() => _DiscoveryContentPageState();
+  State<DiscoveryContentPage> createState() =>
+      _DiscoveryContentPageState();
 }
 
-class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
+class _DiscoveryContentPageState
+    extends State<DiscoveryContentPage> {
   final _favoritesService = FavoritesService();
   final _statsService = StatsService();
 
@@ -297,7 +299,6 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
   static const _feedPrefetchDistance = 5;
 
-  // NIEUWS
   final List<Map<String, dynamic>> _newsArticles = [];
   bool _newsLoading = true;
 
@@ -521,8 +522,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 Supabase.instance.client.auth.currentUser?.id;
 
         return Padding(
-          padding:
-              const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 16),
           child: FeedCard(
             item: item,
             onTap: switch (item.type) {
@@ -585,8 +585,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       _scheduleNextFeedPage();
 
       return const Padding(
-        padding:
-            EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: 16),
         child: Center(
           child: CircularProgressIndicator(
             color: _primary,
@@ -596,8 +595,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     }
 
     return Padding(
-      padding:
-          const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Text(
         _feedItems.isEmpty
             ? 'Nog geen berichten in de feed.'
@@ -648,9 +646,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
       widget.onActivityRecorded?.call();
 
-      if (result
-              .newlyEarnedBadgeTitles
-              .isNotEmpty &&
+      if (result.newlyEarnedBadgeTitles.isNotEmpty &&
           mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -712,6 +708,26 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
+  void _openNews() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const NewsArticlePage(),
+      ),
+    );
+  }
+
+  void _openNewsArticle(
+    Map<String, dynamic> article,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NewsDetailPage(
+          article: article,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -768,23 +784,18 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
-  // =========================
-  // NIEUWSRUBRIEK
-  // =========================
-
   Widget _buildNewsSection() {
-    if (_newsLoading) {
-      return Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          _sectionLabel('Nieuws'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Nieuws'),
+
+        if (_newsLoading)
           Container(
-            height: 100,
+            height: 90,
             decoration: BoxDecoration(
               color: _surfaceContainer,
-              borderRadius:
-                  BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _outlineVariant,
               ),
@@ -794,84 +805,119 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 color: _primary,
               ),
             ),
-          ),
-        ],
-      );
-    }
-
-    if (_newsArticles.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Nieuws'),
-
-        if (_newsArticles.isNotEmpty)
+          )
+        else if (_newsArticles.isEmpty)
+          GestureDetector(
+            onTap: _openNews,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: _surfaceContainer,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _outlineVariant,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.newspaper_outlined,
+                      color: _primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Biernieuws',
+                          style:
+                              GoogleFonts.playfairDisplay(
+                            color: _onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Bekijk de nieuwste bierberichten.',
+                          style: GoogleFonts.openSans(
+                            color: _onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: _primary,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else ...[
           _buildFeaturedNewsCard(
             _newsArticles.first,
           ),
 
-        if (_newsArticles.length > 1) ...[
+          if (_newsArticles.length > 1) ...[
+            const SizedBox(height: 12),
+            ..._newsArticles
+                .skip(1)
+                .map(_buildSmallNewsCard),
+          ],
+
           const SizedBox(height: 12),
-          ..._newsArticles
-              .skip(1)
-              .map(_buildSmallNewsCard),
-        ],
 
-        const SizedBox(height: 12),
-
-        GestureDetector(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    const NewsArticlePage(),
+          GestureDetector(
+            onTap: _openNews,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                vertical: 14,
+                horizontal: 16,
               ),
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(
-              vertical: 14,
-              horizontal: 16,
-            ),
-            decoration: BoxDecoration(
-              color:
-                  _primary.withOpacity(0.08),
-              borderRadius:
-                  BorderRadius.circular(12),
-              border: Border.all(
-                color:
-                    _primary.withOpacity(0.3),
+              decoration: BoxDecoration(
+                color: _primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _primary.withOpacity(0.3),
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Bekijk al het nieuws',
-                    style:
-                        GoogleFonts.openSans(
-                      color: _primary,
-                      fontSize: 14,
-                      fontWeight:
-                          FontWeight.w700,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Bekijk al het nieuws',
+                      style: GoogleFonts.openSans(
+                        color: _primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const Icon(
-                  Icons.arrow_forward,
-                  color: _primary,
-                  size: 18,
-                ),
-              ],
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: _primary,
+                    size: 18,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -883,22 +929,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         article['foto_url'] as String?;
 
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                const NewsArticlePage(),
-          ),
-        );
-      },
+      onTap: () => _openNewsArticle(article),
       child: Container(
         decoration: BoxDecoration(
           color: _surfaceContainer,
-          borderRadius:
-              BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-                _primary.withOpacity(0.25),
+            color: _primary.withOpacity(0.25),
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -906,16 +943,14 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           crossAxisAlignment:
               CrossAxisAlignment.start,
           children: [
-            if (image != null &&
-                image.isNotEmpty)
+            if (image != null && image.isNotEmpty)
               Image.network(
                 image,
                 width: double.infinity,
                 height: 180,
                 fit: BoxFit.cover,
                 webHtmlElementStrategy:
-                    WebHtmlElementStrategy
-                        .fallback,
+                    WebHtmlElementStrategy.fallback,
                 errorBuilder:
                     (_, __, ___) =>
                         _newsImagePlaceholder(),
@@ -924,20 +959,17 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               _newsImagePlaceholder(),
 
             Padding(
-              padding:
-                  const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment:
                     CrossAxisAlignment.start,
                 children: [
                   Text(
                     'NIEUWS VAN DE DAG',
-                    style:
-                        GoogleFonts.openSans(
+                    style: GoogleFonts.openSans(
                       color: _primary,
                       fontSize: 10,
-                      fontWeight:
-                          FontWeight.w700,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: 1.8,
                     ),
                   ),
@@ -947,14 +979,12 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                   Text(
                     article['titel'] ?? '',
                     maxLines: 2,
-                    overflow:
-                        TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                     style:
                         GoogleFonts.playfairDisplay(
                       color: _onSurface,
                       fontSize: 22,
-                      fontWeight:
-                          FontWeight.w700,
+                      fontWeight: FontWeight.w700,
                       height: 1.2,
                     ),
                   ),
@@ -962,15 +992,11 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                   const SizedBox(height: 8),
 
                   Text(
-                    article['samenvatting'] ??
-                        '',
+                    article['samenvatting'] ?? '',
                     maxLines: 3,
-                    overflow:
-                        TextOverflow.ellipsis,
-                    style:
-                        GoogleFonts.openSans(
-                      color:
-                          _onSurfaceVariant,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.openSans(
+                      color: _onSurfaceVariant,
                       fontSize: 13,
                       height: 1.5,
                     ),
@@ -982,17 +1008,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                     children: [
                       Text(
                         'Lees meer',
-                        style:
-                            GoogleFonts.openSans(
+                        style: GoogleFonts.openSans(
                           color: _primary,
                           fontSize: 13,
-                          fontWeight:
-                              FontWeight.w700,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(
-                        width: 5,
-                      ),
+                      const SizedBox(width: 5),
                       const Icon(
                         Icons.arrow_forward,
                         color: _primary,
@@ -1016,21 +1038,12 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         article['foto_url'] as String?;
 
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                const NewsArticlePage(),
-          ),
-        );
-      },
+      onTap: () => _openNewsArticle(article),
       child: Container(
-        margin:
-            const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: _surfaceContainer,
-          borderRadius:
-              BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _outlineVariant,
           ),
@@ -1038,16 +1051,14 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
-            if (image != null &&
-                image.isNotEmpty)
+            if (image != null && image.isNotEmpty)
               Image.network(
                 image,
                 width: 100,
                 height: 110,
                 fit: BoxFit.cover,
                 webHtmlElementStrategy:
-                    WebHtmlElementStrategy
-                        .fallback,
+                    WebHtmlElementStrategy.fallback,
                 errorBuilder:
                     (_, __, ___) =>
                         _smallNewsPlaceholder(),
@@ -1057,20 +1068,17 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
             Expanded(
               child: Padding(
-                padding:
-                    const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment:
                       CrossAxisAlignment.start,
                   children: [
                     Text(
                       'BIERNIEUWS',
-                      style:
-                          GoogleFonts.openSans(
+                      style: GoogleFonts.openSans(
                         color: _primary,
                         fontSize: 9,
-                        fontWeight:
-                            FontWeight.w700,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -1080,14 +1088,12 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                     Text(
                       article['titel'] ?? '',
                       maxLines: 2,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style:
                           GoogleFonts.playfairDisplay(
                         color: _onSurface,
                         fontSize: 17,
-                        fontWeight:
-                            FontWeight.w700,
+                        fontWeight: FontWeight.w700,
                         height: 1.2,
                       ),
                     ),
@@ -1095,15 +1101,11 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                     const SizedBox(height: 5),
 
                     Text(
-                      article['samenvatting'] ??
-                          '',
+                      article['samenvatting'] ?? '',
                       maxLines: 2,
-                      overflow:
-                          TextOverflow.ellipsis,
-                      style:
-                          GoogleFonts.openSans(
-                        color:
-                            _onSurfaceVariant,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.openSans(
+                        color: _onSurfaceVariant,
                         fontSize: 11,
                         height: 1.4,
                       ),
@@ -1148,15 +1150,10 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
-  // =========================
-  // HEADER
-  // =========================
-
   Widget _buildHeader() {
     return Container(
       color: _background,
-      padding:
-          const EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: 20,
         vertical: 16,
       ),
@@ -1165,38 +1162,32 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           SizedBox(
             width: 72,
             child: Align(
-              alignment:
-                  Alignment.centerLeft,
+              alignment: Alignment.centerLeft,
               child: widget.streak > 0
                   ? Container(
                       padding:
-                          const EdgeInsets
-                              .symmetric(
+                          const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 6,
                       ),
-                      decoration:
-                          BoxDecoration(
-                        color: _primary
-                            .withOpacity(0.15),
+                      decoration: BoxDecoration(
+                        color:
+                            _primary.withOpacity(0.15),
                         borderRadius:
-                            BorderRadius
-                                .circular(20),
+                            BorderRadius.circular(20),
                         border: Border.all(
-                          color: _primary
-                              .withOpacity(0.4),
+                          color:
+                              _primary.withOpacity(0.4),
                         ),
                       ),
                       child: Text(
                         '🔥 ${widget.streak}',
                         maxLines: 1,
                         softWrap: false,
-                        style:
-                            GoogleFonts.openSans(
+                        style: GoogleFonts.openSans(
                           color: _primary,
                           fontSize: 13,
-                          fontWeight:
-                              FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     )
@@ -1218,8 +1209,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                         GoogleFonts.playfairDisplay(
                       color: _primary,
                       fontSize: 20,
-                      fontWeight:
-                          FontWeight.w700,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -1230,8 +1220,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           SizedBox(
             width: 72,
             child: Align(
-              alignment:
-                  Alignment.centerRight,
+              alignment: Alignment.centerRight,
               child: ProfileAvatarButton(
                 onTap: () =>
                     _goTo(_tabProfile),
@@ -1251,12 +1240,10 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       children: [
         Text(
           'Welkom, Bierliefhebber!',
-          style:
-              GoogleFonts.playfairDisplay(
+          style: GoogleFonts.playfairDisplay(
             color: _onSurface,
             fontSize: 32,
-            fontWeight:
-                FontWeight.w700,
+            fontWeight: FontWeight.w700,
             height: 40 / 32,
             letterSpacing: -0.32,
           ),
@@ -1272,8 +1259,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           child: Text(
             'Ontdek de fijnste brouwsels en de meest exclusieve proeverijen in de buurt.',
             style: GoogleFonts.openSans(
-              color:
-                  _onSurfaceVariant,
+              color: _onSurfaceVariant,
               fontSize: 16,
               height: 1.5,
             ),
@@ -1287,10 +1273,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               _goTo(_tabFavorites),
           child: Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.all(24),
-            decoration:
-                _speakeasyDecoration(
+            padding: const EdgeInsets.all(24),
+            decoration: _speakeasyDecoration(
               borderColor:
                   _primary.withOpacity(0.3),
               borderWidth: 2,
@@ -1298,14 +1282,12 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
             ),
             child: Text(
               '❤️ WIE NEEM JIJ VANDAAG MEE VOOR EEN PROEFMOMENTJE',
-              textAlign:
-                  TextAlign.center,
+              textAlign: TextAlign.center,
               style:
                   GoogleFonts.playfairDisplay(
                 color: _primary,
                 fontSize: 20,
-                fontWeight:
-                    FontWeight.w600,
+                fontWeight: FontWeight.w600,
                 height: 28 / 20,
                 letterSpacing: -0.5,
               ),
@@ -1417,15 +1399,12 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         ),
       ),
       child: Container(
-        padding:
-            const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color:
-              _background.withOpacity(0.6),
+          color: _background.withOpacity(0.6),
           shape: BoxShape.circle,
           border: Border.all(
-            color:
-                _primary.withOpacity(0.3),
+            color: _primary.withOpacity(0.3),
           ),
         ),
         child: const Icon(
@@ -1450,10 +1429,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
       child: AspectRatio(
         aspectRatio: 1,
         child: Container(
-          decoration:
-              _speakeasyDecoration(),
-          clipBehavior:
-              Clip.antiAlias,
+          decoration: _speakeasyDecoration(),
+          clipBehavior: Clip.antiAlias,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -1463,8 +1440,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 child: Icon(
                   backgroundIcon,
                   size: 96,
-                  color: _onSurface
-                      .withOpacity(0.1),
+                  color:
+                      _onSurface.withOpacity(0.1),
                 ),
               ),
 
@@ -1476,24 +1453,20 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
                 ),
 
               Padding(
-                padding:
-                    const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment:
                       CrossAxisAlignment.start,
                   mainAxisAlignment:
-                      MainAxisAlignment
-                          .spaceBetween,
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
                       width: 48,
                       height: 48,
-                      decoration:
-                          BoxDecoration(
-                        color: _primary
-                            .withOpacity(0.1),
-                        shape:
-                            BoxShape.circle,
+                      decoration: BoxDecoration(
+                        color:
+                            _primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
                       child: Icon(
                         icon,
@@ -1504,34 +1477,27 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
                     Column(
                       crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
-                      mainAxisSize:
-                          MainAxisSize.min,
+                          CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           title,
                           style:
                               GoogleFonts.playfairDisplay(
-                            color:
-                                _onSurface,
+                            color: _onSurface,
                             fontSize: 20,
-                            fontWeight:
-                                FontWeight.w600,
+                            fontWeight: FontWeight.w600,
                             height: 1.25,
                           ),
                         ),
-                        const SizedBox(
-                            height: 4),
+                        const SizedBox(height: 4),
                         Text(
                           subtitle,
                           style:
                               GoogleFonts.openSans(
-                            color:
-                                _onSurfaceVariant,
+                            color: _onSurfaceVariant,
                             fontSize: 10,
-                            letterSpacing:
-                                0.5,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
@@ -1548,17 +1514,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
 
   Widget _sectionLabel(String label) {
     return Padding(
-      padding:
-          const EdgeInsets.only(
-        bottom: 16,
-      ),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Text(
         label.toUpperCase(),
         style: GoogleFonts.openSans(
           color: _primary,
           fontSize: 14,
-          fontWeight:
-              FontWeight.w600,
+          fontWeight: FontWeight.w600,
           letterSpacing: 2.8,
         ),
       ),
@@ -1566,26 +1528,21 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
   }
 
   Widget _buildNewPostButton() {
-    final shape =
-        RoundedRectangleBorder(
-      borderRadius:
-          BorderRadius.circular(12),
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
       side: BorderSide(
-        color:
-            _primary.withOpacity(0.4),
+        color: _primary.withOpacity(0.4),
       ),
     );
 
     return Material(
-      color:
-          _primary.withOpacity(0.08),
+      color: _primary.withOpacity(0.08),
       shape: shape,
       child: InkWell(
         customBorder: shape,
         onTap: _openCreatePost,
         child: Padding(
-          padding:
-              const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               const Icon(
@@ -1596,12 +1553,10 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               Expanded(
                 child: Text(
                   'Deel iets met de gemeenschap',
-                  style:
-                      GoogleFonts.openSans(
+                  style: GoogleFonts.openSans(
                     color: _onSurface,
                     fontSize: 15,
-                    fontWeight:
-                        FontWeight.w600,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1621,15 +1576,10 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     String label,
     VoidCallback onTap,
   ) {
-    final shape =
-        RoundedRectangleBorder(
-      borderRadius:
-          BorderRadius.circular(12),
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
       side: BorderSide(
-        color:
-            _outlineVariant.withOpacity(
-          0.3,
-        ),
+        color: _outlineVariant.withOpacity(0.3),
       ),
     );
 
@@ -1640,20 +1590,16 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
         customBorder: shape,
         onTap: onTap,
         child: Padding(
-          padding:
-              const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
                 width: 40,
                 height: 40,
-                decoration:
-                    BoxDecoration(
+                decoration: BoxDecoration(
                   color:
-                      _secondaryContainer
-                          .withOpacity(0.3),
-                  shape:
-                      BoxShape.circle,
+                      _secondaryContainer.withOpacity(0.3),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
@@ -1664,8 +1610,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               Expanded(
                 child: Text(
                   label,
-                  style:
-                      GoogleFonts.openSans(
+                  style: GoogleFonts.openSans(
                     color: _onSurface,
                     fontSize: 16,
                   ),
@@ -1673,8 +1618,7 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
               ),
               const Icon(
                 Icons.chevron_right,
-                color:
-                    _onSurfaceVariant,
+                color: _onSurfaceVariant,
               ),
             ],
           ),
@@ -1683,10 +1627,8 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     );
   }
 
-  BoxShadow get _amberGlow =>
-      BoxShadow(
-        color:
-            _primary.withOpacity(0.1),
+  BoxShadow get _amberGlow => BoxShadow(
+        color: _primary.withOpacity(0.1),
         blurRadius: 25,
       );
 
@@ -1696,23 +1638,15 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
     bool glow = false,
   }) {
     return BoxDecoration(
-      gradient:
-          const LinearGradient(
-        begin: Alignment(
-          -0.57,
-          -0.82,
-        ),
-        end: Alignment(
-          0.57,
-          0.82,
-        ),
+      gradient: const LinearGradient(
+        begin: Alignment(-0.57, -0.82),
+        end: Alignment(0.57, 0.82),
         colors: [
           Color(0xFF2C221C),
           _background,
         ],
       ),
-      borderRadius:
-          BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
         color:
             borderColor ??
@@ -1738,15 +1672,13 @@ class _DiscoveryContentPageState extends State<DiscoveryContentPage> {
           (context, error, stackTrace) =>
               fallback ??
               Container(
-                color:
-                    _surfaceContainer,
+                color: _surfaceContainer,
               ),
     );
   }
 }
 
-class _BottomNavItem
-    extends StatelessWidget {
+class _BottomNavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isSelected;
@@ -1760,9 +1692,7 @@ class _BottomNavItem
   });
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     final color = isSelected
         ? const Color(0xFFD4B28C)
         : const Color(0xFF9E8A7D);
@@ -1770,8 +1700,7 @@ class _BottomNavItem
     return GestureDetector(
       onTap: onTap,
       child: Column(
-        mainAxisSize:
-            MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
@@ -1784,8 +1713,7 @@ class _BottomNavItem
             style: GoogleFonts.inter(
               color: color,
               fontSize: 9,
-              fontWeight:
-                  FontWeight.bold,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -1793,3 +1721,4 @@ class _BottomNavItem
     );
   }
 }
+

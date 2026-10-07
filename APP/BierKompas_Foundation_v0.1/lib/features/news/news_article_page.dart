@@ -30,15 +30,19 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
   }
 
   Future<void> _loadNews() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final data = await _supabase
           .from('news_articles')
-          .select()
+          .select(
+            'id, titel, samenvatting, inhoud, foto_url, gepubliceerd_op, status',
+          )
           .eq('status', 'gepubliceerd')
           .order('gepubliceerd_op', ascending: false);
 
@@ -49,6 +53,8 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
         _loading = false;
       });
     } catch (e) {
+      debugPrint('Fout bij ophalen nieuws: $e');
+
       if (!mounted) return;
 
       setState(() {
@@ -61,15 +67,18 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
   void _openArticle(Map<String, dynamic> article) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _NewsDetailPage(article: article),
+        builder: (_) => NewsDetailPage(
+          article: article,
+        ),
       ),
     );
   }
 
-  String _formatDate(String? value) {
-    if (value == null || value.isEmpty) return '';
+  String _formatDate(dynamic value) {
+    if (value == null) return '';
 
-    final date = DateTime.tryParse(value);
+    final date = DateTime.tryParse(value.toString());
+
     if (date == null) return '';
 
     return '${date.day.toString().padLeft(2, '0')}-'
@@ -106,14 +115,18 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
   Widget _buildBody() {
     if (_loading) {
       return const Center(
-        child: CircularProgressIndicator(color: _primary),
+        child: CircularProgressIndicator(
+          color: _primary,
+        ),
       );
     }
 
     if (_error != null) {
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
+          const SizedBox(height: 100),
           Text(
             'Nieuws kon niet worden geladen.',
             textAlign: TextAlign.center,
@@ -137,9 +150,13 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
               onPressed: _loadNews,
               style: OutlinedButton.styleFrom(
                 foregroundColor: _primary,
-                side: const BorderSide(color: _primary),
+                side: const BorderSide(
+                  color: _primary,
+                ),
               ),
-              child: const Text('Opnieuw proberen'),
+              child: const Text(
+                'Opnieuw proberen',
+              ),
             ),
           ),
         ],
@@ -148,10 +165,11 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
 
     if (_articles.isEmpty) {
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
           const SizedBox(height: 100),
-          Icon(
+          const Icon(
             Icons.newspaper_outlined,
             color: _secondary,
             size: 60,
@@ -183,7 +201,13 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
     final rest = _articles.skip(1).toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        30,
+      ),
       children: [
         Text(
           'NIEUWS VAN DE DAG',
@@ -214,8 +238,10 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
     );
   }
 
-  Widget _buildFeaturedCard(Map<String, dynamic> article) {
-    final image = article['foto_url'] as String?;
+  Widget _buildFeaturedCard(
+    Map<String, dynamic> article,
+  ) {
+    final image = article['foto_url']?.toString();
 
     return GestureDetector(
       onTap: () => _openArticle(article),
@@ -223,7 +249,9 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
         decoration: BoxDecoration(
           color: _card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _border),
+          border: Border.all(
+            color: _border,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -235,17 +263,29 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
                 height: 210,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                errorBuilder: (
+                  _,
+                  __,
+                  ___,
+                ) =>
+                    _imagePlaceholder(
+                  height: 210,
+                ),
               )
             else
-              _imagePlaceholder(height: 210),
+              _imagePlaceholder(
+                height: 210,
+              ),
             Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _formatDate(article['gepubliceerd_op']),
+                    _formatDate(
+                      article['gepubliceerd_op'],
+                    ),
                     style: GoogleFonts.openSans(
                       color: _primary,
                       fontSize: 12,
@@ -254,8 +294,9 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    article['titel'] ?? '',
-                    style: GoogleFonts.playfairDisplay(
+                    article['titel']?.toString() ?? '',
+                    style:
+                        GoogleFonts.playfairDisplay(
                       color: _text,
                       fontSize: 25,
                       fontWeight: FontWeight.w700,
@@ -264,7 +305,9 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    article['samenvatting'] ?? '',
+                    article['samenvatting']
+                            ?.toString() ??
+                        '',
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.openSans(
@@ -301,21 +344,28 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
     );
   }
 
-  Widget _buildNewsCard(Map<String, dynamic> article) {
-    final image = article['foto_url'] as String?;
+  Widget _buildNewsCard(
+    Map<String, dynamic> article,
+  ) {
+    final image = article['foto_url']?.toString();
 
     return GestureDetector(
       onTap: () => _openArticle(article),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(
+          bottom: 14,
+        ),
         decoration: BoxDecoration(
           color: _card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border),
+          border: Border.all(
+            color: _border,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             if (image != null && image.isNotEmpty)
               Image.network(
@@ -323,7 +373,12 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
                 width: 115,
                 height: 135,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _imagePlaceholder(
+                errorBuilder: (
+                  _,
+                  __,
+                  ___,
+                ) =>
+                    _imagePlaceholder(
                   width: 115,
                   height: 135,
                 ),
@@ -337,10 +392,13 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _formatDate(article['gepubliceerd_op']),
+                      _formatDate(
+                        article['gepubliceerd_op'],
+                      ),
                       style: GoogleFonts.openSans(
                         color: _primary,
                         fontSize: 11,
@@ -349,10 +407,11 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      article['titel'] ?? '',
+                      article['titel']?.toString() ?? '',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.playfairDisplay(
+                      style:
+                          GoogleFonts.playfairDisplay(
                         color: _text,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -360,7 +419,9 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      article['samenvatting'] ?? '',
+                      article['samenvatting']
+                              ?.toString() ??
+                          '',
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.openSans(
@@ -386,7 +447,7 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
     return Container(
       width: width,
       height: height ?? 180,
-      color: _surfaceColor,
+      color: const Color(0xFF3C3028),
       child: const Center(
         child: Icon(
           Icons.newspaper_outlined,
@@ -396,20 +457,33 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
       ),
     );
   }
-
-  Color get _surfaceColor => const Color(0xFF3C3028);
 }
 
-class _NewsDetailPage extends StatelessWidget {
+class NewsDetailPage extends StatelessWidget {
   final Map<String, dynamic> article;
 
-  const _NewsDetailPage({
+  const NewsDetailPage({
+    super.key,
     required this.article,
   });
 
+  String _formatDate(dynamic value) {
+    if (value == null) return '';
+
+    final date = DateTime.tryParse(
+      value.toString(),
+    );
+
+    if (date == null) return '';
+
+    return '${date.day.toString().padLeft(2, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final image = article['foto_url'] as String?;
+    final image = article['foto_url']?.toString();
 
     return Scaffold(
       backgroundColor: _background,
@@ -417,11 +491,25 @@ class _NewsDetailPage extends StatelessWidget {
         backgroundColor: _background,
         foregroundColor: _text,
         elevation: 0,
+        title: Text(
+          'Nieuws',
+          style: GoogleFonts.playfairDisplay(
+            color: _text,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+        padding: const EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          30,
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             if (image != null && image.isNotEmpty)
               ClipRRect(
@@ -431,10 +519,18 @@ class _NewsDetailPage extends StatelessWidget {
                   width: double.infinity,
                   height: 230,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox(),
+                  errorBuilder: (
+                    _,
+                    __,
+                    ___,
+                  ) =>
+                      _detailImagePlaceholder(),
                 ),
               ),
-            const SizedBox(height: 20),
+
+            if (image != null && image.isNotEmpty)
+              const SizedBox(height: 20),
+
             Text(
               'BIERNIEUWS',
               style: GoogleFonts.openSans(
@@ -444,9 +540,11 @@ class _NewsDetailPage extends StatelessWidget {
                 letterSpacing: 2,
               ),
             ),
+
             const SizedBox(height: 8),
+
             Text(
-              article['titel'] ?? '',
+              article['titel']?.toString() ?? '',
               style: GoogleFonts.playfairDisplay(
                 color: _text,
                 fontSize: 30,
@@ -454,17 +552,23 @@ class _NewsDetailPage extends StatelessWidget {
                 height: 1.15,
               ),
             ),
+
             const SizedBox(height: 10),
+
             Text(
-              article['gepubliceerd_op'] ?? '',
+              _formatDate(
+                article['gepubliceerd_op'],
+              ),
               style: GoogleFonts.openSans(
                 color: _secondary,
                 fontSize: 12,
               ),
             ),
+
             const SizedBox(height: 22),
+
             Text(
-              article['samenvatting'] ?? '',
+              article['samenvatting']?.toString() ?? '',
               style: GoogleFonts.openSans(
                 color: _text,
                 fontSize: 16,
@@ -472,9 +576,11 @@ class _NewsDetailPage extends StatelessWidget {
                 height: 1.5,
               ),
             ),
+
             const SizedBox(height: 22),
+
             Text(
-              article['inhoud'] ?? '',
+              article['inhoud']?.toString() ?? '',
               style: GoogleFonts.openSans(
                 color: _secondary,
                 fontSize: 15,
@@ -482,6 +588,21 @@ class _NewsDetailPage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailImagePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 230,
+      color: const Color(0xFF3C3028),
+      child: const Center(
+        child: Icon(
+          Icons.newspaper_outlined,
+          color: _secondary,
+          size: 50,
         ),
       ),
     );
