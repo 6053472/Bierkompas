@@ -46,7 +46,10 @@ class FeedCard extends StatelessWidget {
       FeedItemType.evenement => ('EVENEMENT', Icons.event_outlined),
       FeedItemType.post => ('POST', Icons.chat_bubble_outline),
     };
-    final imageUrl = item.imageUrl;
+    // Elke Biertip krijgt altijd dezelfde vaste afbeelding (los van wat er
+    // eventueel in image_url staat), zodat biertips er consistent uitzien.
+    final isTip = item.type == FeedItemType.tip;
+    final imageUrl = isTip ? null : item.imageUrl;
     final footer = _buildFooter();
 
     final card = Container(
@@ -59,7 +62,12 @@ class FeedCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (imageUrl != null)
+          if (isTip)
+            const AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image(image: AssetImage('assets/feed/biertip.png'), fit: BoxFit.cover),
+            )
+          else if (imageUrl != null)
             AspectRatio(
               aspectRatio: 16 / 9,
               child: Image.network(
