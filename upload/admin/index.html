@@ -153,6 +153,7 @@
           <option value="bieren">Bieren &amp; barcodes</option>
           <option value="pairings">Bier &amp; Spijs</option>
           <option value="videos">Video's</option>
+          <option value="news">Nieuws</option>
         </optgroup>
         <optgroup label="Overzicht &amp; beheer">
           <option value="stats">Statistieken</option>
@@ -196,6 +197,10 @@
       <button data-panel="videos" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">smart_display</span>
         <span class="font-body text-sm only-desktop-inline">Video's</span>
+      </button>
+      <button data-panel="news" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">newspaper</span>
+        <span class="font-body text-sm only-desktop-inline">Nieuws</span>
       </button>
 
       <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Overzicht &amp; beheer</p>
@@ -560,6 +565,56 @@
       </div>
     </section>
 
+    <!-- Nieuws panel -->
+    <section id="panel-news" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Nieuws</h2>
+            <p class="text-on-surface-variant text-sm">Artikelen voor de nieuwsrubriek. Een artikel is pas zichtbaar in de app na publiceren.</p>
+          </div>
+          <button id="news-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw artikel
+          </button>
+        </div>
+
+        <div id="news-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="news-form-title" class="font-display text-lg text-on-surface mb-4">Nieuw artikel</h3>
+          <div class="grid grid-cols-1 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="news-new-titel" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Samenvatting*</span>
+              <textarea id="news-new-samenvatting" rows="2" placeholder="Korte samenvatting voor op de Ontdek-pagina" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Inhoud*</span>
+              <textarea id="news-new-inhoud" rows="6" placeholder="Volledige tekst van het artikel" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span>
+              <input id="news-new-foto" type="text" placeholder="https://.../afbeelding.jpg" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand, geen link naar een webpagina.</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="news-new-published" type="checkbox" class="rounded accent-primary"/> Direct publiceren
+            </label>
+          </div>
+          <p id="news-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="news-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="news-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="news-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="news-list" class="flex flex-col gap-2 mt-4"></div>
+      </div>
+    </section>
+
     <!-- Statistieken panel -->
     <section id="panel-stats" class="panel p-6 md:p-10 hidden fade-in">
       <div class="max-w-6xl mx-auto">
@@ -692,6 +747,7 @@
     loadFeed();
     loadPairings();
     loadVideos();
+    loadNews();
     loadStats();
     loadLocationBadgeOptions();
   }
@@ -714,6 +770,7 @@
     feed: document.getElementById("panel-feed"),
     pairings: document.getElementById("panel-pairings"),
     videos: document.getElementById("panel-videos"),
+    news: document.getElementById("panel-news"),
     stats: document.getElementById("panel-stats"),
     locationbadges: document.getElementById("panel-locationbadges"),
   };
@@ -1750,6 +1807,148 @@
       });
 
       videosListEl.appendChild(card);
+    });
+  }
+
+  // ---------- Nieuw artikel toevoegen ----------
+  const newsNewToggle = document.getElementById("news-new-toggle");
+  const newsNewForm = document.getElementById("news-new-form");
+  const newsNewError = document.getElementById("news-new-error");
+  const newsNewSaveBtn = document.getElementById("news-new-save");
+  const newsNewSaveLabel = document.getElementById("news-new-save-label");
+
+  newsNewToggle.addEventListener("click", () => newsNewForm.classList.toggle("hidden"));
+  document.getElementById("news-new-cancel").addEventListener("click", () => {
+    newsNewForm.classList.add("hidden");
+    clearNewsNewForm();
+  });
+
+  function clearNewsNewForm() {
+    ["titel", "samenvatting", "inhoud", "foto"].forEach((field) => {
+      document.getElementById(`news-new-${field}`).value = "";
+    });
+    document.getElementById("news-new-published").checked = false;
+    newsNewError.classList.add("hidden");
+  }
+
+  newsNewSaveBtn.addEventListener("click", async () => {
+    const titel = document.getElementById("news-new-titel").value.trim();
+    const samenvatting = document.getElementById("news-new-samenvatting").value.trim();
+    const inhoud = document.getElementById("news-new-inhoud").value.trim();
+    if (!titel || !samenvatting || !inhoud) {
+      newsNewError.textContent = "Titel, samenvatting en inhoud zijn verplicht.";
+      newsNewError.classList.remove("hidden");
+      return;
+    }
+
+    newsNewSaveBtn.disabled = true;
+    newsNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
+    newsNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("news-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      newsNewSaveBtn.disabled = false;
+      newsNewSaveLabel.textContent = "Opslaan";
+      newsNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.";
+      newsNewError.classList.remove("hidden");
+      return;
+    }
+
+    newsNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const published = document.getElementById("news-new-published").checked;
+    const { error } = await client.from("news_articles").insert({
+      titel,
+      samenvatting,
+      inhoud,
+      foto_url: fotoUrl,
+      status: published ? "gepubliceerd" : "concept",
+      gepubliceerd_op: new Date().toISOString(),
+    });
+
+    newsNewSaveBtn.disabled = false;
+    newsNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      newsNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      newsNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearNewsNewForm();
+    newsNewForm.classList.add("hidden");
+    loadNews();
+  });
+
+  // ---------- Nieuws ----------
+  const newsListEl = document.getElementById("news-list");
+  let allNews = [];
+
+  async function loadNews() {
+    newsListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("news_articles").select("*").order("gepubliceerd_op", { ascending: false });
+
+    if (error) {
+      newsListEl.innerHTML = `<p class="text-error text-sm">Kon nieuws niet laden: ${escapeHtml(error.message)}. Is supabase/add_news_articles.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allNews = data;
+    renderNews();
+  }
+
+  function renderNews() {
+    if (!allNews.length) {
+      newsListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen artikelen toegevoegd.</p>';
+      return;
+    }
+
+    newsListEl.innerHTML = "";
+    allNews.forEach((article) => {
+      const published = article.status === "gepubliceerd";
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="w-2 h-2 rounded-full shrink-0 ${published ? "bg-success" : "bg-outline-variant"}" title="${published ? "Gepubliceerd" : "Concept"}"></span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(article.titel)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(article.samenvatting)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="toggle-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs">
+            ${published ? "Terug naar concept" : "Publiceren"}
+          </button>
+          <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+          </button>
+        </div>`;
+
+      row.querySelector(".toggle-btn").addEventListener("click", async () => {
+        const { error: updateError } = await client
+          .from("news_articles")
+          .update({ status: published ? "concept" : "gepubliceerd" })
+          .eq("id", article.id);
+        if (updateError) {
+          alert(`Bijwerken mislukt: ${updateError.message}`);
+          return;
+        }
+        loadNews();
+      });
+
+      row.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${article.titel}" verwijderen?`)) return;
+        const { error: deleteError } = await client.from("news_articles").delete().eq("id", article.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadNews();
+      });
+
+      newsListEl.appendChild(row);
     });
   }
 
