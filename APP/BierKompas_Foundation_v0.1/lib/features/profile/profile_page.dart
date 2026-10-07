@@ -295,19 +295,35 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Even breed als het agenda-icoon rechts, zodat de titel gecentreerd blijft.
-                  const SizedBox(width: 24),
-                  Text(
-                    'Craft Discoveries',
-                    style: GoogleFonts.playfairDisplay(
-                      color: const Color(0xFFEFE6DD),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  if ((_stats?.currentStreak ?? 0) > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4B28C).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          '🔥 ${_stats!.currentStreak}',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      'Profiel',
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFEFE6DD),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const Icon(Icons.calendar_today_outlined, color: Color(0xFFEFE6DD)),
                 ],
               ),
             ),

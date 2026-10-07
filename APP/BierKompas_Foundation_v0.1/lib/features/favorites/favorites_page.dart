@@ -23,10 +23,11 @@ const _outlineVariant = Color(0xFF3E312A);
 /// Een like op een post over een bier of brouwerij komt bij dat bier of die brouwerij;
 /// alle andere posts staan onder "Gelikete posts".
 class FavoritesPage extends StatefulWidget {
-  const FavoritesPage({super.key, this.avatarUrl, this.onProfileTap});
+  const FavoritesPage({super.key, this.avatarUrl, this.onProfileTap, this.streak = 0});
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
+  final int streak;
 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
@@ -165,6 +166,24 @@ class _FavoritesPageState extends State<FavoritesPage> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       child: Row(
         children: [
+          if (widget.streak > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _primary.withOpacity(0.4)),
+                ),
+                child: Text(
+                  '🔥 ${widget.streak}',
+                  maxLines: 1,
+                  softWrap: false,
+                  style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
           const Icon(Icons.favorite, color: _primary, size: 28),
           const SizedBox(width: 10),
           Expanded(

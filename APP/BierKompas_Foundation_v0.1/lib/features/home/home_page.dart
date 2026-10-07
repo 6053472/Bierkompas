@@ -188,14 +188,17 @@ class _HomePageState extends State<HomePage> {
       EventsPage(
         avatarUrl: _avatarUrl,
         onProfileTap: goToProfile,
+        streak: _currentStreak,
       ),
       FavoritesPage(
         avatarUrl: _avatarUrl,
         onProfileTap: goToProfile,
+        streak: _currentStreak,
       ),
       MapPage(
         avatarUrl: _avatarUrl,
         onProfileTap: goToProfile,
+        streak: _currentStreak,
       ),
       const ProfilePage(),
     ];

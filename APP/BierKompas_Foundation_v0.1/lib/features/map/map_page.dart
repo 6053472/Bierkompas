@@ -31,10 +31,12 @@ class MapPage extends StatefulWidget {
     super.key,
     this.avatarUrl,
     this.onProfileTap,
+    this.streak = 0,
   });
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
+  final int streak;
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -894,6 +896,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     children: [
                       Row(
                         children: [
+                          if (widget.streak > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4B28C).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
+                                ),
+                                child: Text(
+                                  '🔥 ${widget.streak}',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
                           const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30),
                           const SizedBox(width: 8),
                           Expanded(

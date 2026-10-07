@@ -17,10 +17,12 @@ class EventsPage extends StatefulWidget {
     super.key,
     this.avatarUrl,
     this.onProfileTap,
+    this.streak = 0,
   });
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
+  final int streak;
 
   @override
   State<EventsPage> createState() => _EventsPageState();
@@ -2833,6 +2835,24 @@ class _EventsPageState extends State<EventsPage> {
                 children: [
                   Row(
                     children: [
+                      if (widget.streak > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: beigeColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: beigeColor.withOpacity(0.4)),
+                            ),
+                            child: Text(
+                              '🔥 ${widget.streak}',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: GoogleFonts.inter(color: beigeColor, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
                       Container(
                         width: 44,
                         height: 44,
