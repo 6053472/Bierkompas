@@ -8,20 +8,34 @@ class Song {
   final String coverAsset;
   final bool featured;
 
+  /// Cover-URL en eigen luisterlink van een door een beheerder toegevoegd
+  /// nummer (zie supabase/add_admin_content_management.sql). De vaste nummers
+  /// gebruiken [coverAsset] en de zoeklink hieronder.
+  final String? coverUrl;
+  final String? customListenUrl;
+
   const Song({
     required this.id,
     required this.title,
     required this.artist,
     required this.coverAsset,
     this.featured = false,
+    this.coverUrl,
+    this.customListenUrl,
   });
 
-  /// Zoeklink om het nummer te beluisteren (YouTube), zodat iedereen het kan
-  /// afspelen zonder abonnement of app-koppeling.
-  String get listenUrl => 'https://www.youtube.com/results?search_query=${Uri.encodeComponent('$artist $title')}';
+  /// Link om het nummer te beluisteren: de ingestelde link van de beheerder,
+  /// anders een zoeklink op YouTube, zodat iedereen het kan afspelen zonder
+  /// abonnement of app-koppeling.
+  String get listenUrl =>
+      (customListenUrl != null && customListenUrl!.isNotEmpty)
+          ? customListenUrl!
+          : 'https://www.youtube.com/results?search_query=${Uri.encodeComponent('$artist $title')}';
 }
 
-const songs = <Song>[
+// Geen `const`: nummers die een beheerder via de admin-pagina toevoegt worden
+// bij het opstarten aan deze lijst toegevoegd (zie music_service.dart).
+final List<Song> songs = [
   Song(
     id: 'bzn_mexican_divorce',
     title: 'Mexican Divorce',
