@@ -154,6 +154,7 @@
           <option value="pairings">Bier &amp; Spijs</option>
           <option value="videos">Video's</option>
           <option value="news">Nieuws</option>
+          <option value="faq">Support &amp; FAQ</option>
         </optgroup>
         <optgroup label="Overzicht &amp; beheer">
           <option value="stats">Statistieken</option>
@@ -202,6 +203,10 @@
       <button data-panel="news" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">newspaper</span>
         <span class="font-body text-sm only-desktop-inline">Nieuws</span>
+      </button>
+      <button data-panel="faq" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">help</span>
+        <span class="font-body text-sm only-desktop-inline">Support &amp; FAQ</span>
       </button>
 
       <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Overzicht &amp; beheer</p>
@@ -620,6 +625,52 @@
       </div>
     </section>
 
+    <!-- Support & FAQ panel -->
+    <section id="panel-faq" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-4xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Support &amp; FAQ</h2>
+            <p class="text-on-surface-variant text-sm">Veelgestelde vragen die gebruikers in de app zien onder Profiel &gt; Help &amp; FAQ, per vaste rubriek.</p>
+          </div>
+          <button id="faq-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe vraag
+          </button>
+        </div>
+
+        <div id="faq-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="faq-form-title" class="font-display text-lg text-on-surface mb-4">Nieuwe vraag</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Rubriek*</span>
+              <select id="faq-new-category" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span>
+              <input id="faq-new-sort" type="number" value="0" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-3">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Vraag*</span>
+              <input id="faq-new-question" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-3">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Antwoord*</span>
+              <textarea id="faq-new-answer" rows="4" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+          </div>
+          <p id="faq-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="faq-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="faq-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="faq-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="faq-list" class="flex flex-col gap-6 mt-4"></div>
+      </div>
+    </section>
+
     <!-- Statistieken panel -->
     <section id="panel-stats" class="panel p-6 md:p-10 hidden fade-in">
       <div class="max-w-6xl mx-auto">
@@ -811,6 +862,7 @@
     loadPairings();
     loadVideos();
     loadNews();
+    loadFaq();
     loadStats();
     loadLocationBadgeOptions();
   }
@@ -834,6 +886,7 @@
     pairings: document.getElementById("panel-pairings"),
     videos: document.getElementById("panel-videos"),
     news: document.getElementById("panel-news"),
+    faq: document.getElementById("panel-faq"),
     stats: document.getElementById("panel-stats"),
     locationbadges: document.getElementById("panel-locationbadges"),
     messages: document.getElementById("panel-messages"),
@@ -2027,6 +2080,164 @@
       });
 
       newsListEl.appendChild(row);
+    });
+  }
+
+  // ---------- Support & FAQ ----------
+  // Zelfde sleutels/volgorde als faqCategories in de app (lib/features/support/faq_service.dart).
+  const FAQ_CATEGORIES = [
+    { key: "account", label: "Account- en profielinstellingen" },
+    { key: "inchecken", label: "Inchecken" },
+    { key: "bieren", label: "Bieren en beoordelingen" },
+    { key: "badges", label: "Badges" },
+    { key: "vrienden", label: "Vrienden en interactie" },
+    { key: "bronnen", label: "Toevoegen van bronnen en content" },
+  ];
+
+  const faqNewToggle = document.getElementById("faq-new-toggle");
+  const faqNewForm = document.getElementById("faq-new-form");
+  const faqFormTitle = document.getElementById("faq-form-title");
+  const faqCategoryEl = document.getElementById("faq-new-category");
+  const faqQuestionEl = document.getElementById("faq-new-question");
+  const faqAnswerEl = document.getElementById("faq-new-answer");
+  const faqSortEl = document.getElementById("faq-new-sort");
+  const faqErrorEl = document.getElementById("faq-new-error");
+  const faqSaveBtn = document.getElementById("faq-new-save");
+  const faqSaveLabel = document.getElementById("faq-new-save-label");
+  const faqListEl = document.getElementById("faq-list");
+  let allFaq = [];
+  let faqEditingId = null;
+
+  faqCategoryEl.innerHTML = FAQ_CATEGORIES.map((c) => `<option value="${c.key}">${escapeHtml(c.label)}</option>`).join("");
+
+  function resetFaqForm() {
+    faqEditingId = null;
+    faqFormTitle.textContent = "Nieuwe vraag";
+    faqQuestionEl.value = "";
+    faqAnswerEl.value = "";
+    faqSortEl.value = "0";
+    faqErrorEl.classList.add("hidden");
+  }
+
+  faqNewToggle.addEventListener("click", () => {
+    if (faqNewForm.classList.contains("hidden")) resetFaqForm();
+    faqNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("faq-new-cancel").addEventListener("click", () => {
+    faqNewForm.classList.add("hidden");
+    resetFaqForm();
+  });
+
+  faqSaveBtn.addEventListener("click", async () => {
+    const question = faqQuestionEl.value.trim();
+    const answer = faqAnswerEl.value.trim();
+    if (!question || !answer) {
+      faqErrorEl.textContent = "Vraag en antwoord zijn verplicht.";
+      faqErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    faqSaveBtn.disabled = true;
+    faqSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    faqErrorEl.classList.add("hidden");
+
+    const row = {
+      category: faqCategoryEl.value,
+      question,
+      answer,
+      sort_order: Number(faqSortEl.value) || 0,
+    };
+    const { error } = faqEditingId
+      ? await client.from("faq_items").update(row).eq("id", faqEditingId)
+      : await client.from("faq_items").insert(row);
+
+    faqSaveBtn.disabled = false;
+    faqSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      faqErrorEl.textContent = `Opslaan mislukt: ${error.message}`;
+      faqErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    faqNewForm.classList.add("hidden");
+    resetFaqForm();
+    loadFaq();
+  });
+
+  async function loadFaq() {
+    faqListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("faq_items").select("*").order("sort_order").order("id");
+
+    if (error) {
+      faqListEl.innerHTML = `<p class="text-error text-sm">Kon FAQ niet laden: ${escapeHtml(error.message)}. Is supabase/add_faq.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allFaq = data;
+    renderFaq();
+  }
+
+  function renderFaq() {
+    if (!allFaq.length) {
+      faqListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen vragen toegevoegd.</p>';
+      return;
+    }
+
+    faqListEl.innerHTML = "";
+    FAQ_CATEGORIES.forEach((category) => {
+      const items = allFaq.filter((item) => item.category === category.key);
+      const section = document.createElement("div");
+      section.innerHTML = `
+        <h3 class="font-display text-lg text-primary mb-2">${escapeHtml(category.label)} <span class="text-on-surface-variant text-xs font-body">(${items.length})</span></h3>
+        <div class="flex flex-col gap-2"></div>`;
+      const listEl = section.querySelector("div");
+
+      if (!items.length) {
+        listEl.innerHTML = '<p class="text-on-surface-variant text-sm px-1">Nog geen vragen in deze rubriek.</p>';
+      }
+
+      items.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-start gap-3 md:gap-6 fade-in";
+        row.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <p class="text-on-surface text-sm font-semibold">${escapeHtml(item.question)}</p>
+            <p class="text-on-surface-variant text-sm mt-1 whitespace-pre-line">${escapeHtml(item.answer)}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs">Bewerken</button>
+            <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">delete</span>
+            </button>
+          </div>`;
+
+        row.querySelector(".edit-btn").addEventListener("click", () => {
+          faqEditingId = item.id;
+          faqFormTitle.textContent = "Vraag bewerken";
+          faqCategoryEl.value = item.category;
+          faqQuestionEl.value = item.question;
+          faqAnswerEl.value = item.answer;
+          faqSortEl.value = String(item.sort_order ?? 0);
+          faqErrorEl.classList.add("hidden");
+          faqNewForm.classList.remove("hidden");
+          faqNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        row.querySelector(".delete-btn").addEventListener("click", async () => {
+          if (!confirm(`"${item.question}" verwijderen?`)) return;
+          const { error: deleteError } = await client.from("faq_items").delete().eq("id", item.id);
+          if (deleteError) {
+            alert(`Verwijderen mislukt: ${deleteError.message}`);
+            return;
+          }
+          loadFaq();
+        });
+
+        listEl.appendChild(row);
+      });
+
+      faqListEl.appendChild(section);
     });
   }
 

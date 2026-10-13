@@ -6,6 +6,7 @@ import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
 import '../favorites/favorites_service.dart';
 import '../map/breweries.dart';
+import '../support/faq_page.dart';
 import 'add_friend_page.dart';
 import 'all_badges_page.dart';
 import 'all_tasting_notes_page.dart';
@@ -517,6 +518,32 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             child: Text(
                               'Instellingen',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFD4B28C),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const FaqPage()),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFD4B28C)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              'Help & FAQ',
                               style: GoogleFonts.inter(
                                 color: const Color(0xFFD4B28C),
                                 fontWeight: FontWeight.bold,
