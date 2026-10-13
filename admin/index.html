@@ -608,26 +608,48 @@
         <div id="video-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
           <h3 class="font-display text-lg text-on-surface mb-4">Nieuwe video toevoegen</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort video*</span>
+              <select id="video-new-kind" class="fi">
+                <option value="link">Link naar YouTube, TikTok of Instagram</option>
+                <option value="hosted">Eigen video (uploaden of directe link)</option>
+              </select>
+            </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
-              <input id="video-new-title" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <input id="video-new-title" type="text" class="fi"/>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Categorie</span>
-              <input id="video-new-category" type="text" placeholder="Bijv. New Pour, Tour, Tasting" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <input id="video-new-category" type="text" placeholder="Bijv. New Pour, Tour, Tasting" class="fi"/>
             </label>
-            <label class="flex flex-col gap-1 md:col-span-2">
-              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Thumbnail-URL*</span>
-              <input id="video-new-thumbnail" type="text" placeholder="https://.../thumbnail.jpg" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+
+            <label id="video-link-wrap" class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Link*</span>
+              <input id="video-new-link" type="text" placeholder="https://www.youtube.com/watch?v=..." class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Plak de gewone link van de video. Alleen de link en het video-ID worden opgeslagen; de video wordt getoond met de officiële speler van het platform. Verkorte TikTok-links (vm.tiktok.com) werken niet: open de video en kopieer de lange link.</span>
             </label>
+
+            <div id="video-hosted-wrap" class="hidden md:col-span-2 flex flex-col gap-4">
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Videobestand uploaden (.mp4, .webm of .mov, max. 50 MB)</span>
+                <input id="video-new-file" type="file" accept="video/mp4,video/webm,video/quicktime" class="fi"/>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">...of een directe link</span>
+                <input id="video-new-url" type="text" placeholder="https://.../video.mp4 of https://.../stream.m3u8" class="fi"/>
+                <span class="text-xs text-on-surface-variant/70">Een HLS-stream (.m3u8, bijvoorbeeld via Cloudflare Stream of Mux) laadt sneller en soepeler; die speelt in de app (Android/iOS), niet in elke browser.</span>
+              </label>
+            </div>
+
             <label class="flex flex-col gap-1 md:col-span-2">
-              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Video-URL* (.mp4)</span>
-              <input id="video-new-url" type="text" placeholder="https://.../video.mp4" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
-              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een .mp4-bestand, bijv. via Supabase Storage.</span>
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Thumbnail-URL (optioneel)</span>
+              <input id="video-new-thumbnail" type="text" placeholder="https://.../thumbnail.jpg" class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Bij YouTube wordt de thumbnail automatisch gebruikt. Bij TikTok en Instagram is er zonder eigen afbeelding een donker beeld totdat de video laadt.</span>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span>
-              <input id="video-new-sort" type="number" value="0" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <input id="video-new-sort" type="number" value="0" class="fi"/>
             </label>
           </div>
           <p id="video-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
@@ -2017,6 +2039,19 @@
   const videoNewError = document.getElementById("video-new-error");
   const videoNewSaveBtn = document.getElementById("video-new-save");
   const videoNewSaveLabel = document.getElementById("video-new-save-label");
+  const videoKindEl = document.getElementById("video-new-kind");
+  const videoLinkWrap = document.getElementById("video-link-wrap");
+  const videoHostedWrap = document.getElementById("video-hosted-wrap");
+  const VIDEO_BUCKET = "videos";
+  const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+  const VIDEO_SOURCE_LABELS = { youtube: "YouTube", tiktok: "TikTok", instagram: "Instagram", hosted: "Eigen video" };
+
+  function syncVideoKind() {
+    const hosted = videoKindEl.value === "hosted";
+    videoLinkWrap.classList.toggle("hidden", hosted);
+    videoHostedWrap.classList.toggle("hidden", !hosted);
+  }
+  videoKindEl.addEventListener("change", syncVideoKind);
 
   videoNewToggle.addEventListener("click", () => videoNewForm.classList.toggle("hidden"));
   document.getElementById("video-new-cancel").addEventListener("click", () => {
@@ -2025,54 +2060,116 @@
   });
 
   function clearVideoNewForm() {
-    ["title", "category", "thumbnail", "url"].forEach((field) => {
+    ["title", "category", "thumbnail", "url", "link", "file"].forEach((field) => {
       document.getElementById(`video-new-${field}`).value = "";
     });
     document.getElementById("video-new-sort").value = "0";
+    videoKindEl.value = "link";
+    syncVideoKind();
     videoNewError.classList.add("hidden");
   }
 
+  // Herkent een gewone YouTube-, TikTok- of Instagram-link en haalt het video-ID eruit.
+  // Alleen dat ID en de link worden opgeslagen, nooit de video zelf.
+  function parseVideoLink(raw) {
+    let url;
+    try { url = new URL(raw); } catch (_e) { return null; }
+    const host = url.hostname.replace(/^(www|m)\./, "");
+
+    if (host === "youtu.be") {
+      const id = url.pathname.slice(1).split("/")[0];
+      return id ? { source: "youtube", id } : null;
+    }
+    if (host.endsWith("youtube.com")) {
+      const v = url.searchParams.get("v");
+      if (v) return { source: "youtube", id: v };
+      const m = url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/);
+      return m ? { source: "youtube", id: m[1] } : null;
+    }
+    if (host.endsWith("tiktok.com")) {
+      const m = url.pathname.match(/\/video\/(\d+)/);
+      return m ? { source: "tiktok", id: m[1] } : null;
+    }
+    if (host.endsWith("instagram.com")) {
+      const m = url.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
+      return m ? { source: "instagram", id: `${m[1] === "reels" ? "reel" : m[1]}/${m[2]}` } : null;
+    }
+    return null;
+  }
+
+  function videoStoragePath(publicUrl) {
+    const marker = `/object/public/${VIDEO_BUCKET}/`;
+    const i = (publicUrl || "").indexOf(marker);
+    return i >= 0 ? decodeURIComponent(publicUrl.slice(i + marker.length).split("?")[0]) : null;
+  }
+
+  function videoSaveError(message) {
+    const needsMigration = /column|bucket|source|external_id/i.test(message || "");
+    showFormError(videoNewError, `Opslaan mislukt: ${message}${needsMigration ? " Is supabase/add_video_reel.sql al uitgevoerd?" : ""}`);
+  }
+
   videoNewSaveBtn.addEventListener("click", async () => {
+    const resetBtn = () => {
+      videoNewSaveBtn.disabled = false;
+      videoNewSaveLabel.textContent = "Video opslaan";
+    };
     const title = document.getElementById("video-new-title").value.trim();
-    const thumbnailUrl = document.getElementById("video-new-thumbnail").value.trim();
-    const videoUrl = document.getElementById("video-new-url").value.trim();
-    if (!title || !thumbnailUrl || !videoUrl) {
-      videoNewError.textContent = "Titel, thumbnail-URL en video-URL zijn verplicht.";
-      videoNewError.classList.remove("hidden");
-      return;
+    const thumbnailUrl = document.getElementById("video-new-thumbnail").value.trim() || null;
+    if (!title) return showFormError(videoNewError, "Titel is verplicht.");
+
+    let source, externalId = null, videoUrl;
+    const file = document.getElementById("video-new-file").files[0];
+
+    if (videoKindEl.value === "link") {
+      const link = document.getElementById("video-new-link").value.trim();
+      if (!link) return showFormError(videoNewError, "Plak de link van de video.");
+      const parsed = parseVideoLink(link);
+      if (!parsed) return showFormError(videoNewError, "Deze link wordt niet herkend. Gebruik een gewone YouTube-, TikTok- of Instagram-link (geen verkorte link).");
+      source = parsed.source;
+      externalId = parsed.id;
+      videoUrl = link;
+    } else {
+      source = "hosted";
+      videoUrl = document.getElementById("video-new-url").value.trim();
+      if (!file && !/^https?:\/\//i.test(videoUrl)) return showFormError(videoNewError, "Kies een videobestand of vul een directe link in.");
+      if (file && file.size > VIDEO_MAX_BYTES) return showFormError(videoNewError, "Dit bestand is groter dan 50 MB. Gebruik een directe link naar een streamingdienst voor grotere video's.");
     }
 
     videoNewSaveBtn.disabled = true;
-    videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Thumbnail controleren...';
     videoNewError.classList.add("hidden");
 
-    const thumbOk = await checkImageUrl(thumbnailUrl);
-    if (!thumbOk) {
-      videoNewSaveBtn.disabled = false;
-      videoNewSaveLabel.textContent = "Video opslaan";
-      videoNewError.textContent = "De thumbnail-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.";
-      videoNewError.classList.remove("hidden");
-      return;
+    if (thumbnailUrl) {
+      videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Thumbnail controleren...';
+      if (!(await checkImageUrl(thumbnailUrl))) {
+        resetBtn();
+        return showFormError(videoNewError, "De thumbnail-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+      }
+    }
+
+    if (source === "hosted" && file) {
+      videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Video uploaden...';
+      const safeName = file.name.replace(/[^\w.-]+/g, "_");
+      const path = `${Date.now()}-${safeName}`;
+      const { error: uploadError } = await client.storage.from(VIDEO_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) {
+        resetBtn();
+        return videoSaveError(uploadError.message);
+      }
+      videoUrl = client.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
     }
 
     videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
-
     const { error } = await client.from("videos").insert({
       title,
       category: document.getElementById("video-new-category").value.trim() || "Tasting",
       thumbnail_url: thumbnailUrl,
       video_url: videoUrl,
+      source,
+      external_id: externalId,
       sort_order: Number(document.getElementById("video-new-sort").value) || 0,
     });
-
-    videoNewSaveBtn.disabled = false;
-    videoNewSaveLabel.textContent = "Video opslaan";
-
-    if (error) {
-      videoNewError.textContent = `Opslaan mislukt: ${error.message}`;
-      videoNewError.classList.remove("hidden");
-      return;
-    }
+    resetBtn();
+    if (error) return videoSaveError(error.message);
 
     clearVideoNewForm();
     videoNewForm.classList.add("hidden");
@@ -2104,13 +2201,17 @@
 
     videosListEl.innerHTML = "";
     allVideos.forEach((video) => {
+      const source = video.source || "hosted";
+      const preview = video.thumbnail_url || (source === "youtube" && video.external_id ? `https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg` : null);
       const card = document.createElement("div");
       card.className = "bg-surface-container rounded-xl border border-outline-variant/20 overflow-hidden fade-in";
       card.innerHTML = `
-        <img src="${escapeHtml(video.thumbnail_url)}" class="w-full h-32 object-cover" alt=""/>
+        ${preview
+          ? `<img src="${escapeHtml(preview)}" class="w-full h-32 object-cover" alt=""/>`
+          : '<div class="w-full h-32 bg-surface-container-low flex items-center justify-center"><span class="material-symbols-outlined text-on-surface-variant text-4xl">smart_display</span></div>'}
         <div class="p-3">
           <p class="font-display text-base text-on-surface truncate">${escapeHtml(video.title)}</p>
-          <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(video.category)}</p>
+          <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(video.category)} &middot; ${escapeHtml(VIDEO_SOURCE_LABELS[source] || source)}</p>
           <button class="delete-btn w-full px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center justify-center gap-1">
             <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
           </button>
@@ -2123,6 +2224,9 @@
           alert(`Verwijderen mislukt: ${deleteError.message}`);
           return;
         }
+        // Een zelf geüpload bestand ook uit de opslag halen (alleen als dat beschikbaar is).
+        const storagePath = source === "hosted" ? videoStoragePath(video.video_url) : null;
+        if (storagePath) await client.storage.from(VIDEO_BUCKET).remove([storagePath]);
         loadVideos();
       });
 
