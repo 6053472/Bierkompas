@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../books/books_page.dart';
+import '../catalog/beer_catalog_page.dart';
 import '../music/music_page.dart';
 import '../scan/scanned_beers_page.dart';
 
@@ -40,6 +41,13 @@ class VindenProevenPage extends StatelessWidget {
               style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 24),
+            _OptionCard(
+              icon: Icons.search,
+              title: 'Bierdatabase',
+              subtitle: 'Zoek in duizenden bieren op naam, brouwerij of stijl',
+              onTap: () => _open(context, const BeerCatalogPage()),
+            ),
+            const SizedBox(height: 16),
             _OptionCard(
               icon: Icons.qr_code_scanner,
               title: 'Bier scannen',

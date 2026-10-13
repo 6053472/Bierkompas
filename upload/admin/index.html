@@ -169,6 +169,7 @@
           <option value="stats">Statistieken</option>
           <option value="locationbadges">Locatie-badges</option>
           <option value="messages">Berichten</option>
+          <option value="imports">Data-imports</option>
         </optgroup>
       </select>
     </div>
@@ -242,6 +243,10 @@
       <button data-panel="messages" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">campaign</span>
         <span class="font-body text-sm only-desktop-inline">Berichten</span>
+      </button>
+      <button data-panel="imports" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">cloud_download</span>
+        <span class="font-body text-sm only-desktop-inline">Data-imports</span>
       </button>
     </nav>
     <button id="logout-button" class="md:mt-auto shrink-0 flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
@@ -832,6 +837,20 @@
       </div>
     </section>
 
+    <!-- Data-imports panel -->
+    <section id="panel-imports" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Data-imports</h2>
+          <p class="text-on-surface-variant text-sm">
+            Laad verzamelde gegevens uit externe bronnen in de database. Een import kun je veilig opnieuw draaien:
+            bestaande regels worden bijgewerkt in plaats van dubbel aangemaakt.
+          </p>
+        </div>
+        <div id="imports-list" class="flex flex-col gap-4"></div>
+      </div>
+    </section>
+
     <!-- Statistieken panel -->
     <section id="panel-stats" class="panel p-6 md:p-10 hidden fade-in">
       <div class="max-w-6xl mx-auto">
@@ -1028,6 +1047,7 @@
     loadBooksAdmin();
     loadLocationsAdmin();
     loadPublishedEvents();
+    loadImportCards();
     loadStats();
     loadLocationBadgeOptions();
   }
@@ -1058,6 +1078,7 @@
     stats: document.getElementById("panel-stats"),
     locationbadges: document.getElementById("panel-locationbadges"),
     messages: document.getElementById("panel-messages"),
+    imports: document.getElementById("panel-imports"),
   };
 
   const mobilePanelSelect = document.getElementById("mobile-panel-select");
@@ -2826,6 +2847,106 @@
       });
       eventsPublishedListEl.appendChild(item);
     });
+  }
+
+  // ---------- Data-imports ----------
+  // De JSON-bestanden staan naast deze pagina in de map data/ en zijn verzameld
+  // uit publieke pagina's van de bron, met een beleefd tempo en zonder de
+  // robots.txt van die sites te omzeilen.
+  const IMPORTS = [
+    {
+      key: "beers", title: "Bierdatabase", file: "data/beers_import.json", table: "beer_catalog", conflict: "id",
+      source: "Stichting Erfgoed Nederlandse Biercultuur (databank)",
+      note: "Biernaam, brouwerij, bierstijl, alcoholpercentage, IBU, gisting en smaaktonen. Untappd-score en aantal beoordelingen staan niet in deze bron en blijven leeg.",
+    },
+    {
+      key: "events", title: "Agenda-evenementen", file: "data/events_import.json", table: "events", conflict: "bron,bron_id,start_date",
+      source: "Stichting Erfgoed Nederlandse Biercultuur (evenementenkalender, alleen Nederland en België)",
+      note: "Datums en locaties, zonder starttijden (de app toont dan 'Tijd niet bekend'). Staan direct in de agenda.",
+      countFilter: (q) => q.not("bron", "is", null),
+    },
+    {
+      key: "news", title: "Nieuws", file: "data/news_import.json", table: "news_articles", conflict: "bron_url",
+      source: "Stichting Erfgoed Nederlandse Biercultuur (nieuws, persberichten en 'in het nieuws')",
+      note: "Titel, korte samenvatting en een link naar de bron; de volledige tekst blijft bij de bron. Direct gepubliceerd; je kunt ze onder Nieuws terug naar concept zetten.",
+    },
+  ];
+  const importsListEl = document.getElementById("imports-list");
+
+  async function loadImportCards() {
+    importsListEl.innerHTML = "";
+    IMPORTS.forEach((imp) => {
+      const card = document.createElement("div");
+      card.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-5";
+      card.innerHTML = `
+        <h3 class="font-display text-lg text-on-surface">${escapeHtml(imp.title)}</h3>
+        <p class="text-on-surface-variant text-xs mt-1">Bron: ${escapeHtml(imp.source)}</p>
+        <p class="text-on-surface-variant text-sm mt-2">${escapeHtml(imp.note)}</p>
+        <p class="imp-info text-on-surface text-sm mt-3">Gegevens ophalen...</p>
+        <div class="flex items-center gap-3 mt-3 flex-wrap">
+          <button class="imp-btn px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-40" disabled>Importeren</button>
+          <span class="imp-status text-sm text-on-surface-variant"></span>
+        </div>`;
+      importsListEl.appendChild(card);
+      const infoEl = card.querySelector(".imp-info");
+      const btn = card.querySelector(".imp-btn");
+      const statusEl = card.querySelector(".imp-status");
+      imp.refresh = async () => {
+        try {
+          const res = await fetch(imp.file, { cache: "no-store" });
+          if (!res.ok) throw new Error("bestand ontbreekt");
+          const rows = await res.json();
+          let q = client.from(imp.table).select("id", { count: "exact", head: true });
+          if (imp.countFilter) q = imp.countFilter(q);
+          const { count, error } = await q;
+          const inDb = error ? "onbekend (is supabase/add_external_content_imports.sql uitgevoerd?)" : count;
+          infoEl.textContent = `${rows.length} regels klaar om te importeren. Nu in de database: ${inDb}.`;
+          btn.disabled = false;
+        } catch (e) {
+          infoEl.textContent = `Importbestand ${imp.file} niet beschikbaar (${e.message}).`;
+        }
+      };
+      btn.addEventListener("click", () => runImport(imp, btn, statusEl));
+      imp.refresh();
+    });
+  }
+
+  async function runImport(imp, btn, statusEl) {
+    if (!confirm(`${imp.title} importeren? Bestaande regels uit deze bron worden bijgewerkt.`)) return;
+    btn.disabled = true;
+    statusEl.className = "imp-status text-sm text-on-surface-variant";
+    statusEl.textContent = "Bestand laden...";
+    try {
+      const res = await fetch(imp.file, { cache: "no-store" });
+      if (!res.ok) throw new Error(`${imp.file} niet gevonden`);
+      let rows = await res.json();
+
+      if (imp.key === "events") {
+        const adminId = await currentAdminId();
+        if (!adminId) throw new Error("Je bent niet meer ingelogd. Log opnieuw in.");
+        const now = new Date().toISOString();
+        rows = rows.map((r) => ({
+          ...r, user_id: adminId, status: "approved", approved_at: now, approved_by: adminId,
+          ticket_regular: false, ticket_beer: false, ticket_vip: false, price: 0, price_incl_btw: true, price_excl_btw: false,
+        }));
+      }
+
+      const BATCH = 300;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        statusEl.textContent = `Bezig... ${Math.min(i + BATCH, rows.length)} van ${rows.length}`;
+        const { error } = await client.from(imp.table).upsert(rows.slice(i, i + BATCH), { onConflict: imp.conflict });
+        if (error) throw new Error(error.message);
+      }
+      statusEl.className = "imp-status text-sm text-success";
+      statusEl.textContent = `Klaar: ${rows.length} regels geïmporteerd.`;
+      if (imp.key === "events") loadPublishedEvents();
+      if (imp.key === "news") loadNews();
+    } catch (e) {
+      statusEl.className = "imp-status text-sm text-error";
+      statusEl.textContent = `Import mislukt: ${e.message}`;
+    }
+    btn.disabled = false;
+    imp.refresh();
   }
 
   // ---------- Statistieken ----------

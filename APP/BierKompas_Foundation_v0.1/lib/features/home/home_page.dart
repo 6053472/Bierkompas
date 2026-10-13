@@ -318,9 +318,7 @@ class _DiscoveryContentPageState
     try {
       final data = await Supabase.instance.client
           .from('news_articles')
-          .select(
-            'id, titel, samenvatting, inhoud, foto_url, gepubliceerd_op, status',
-          )
+          .select()
           .eq('status', 'gepubliceerd')
           .order('gepubliceerd_op', ascending: false)
           .limit(3);

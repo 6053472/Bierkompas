@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const _background = Color(0xFF1E1712);
 const _primary = Color(0xFFD4B28C);
@@ -40,9 +41,7 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
     try {
       final data = await _supabase
           .from('news_articles')
-          .select(
-            'id, titel, samenvatting, inhoud, foto_url, gepubliceerd_op, status',
-          )
+          .select()
           .eq('status', 'gepubliceerd')
           .order('gepubliceerd_op', ascending: false);
 
@@ -587,6 +586,36 @@ class NewsDetailPage extends StatelessWidget {
                 height: 1.7,
               ),
             ),
+
+            // Geïmporteerde berichten verwijzen naar het originele artikel.
+            if ((article['bron_url']?.toString() ?? '').isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Bron: ${article['bron_naam'] ?? 'externe bron'}',
+                style: GoogleFonts.openSans(
+                  color: _secondary,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => launchUrl(
+                  Uri.parse(article['bron_url'].toString()),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const Icon(Icons.open_in_new, color: _primary, size: 18),
+                label: Text(
+                  'Lees het volledige artikel',
+                  style: GoogleFonts.openSans(
+                    color: _primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: _primary),
+                ),
+              ),
+            ],
           ],
         ),
       ),

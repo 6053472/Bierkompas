@@ -211,6 +211,10 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   String _formatTime(Map<String, dynamic> event) {
+    // Geïmporteerde evenementen (bron gevuld) hebben alleen een datum; een
+    // starttijd van 00:00 zou verzonnen informatie zijn.
+    if (event['bron'] != null) return 'Tijd niet bekend';
+
     final eventDate = _getEventDate(event);
 
     if (eventDate == null) return '';
