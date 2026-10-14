@@ -767,7 +767,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div>
             <h2 class="font-display text-2xl text-on-surface mb-1">Muziek</h2>
-            <p class="text-on-surface-variant text-sm">Nummers voor "Brouwers Beats". De 8 vaste nummers staan in de app zelf; nummers die je hier toevoegt komen eronder.</p>
+            <p class="text-on-surface-variant text-sm">Nummers voor "Brouwers Beats". Alle nummers in de app. Bewerk of verwijder ze hier, of voeg een nieuw nummer toe. (De vaste nummers verschijnen hier zodra supabase/add_builtin_content.sql is uitgevoerd.)</p>
           </div>
           <button id="music-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuw nummer
@@ -778,7 +778,7 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span><input id="music-new-title" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Artiest*</span><input id="music-new-artist" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Cover-URL*</span><input id="music-new-cover" type="text" placeholder="https://.../cover.jpg" class="fi"/>
-              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand.</span></label>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand. Bij een vast nummer leeg laten = de meegeleverde cover blijft.</span></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Luisterlink (optioneel)</span><input id="music-new-listen" type="text" placeholder="https://..." class="fi"/>
               <span class="text-xs text-on-surface-variant/70">Leeg laten = de app zoekt het nummer op YouTube.</span></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span><input id="music-new-sort" type="number" value="0" class="fi"/></label>
@@ -799,7 +799,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div>
             <h2 class="font-display text-2xl text-on-surface mb-1">Boeken</h2>
-            <p class="text-on-surface-variant text-sm">Boeken voor de Bierkompas-bibliotheek. De 3 vaste boeken staan in de app zelf; boeken die je hier toevoegt komen eronder.</p>
+            <p class="text-on-surface-variant text-sm">Boeken voor de Bierkompas-bibliotheek. Alle boeken in de app. Bewerk of verwijder ze hier, of voeg een nieuw boek toe. (De vaste boeken verschijnen hier zodra supabase/add_builtin_content.sql is uitgevoerd.)</p>
           </div>
           <button id="books-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuw boek
@@ -811,7 +811,7 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Auteur*</span><input id="books-new-author" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Ondertitel (optioneel)</span><input id="books-new-subtitle" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Cover-URL*</span><input id="books-new-cover" type="text" placeholder="https://.../cover.jpg" class="fi"/>
-              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand.</span></label>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand. Bij een vast boek leeg laten = de meegeleverde cover blijft.</span></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span><input id="books-new-sort" type="number" value="0" class="fi"/></label>
           </div>
           <p id="books-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
@@ -830,7 +830,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div>
             <h2 class="font-display text-2xl text-on-surface mb-1">Locaties toevoegen</h2>
-            <p class="text-on-surface-variant text-sm">Voeg zelf een brouwerij of een proeflokaal/biergelegenheid toe; die staat direct op de kaart. De positie wordt automatisch bepaald op basis van het adres. De ~580 vaste brouwerijen zitten in de app zelf en zijn hier niet bewerkbaar.</p>
+            <p class="text-on-surface-variant text-sm">Voeg zelf een brouwerij of een proeflokaal/biergelegenheid toe; die staat direct op de kaart. De positie wordt automatisch bepaald op basis van het adres. De vaste brouwerijen op de kaart beheer je onderaan deze pagina.</p>
           </div>
           <button id="loc-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe locatie
@@ -856,6 +856,31 @@
         </div>
         <h3 class="font-display text-lg text-on-surface mt-6 mb-3">Gepubliceerde locaties</h3>
         <div id="loc-list" class="flex flex-col gap-2"></div>
+
+        <h3 class="font-display text-lg text-on-surface mt-10 mb-1">Vaste brouwerijen op de kaart</h3>
+        <p class="text-on-surface-variant text-sm mb-3">De brouwerijen uit de aangeleverde lijsten van Nederland en België. Zoek, bewerk of verwijder ze hier; de app neemt de wijziging over bij de volgende keer opstarten.</p>
+        <input id="fixed-br-search" type="search" placeholder="Zoek op naam of plaats..." class="fi w-full mb-2"/>
+        <p id="fixed-br-info" class="text-on-surface-variant text-xs mb-3"></p>
+        <div id="fixed-br-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-4 fade-in">
+          <p class="text-on-surface text-sm mb-3">Brouwerij bewerken <span id="fixed-br-id" class="text-on-surface-variant text-xs"></span></p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input id="fixed-br-title" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="fixed-br-location" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Land*</span>
+              <select id="fixed-br-country" class="fi"><option value="NEDERLAND">Nederland</option><option value="BELGIË">België</option></select></label>
+            <label class="flex items-center gap-2 mt-6"><input id="fixed-br-taproom" type="checkbox"/><span class="text-sm text-on-surface">Heeft een proeflokaal</span></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Over deze brouwerij</span><textarea id="fixed-br-about" rows="2" class="fi"></textarea></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Gegevens (één per regel)</span><textarea id="fixed-br-facts" rows="3" class="fi" placeholder="Adres: Straat 1, Plaats&#10;Website: https://..."></textarea></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Breedtegraad*</span><input id="fixed-br-lat" type="number" step="any" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Lengtegraad*</span><input id="fixed-br-lng" type="number" step="any" class="fi"/></label>
+          </div>
+          <p id="fixed-br-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="fixed-br-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="fixed-br-save" class="px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">Wijzigingen opslaan</button>
+          </div>
+        </div>
+        <div id="fixed-br-list" class="flex flex-col gap-2"></div>
       </div>
     </section>
 
@@ -1068,6 +1093,7 @@
     loadMusicAdmin();
     loadBooksAdmin();
     loadLocationsAdmin();
+    loadFixedBreweries();
     loadPublishedEvents();
     loadImportCards();
     loadStats();
@@ -2559,8 +2585,15 @@
     el.classList.remove("hidden");
   }
 
-  // Een eenvoudig "lijst met verwijderknop"-blok, gedeeld door muziek en boeken.
-  function renderSimpleList(listEl, rows, table, reload, describe, emptyText) {
+  // Cover van een nummer of boek: een eigen URL, of bij de vaste items de
+  // afbeelding die met de app wordt meegeleverd (../assets/ naast deze pagina).
+  function coverSrc(row) {
+    if (row.cover_url) return row.cover_url;
+    return row.cover_asset ? `../assets/${row.cover_asset}` : "";
+  }
+
+  // Een eenvoudig "lijst met bewerk- en verwijderknop"-blok, gedeeld door muziek en boeken.
+  function renderSimpleList(listEl, rows, table, reload, describe, emptyText, onEdit) {
     if (!rows.length) {
       listEl.innerHTML = `<p class="text-on-surface-variant text-sm py-6 text-center">${emptyText}</p>`;
       return;
@@ -2576,9 +2609,13 @@
           <p class="text-on-surface text-sm truncate">${escapeHtml(title)}</p>
           <p class="text-on-surface-variant text-xs truncate">${escapeHtml(subtitle)}</p>
         </div>
-        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0">
+        ${onEdit ? `<button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs shrink-0" title="Bewerken">
+          <span class="material-symbols-outlined text-[16px]">edit</span>
+        </button>` : ""}
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0" title="Verwijderen">
           <span class="material-symbols-outlined text-[16px]">delete</span>
         </button>`;
+      if (onEdit) item.querySelector(".edit-btn").addEventListener("click", () => onEdit(row));
       item.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${title}" verwijderen?`)) return;
         const { error } = await client.from(table).delete().eq("id", row.id);
@@ -2597,12 +2634,29 @@
   const musicNewError = document.getElementById("music-new-error");
   const musicListEl = document.getElementById("music-list");
 
+  let editingMusic = null;
+
   function clearMusicForm() {
     ["title", "artist", "cover", "listen"].forEach((f) => (document.getElementById(`music-new-${f}`).value = ""));
     document.getElementById("music-new-sort").value = "0";
     musicNewError.classList.add("hidden");
+    editingMusic = null;
   }
-  document.getElementById("music-new-toggle").addEventListener("click", () => musicNewForm.classList.toggle("hidden"));
+  function editMusic(row) {
+    clearMusicForm();
+    editingMusic = row;
+    document.getElementById("music-new-title").value = row.title || "";
+    document.getElementById("music-new-artist").value = row.artist || "";
+    document.getElementById("music-new-cover").value = row.cover_url || "";
+    document.getElementById("music-new-listen").value = row.listen_url || "";
+    document.getElementById("music-new-sort").value = row.sort_order ?? 0;
+    musicNewForm.classList.remove("hidden");
+    musicNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.getElementById("music-new-toggle").addEventListener("click", () => {
+    clearMusicForm();
+    musicNewForm.classList.toggle("hidden");
+  });
   document.getElementById("music-new-cancel").addEventListener("click", () => {
     musicNewForm.classList.add("hidden");
     clearMusicForm();
@@ -2614,24 +2668,30 @@
     const title = document.getElementById("music-new-title").value.trim();
     const artist = document.getElementById("music-new-artist").value.trim();
     const cover = document.getElementById("music-new-cover").value.trim();
-    if (!title || !artist || !cover) return showFormError(musicNewError, "Titel, artiest en cover-URL zijn verplicht.");
+    const hasBuiltinCover = !!(editingMusic && editingMusic.cover_asset);
+    if (!title || !artist || (!cover && !hasBuiltinCover)) return showFormError(musicNewError, "Titel, artiest en cover-URL zijn verplicht.");
 
     btn.disabled = true;
-    label.innerHTML = '<span class="spinner"></span> Cover controleren...';
     musicNewError.classList.add("hidden");
-    if (!(await checkImageUrl(cover))) {
-      btn.disabled = false;
-      label.textContent = "Opslaan";
-      return showFormError(musicNewError, "De cover-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+    if (cover) {
+      label.innerHTML = '<span class="spinner"></span> Cover controleren...';
+      if (!(await checkImageUrl(cover))) {
+        btn.disabled = false;
+        label.textContent = "Opslaan";
+        return showFormError(musicNewError, "De cover-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+      }
     }
 
-    const { error } = await client.from("music_tracks").insert({
+    const values = {
       title,
       artist,
-      cover_url: cover,
+      cover_url: cover || null,
       listen_url: document.getElementById("music-new-listen").value.trim() || null,
       sort_order: Number(document.getElementById("music-new-sort").value) || 0,
-    });
+    };
+    const { error } = editingMusic
+      ? await client.from("music_tracks").update(values).eq("id", editingMusic.id)
+      : await client.from("music_tracks").insert(values);
     btn.disabled = false;
     label.textContent = "Opslaan";
     if (error) return showFormError(musicNewError, `Opslaan mislukt: ${error.message}`);
@@ -2648,8 +2708,9 @@
       return;
     }
     renderSimpleList(musicListEl, data, "music_tracks", loadMusicAdmin,
-      (r) => ({ image: r.cover_url, title: r.title, subtitle: r.artist }),
-      "Nog geen eigen nummers toegevoegd.");
+      (r) => ({ image: coverSrc(r), title: r.title, subtitle: r.builtin_key ? `${r.artist} · vast nummer` : r.artist }),
+      "Nog geen nummers in de database. Voer supabase/add_builtin_content.sql uit om de vaste nummers hier te beheren.",
+      editMusic);
   }
 
   // ---------- Boeken ----------
@@ -2657,12 +2718,29 @@
   const booksNewError = document.getElementById("books-new-error");
   const booksListEl = document.getElementById("books-list");
 
+  let editingBook = null;
+
   function clearBooksForm() {
     ["title", "author", "subtitle", "cover"].forEach((f) => (document.getElementById(`books-new-${f}`).value = ""));
     document.getElementById("books-new-sort").value = "0";
     booksNewError.classList.add("hidden");
+    editingBook = null;
   }
-  document.getElementById("books-new-toggle").addEventListener("click", () => booksNewForm.classList.toggle("hidden"));
+  function editBook(row) {
+    clearBooksForm();
+    editingBook = row;
+    document.getElementById("books-new-title").value = row.title || "";
+    document.getElementById("books-new-author").value = row.author || "";
+    document.getElementById("books-new-subtitle").value = row.subtitle || "";
+    document.getElementById("books-new-cover").value = row.cover_url || "";
+    document.getElementById("books-new-sort").value = row.sort_order ?? 0;
+    booksNewForm.classList.remove("hidden");
+    booksNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.getElementById("books-new-toggle").addEventListener("click", () => {
+    clearBooksForm();
+    booksNewForm.classList.toggle("hidden");
+  });
   document.getElementById("books-new-cancel").addEventListener("click", () => {
     booksNewForm.classList.add("hidden");
     clearBooksForm();
@@ -2674,24 +2752,30 @@
     const title = document.getElementById("books-new-title").value.trim();
     const author = document.getElementById("books-new-author").value.trim();
     const cover = document.getElementById("books-new-cover").value.trim();
-    if (!title || !author || !cover) return showFormError(booksNewError, "Titel, auteur en cover-URL zijn verplicht.");
+    const hasBuiltinCover = !!(editingBook && editingBook.cover_asset);
+    if (!title || !author || (!cover && !hasBuiltinCover)) return showFormError(booksNewError, "Titel, auteur en cover-URL zijn verplicht.");
 
     btn.disabled = true;
-    label.innerHTML = '<span class="spinner"></span> Cover controleren...';
     booksNewError.classList.add("hidden");
-    if (!(await checkImageUrl(cover))) {
-      btn.disabled = false;
-      label.textContent = "Opslaan";
-      return showFormError(booksNewError, "De cover-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+    if (cover) {
+      label.innerHTML = '<span class="spinner"></span> Cover controleren...';
+      if (!(await checkImageUrl(cover))) {
+        btn.disabled = false;
+        label.textContent = "Opslaan";
+        return showFormError(booksNewError, "De cover-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+      }
     }
 
-    const { error } = await client.from("library_books").insert({
+    const values = {
       title,
       author,
       subtitle: document.getElementById("books-new-subtitle").value.trim() || null,
-      cover_url: cover,
+      cover_url: cover || null,
       sort_order: Number(document.getElementById("books-new-sort").value) || 0,
-    });
+    };
+    const { error } = editingBook
+      ? await client.from("library_books").update(values).eq("id", editingBook.id)
+      : await client.from("library_books").insert(values);
     btn.disabled = false;
     label.textContent = "Opslaan";
     if (error) return showFormError(booksNewError, `Opslaan mislukt: ${error.message}`);
@@ -2708,9 +2792,128 @@
       return;
     }
     renderSimpleList(booksListEl, data, "library_books", loadBooksAdmin,
-      (r) => ({ image: r.cover_url, title: r.title, subtitle: r.author }),
-      "Nog geen eigen boeken toegevoegd.");
+      (r) => ({ image: coverSrc(r), title: r.title, subtitle: r.builtin_key ? `${r.author} · vast boek` : r.author }),
+      "Nog geen boeken in de database. Voer supabase/add_builtin_content.sql uit om de vaste boeken hier te beheren.",
+      editBook);
   }
+
+  // ---------- Vaste brouwerijen op de kaart (tabel breweries) ----------
+  const fixedBrListEl = document.getElementById("fixed-br-list");
+  const fixedBrInfoEl = document.getElementById("fixed-br-info");
+  const fixedBrSearchEl = document.getElementById("fixed-br-search");
+  const fixedBrForm = document.getElementById("fixed-br-form");
+  const fixedBrError = document.getElementById("fixed-br-error");
+  const FIXED_BR_SHOWN = 50;
+  let fixedBreweries = [];
+  let editingFixedBr = null;
+
+  async function loadFixedBreweries() {
+    fixedBrInfoEl.textContent = "Laden...";
+    const { data, error } = await client.from("breweries").select("*").order("title").range(0, 4999);
+    if (error) {
+      fixedBrInfoEl.textContent = "";
+      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">De vaste brouwerijen staan nog niet in de database. Voer supabase/add_builtin_content.sql uit om ze hier te beheren.</p>`;
+      return;
+    }
+    fixedBreweries = data;
+    renderFixedBreweries();
+  }
+
+  function renderFixedBreweries() {
+    const q = fixedBrSearchEl.value.trim().toLowerCase();
+    const matches = q
+      ? fixedBreweries.filter((b) => `${b.title} ${b.location}`.toLowerCase().includes(q))
+      : fixedBreweries;
+    if (!fixedBreweries.length) {
+      fixedBrInfoEl.textContent = "";
+      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">Nog geen vaste brouwerijen in de database. Voer supabase/add_builtin_content.sql uit.</p>`;
+      return;
+    }
+    fixedBrInfoEl.textContent = matches.length > FIXED_BR_SHOWN
+      ? `${matches.length} brouwerijen gevonden, de eerste ${FIXED_BR_SHOWN} worden getoond. Zoek om verder te filteren.`
+      : `${matches.length} brouwerij${matches.length === 1 ? "" : "en"} gevonden (van ${fixedBreweries.length}).`;
+    fixedBrListEl.innerHTML = "";
+    matches.slice(0, FIXED_BR_SHOWN).forEach((b) => {
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center gap-3";
+      const country = (b.tags || []).includes("BELGIË") ? "België" : "Nederland";
+      const taproom = (b.tags || []).includes("PROEFLOKAAL") ? " · proeflokaal" : "";
+      item.innerHTML = `
+        <span class="material-symbols-outlined text-primary shrink-0">sports_bar</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(b.title)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(b.location)} · ${country}${taproom}</p>
+        </div>
+        <button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs shrink-0" title="Bewerken">
+          <span class="material-symbols-outlined text-[16px]">edit</span>
+        </button>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0" title="Verwijderen">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+      item.querySelector(".edit-btn").addEventListener("click", () => editFixedBrewery(b));
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${b.title}" van de kaart verwijderen?`)) return;
+        const { error } = await client.from("breweries").delete().eq("id", b.id);
+        if (error) return alert(`Verwijderen mislukt: ${error.message}`);
+        fixedBreweries = fixedBreweries.filter((x) => x.id !== b.id);
+        renderFixedBreweries();
+      });
+      fixedBrListEl.appendChild(item);
+    });
+  }
+
+  function editFixedBrewery(b) {
+    editingFixedBr = b;
+    fixedBrError.classList.add("hidden");
+    document.getElementById("fixed-br-id").textContent = `(nr. ${b.id})`;
+    document.getElementById("fixed-br-title").value = b.title || "";
+    document.getElementById("fixed-br-location").value = b.location || "";
+    document.getElementById("fixed-br-country").value = (b.tags || []).includes("BELGIË") ? "BELGIË" : "NEDERLAND";
+    document.getElementById("fixed-br-taproom").checked = (b.tags || []).includes("PROEFLOKAAL");
+    document.getElementById("fixed-br-about").value = b.about || "";
+    document.getElementById("fixed-br-facts").value = (b.facts || []).join("\n");
+    document.getElementById("fixed-br-lat").value = b.latitude;
+    document.getElementById("fixed-br-lng").value = b.longitude;
+    fixedBrForm.classList.remove("hidden");
+    fixedBrForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  fixedBrSearchEl.addEventListener("input", renderFixedBreweries);
+  document.getElementById("fixed-br-cancel").addEventListener("click", () => {
+    editingFixedBr = null;
+    fixedBrForm.classList.add("hidden");
+  });
+  document.getElementById("fixed-br-save").addEventListener("click", async (e) => {
+    if (!editingFixedBr) return;
+    const title = document.getElementById("fixed-br-title").value.trim();
+    const location = document.getElementById("fixed-br-location").value.trim();
+    const lat = Number(document.getElementById("fixed-br-lat").value);
+    const lng = Number(document.getElementById("fixed-br-lng").value);
+    if (!title || !location) return showFormError(fixedBrError, "Naam en plaats zijn verplicht.");
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return showFormError(fixedBrError, "Vul een geldige breedte- en lengtegraad in.");
+    }
+    const tags = [document.getElementById("fixed-br-country").value];
+    if (document.getElementById("fixed-br-taproom").checked) tags.push("PROEFLOKAAL");
+    const values = {
+      title,
+      location,
+      tags,
+      about: document.getElementById("fixed-br-about").value.trim(),
+      facts: document.getElementById("fixed-br-facts").value.split("\n").map((l) => l.trim()).filter(Boolean),
+      latitude: lat,
+      longitude: lng,
+    };
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const { error } = await client.from("breweries").update(values).eq("id", editingFixedBr.id);
+    btn.disabled = false;
+    if (error) return showFormError(fixedBrError, `Opslaan mislukt: ${error.message}`);
+    Object.assign(editingFixedBr, values);
+    editingFixedBr = null;
+    fixedBrForm.classList.add("hidden");
+    renderFixedBreweries();
+  });
 
   // ---------- Locaties toevoegen (brouwerijen en proeflokalen/horeca) ----------
   const locNewForm = document.getElementById("loc-new-form");

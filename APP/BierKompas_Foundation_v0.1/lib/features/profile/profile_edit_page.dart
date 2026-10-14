@@ -18,6 +18,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   final _authService = AuthService();
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
+  final _cityController = TextEditingController();
+  String? _originalCity;
   bool _isLoading = false;
   bool _isUploadingAvatar = false;
   String? _error;
@@ -36,6 +38,17 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _nameController = TextEditingController(text: widget.user?.name ?? '');
     _emailController = TextEditingController(text: widget.user?.email ?? '');
     _avatarUrl = widget.user?.avatarUrl;
+    _loadCity();
+  }
+
+  Future<void> _loadCity() async {
+    if (widget.user == null) return;
+    final city = await _authService.fetchCity(widget.user!.id);
+    if (!mounted) return;
+    setState(() {
+      _originalCity = city;
+      _cityController.text = city ?? '';
+    });
   }
 
   Future<void> _pickAndUploadAvatar() async {
@@ -73,6 +86,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -90,6 +104,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
       );
+      final city = _cityController.text.trim();
+      if (city != (_originalCity ?? '')) {
+        await _authService.updateCity(
+          userId: widget.user!.id,
+          city: city.isEmpty ? null : city,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(updated.copyWith(avatarUrl: _avatarUrl));
     } on AuthException catch (e) {
@@ -221,6 +242,17 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                           style: GoogleFonts.inter(color: _muted, fontSize: 11.5),
                         ),
                       ],
+                      const SizedBox(height: 14),
+                      _buildTextField(
+                        controller: _cityController,
+                        label: 'Woonplaats (optioneel)',
+                        icon: Icons.location_city_outlined,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Dan ontvang je berichten over bierevenementen en nieuws in jouw regio.',
+                        style: GoogleFonts.inter(color: _muted, fontSize: 11.5),
+                      ),
                       if (_error != null) ...[
                         const SizedBox(height: 14),
                         Container(

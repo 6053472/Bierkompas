@@ -6,6 +6,7 @@ import 'app.dart';
 import 'core/config/supabase_config.dart';
 import 'features/books/books_service.dart';
 import 'features/favorites/beers_service.dart';
+import 'features/map/breweries_service.dart';
 import 'features/music/music_service.dart';
 
 Future<void> main() async {
@@ -29,7 +30,7 @@ Future<void> main() async {
 
   // Door beheerders toegevoegde bieren, nummers en boeken; elk mislukt stil als
   // de bijbehorende migratie nog niet is gedraaid.
-  await Future.wait([loadCustomBeers(), loadCustomSongs(), loadCustomBooks()]);
+  await Future.wait([loadCustomBeers(), loadCustomSongs(), loadCustomBooks(), loadBreweries()]);
 
   runApp(const BierKompasApp());
 }

@@ -38,7 +38,9 @@ class Brewery {
 // België), bron: "nederlandse brouwers(Blad1).csv" en "brouwerijen
 // Belgie(Blad1).csv". Daarnaast toont de kaart live OpenStreetMap-data en
 // goedgekeurde aanmeldingen (zie brewery_submission_service.dart).
-const List<Brewery> breweries = [
+// Geen `const`: staan de brouwerijen in de database (tabel `breweries`), dan
+// vervangt breweries_service.dart deze lijst bij het opstarten.
+final List<Brewery> breweries = [
   Brewery(id: 1001, title: 'Brouwerij Hoop', distance: '', rating: '-', tags: ['NEDERLAND', 'PROEFLOKAAL'], location: 'Zaandijk', about: 'Proeflokaal/restaurant: Ja (Restaurant & Proeflokaal)', facts: ['Adres: Lagedijk 71, Zaandijk', 'Website: https://www.hoopbier.nl'], latitude: 52.4722, longitude: 4.8105),
   Brewery(id: 1002, title: 'De Naeckte Brouwers', distance: '', rating: '-', tags: ['NEDERLAND', 'PROEFLOKAAL'], location: 'Amstelveen', about: 'Proeflokaal/restaurant: Ja (Proeflokaal Annakerk)', facts: ['Adres: Karel Doormanweg 3, Amstelveen', 'Website: https://www.naecktebrouwers.nl'], latitude: 52.3023, longitude: 4.8624),
   Brewery(id: 1003, title: 'Wispe Brouwerij', distance: '', rating: '-', tags: ['NEDERLAND', 'PROEFLOKAAL'], location: 'Weesp', about: 'Proeflokaal/restaurant: Ja (Grand Café & Proeflokaal)', facts: ['Adres: Herengracht 16, Weesp', 'Website: https://www.wispe.nl'], latitude: 52.3082, longitude: 5.0416),
