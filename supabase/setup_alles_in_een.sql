@@ -807,6 +807,7 @@ create policy "User badges: select own" on public.user_badges
 -- Gisteren actief geweest -> streak +1.
 -- Langer geleden (of nog nooit) -> streak reset naar 1.
 -- Kent automatisch nieuwe streak-badges toe zodra de drempel gehaald is.
+drop function if exists public.record_daily_activity(uuid);
 create or replace function public.record_daily_activity(p_user_id uuid)
 returns table(current_streak integer, longest_streak integer, newly_earned_badges text[])
 language plpgsql
@@ -1078,6 +1079,7 @@ grant select, insert, update, delete on public.friend_requests to authenticated;
 -- Iedereen die is ingelogd mag naam/avatar van andere profielen opzoeken om
 -- vrienden te kunnen vinden en toevoegen. E-mailadressen blijven privé
 -- (die worden hier niet teruggegeven).
+drop function if exists public.search_profiles(text);
 create or replace function public.search_profiles(p_query text)
 returns table(id uuid, name text, avatar_url text)
 language sql
@@ -1154,6 +1156,7 @@ grant execute on function public.respond_friend_request(uuid, boolean) to authen
 -- levert dus geen naam/avatar van de ánder op en toont "Onbekend". Deze twee
 -- functies zijn security definer en mogen daarom wél de naam/avatar van de
 -- vriend/aanvrager opzoeken, zonder de RLS van `profiles` verder open te zetten.
+drop function if exists public.list_friends();
 create or replace function public.list_friends()
 returns table(friend_id uuid, name text, avatar_url text)
 language sql
@@ -1173,6 +1176,7 @@ $$;
 
 grant execute on function public.list_friends() to authenticated;
 
+drop function if exists public.list_incoming_friend_requests();
 create or replace function public.list_incoming_friend_requests()
 returns table(requester_id uuid, name text, avatar_url text)
 language sql
@@ -1282,6 +1286,7 @@ grant execute on function public.send_cheer(uuid, bigint) to authenticated;
 -- afzender (security definer omvat de RLS "select own" op `profiles`).
 -- is_reply: true als dit een "Proost terug" is op een proost die ík stuurde.
 drop function if exists public.list_unseen_cheers();
+drop function if exists public.list_unseen_cheers();
 create or replace function public.list_unseen_cheers()
 returns table(id bigint, sender_id uuid, name text, avatar_url text, created_at timestamptz, is_reply boolean)
 language sql
@@ -1341,6 +1346,7 @@ grant execute on function public.touch_presence() to authenticated;
 -- `list_friends` (uit add_friends.sql) opnieuw gedefinieerd met een extra
 -- `online`-kolom: recent (binnen 2 minuten) actief geweest. Het returntype
 -- verandert, dus `create or replace` is niet genoeg: eerst droppen.
+drop function if exists public.list_friends();
 drop function if exists public.list_friends();
 create or replace function public.list_friends()
 returns table(friend_id uuid, name text, avatar_url text, online boolean)
@@ -1605,6 +1611,7 @@ grant execute on function public.reject_event(bigint) to authenticated;
 -- Snapchat's "Snel toevoegen"): willekeurige andere gebruikers die nog geen
 -- vriend zijn en met wie nog geen verzoek open staat (in beide richtingen).
 
+drop function if exists public.suggest_friends(int);
 create or replace function public.suggest_friends(p_limit int default 12)
 returns table(id uuid, name text, avatar_url text)
 language sql
@@ -1779,6 +1786,7 @@ grant usage, select on sequence public.tasting_notes_id_seq to authenticated;
 -- profielkolom bedoelde. Hierdoor werd de streak dus nog nooit bijgewerkt.
 -- Fix: de select uit profiles krijgt een expliciete tabel-alias (p.*).
 
+drop function if exists public.record_daily_activity(uuid);
 create or replace function public.record_daily_activity(p_user_id uuid)
 returns table(current_streak integer, longest_streak integer, newly_earned_badges text[])
 language plpgsql
@@ -1867,6 +1875,7 @@ create policy "User beer logs: select own" on public.user_beer_logs
 -- Logt een gescand bier. Idempotent: opnieuw scannen van hetzelfde bier telt niet
 -- dubbel mee. Werkt beers_tasted/breweries_explored bij en kent nieuwe
 -- 'checkins'-badges toe zodra de drempel gehaald is.
+drop function if exists public.log_beer_scan(uuid, integer, text);
 create or replace function public.log_beer_scan(p_user_id uuid, p_beer_id integer, p_brewery text)
 returns table(beers_tasted integer, breweries_explored integer, newly_earned_badges text[])
 language plpgsql
@@ -2010,6 +2019,7 @@ update public.badges set target_style = 'IPA' where id = 'land_of_the_free';
 
 -- 2. log_beer_scan: doet nu ook de streak-update (hetzelfde effect als het
 -- openen van de app) en kent style-/taster-flight-badges toe.
+drop function if exists public.log_beer_scan(uuid, integer, text);
 create or replace function public.log_beer_scan(p_user_id uuid, p_beer_id integer, p_brewery text)
 returns table(
     beers_tasted integer,
@@ -2276,6 +2286,7 @@ select setval(pg_get_serial_sequence('public.bieren', 'id'), 1000, false);
 drop function if exists public.get_event_pending_registrations(bigint);
 drop function if exists public.get_event_approved_participants(bigint);
 
+drop function if exists public.get_event_pending_registrations(bigint);
 create or replace function public.get_event_pending_registrations(p_event_id bigint)
 returns table(
     id bigint,
@@ -2307,6 +2318,7 @@ $$;
 
 grant execute on function public.get_event_pending_registrations(bigint) to authenticated;
 
+drop function if exists public.get_event_approved_participants(bigint);
 create or replace function public.get_event_approved_participants(p_event_id bigint)
 returns table(
     id bigint,
@@ -2391,6 +2403,7 @@ grant select, insert, update, delete on public.friend_locations to authenticated
 -- Geeft de locaties van vrienden die momenteel delen, met naam/avatar erbij
 -- (net als list_friends() in add_friends.sql: profiles-RLS staat een gewone
 -- join niet toe, dus via een security-definer functie).
+drop function if exists public.list_friend_locations();
 create or replace function public.list_friend_locations()
 returns table(
     friend_id uuid,
@@ -2540,6 +2553,7 @@ alter table public.user_beer_logs add column if not exists photo_url text;
 -- versie ernaast bestaan en wint die bij een aanroep met 3 argumenten.
 drop function if exists public.log_beer_scan(uuid, integer, text);
 
+drop function if exists public.log_beer_scan(uuid, integer, text, text);
 create or replace function public.log_beer_scan(p_user_id uuid, p_beer_id integer, p_brewery text, p_photo_url text default null)
 returns table(
     beers_tasted integer,
@@ -3428,6 +3442,7 @@ grant execute on function public.record_item_favorited(uuid, text, integer) to a
 -- Drop eerst: Postgres staat geen wijziging van het returntype toe via
 -- create or replace.
 drop function if exists public.log_beer_scan(uuid, integer, text);
+drop function if exists public.log_beer_scan(uuid, integer, text);
 create or replace function public.log_beer_scan(p_user_id uuid, p_beer_id integer, p_brewery text)
 returns table(
     beers_tasted integer,
@@ -4158,6 +4173,7 @@ create policy "Bierdatabase: alleen beheerders mogen wijzigen" on public.beer_ca
 
 -- Lijst van alle bierstijlen met aantal bieren, voor het stijlfilter in de app
 -- (een gewone select geeft maximaal 1000 rijen terug, dus dit doen we in de database).
+drop function if exists public.beer_catalog_styles();
 create or replace function public.beer_catalog_styles()
 returns table(stijl text, aantal bigint)
 language sql
