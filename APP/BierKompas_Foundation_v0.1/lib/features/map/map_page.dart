@@ -12,7 +12,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../favorites/favorites_service.dart';
+import '../auth/auth_service.dart';
 import '../profile/cheers_service.dart';
+import '../profile/settings_page.dart';
 import 'breweries.dart';
 import 'brewery_submission_page.dart';
 import 'brewery_submission_service.dart';
@@ -487,6 +489,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ============================================================
   // BIERLIEFHEBBERS IN DE BUURT
   // ============================================================
+
+  Future<void> _openSettings() async {
+    AppUser? user;
+    try {
+      user = await AuthService().getCurrentUser();
+    } catch (_) {}
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsPage(user: user)));
+    if (mounted) _loadNearbyFriends();
+  }
 
   Future<void> _loadNearbyFriends() async {
     setState(() => _loadingNearby = true);
@@ -1296,7 +1308,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildEmptyState({required String emoji, required String message, bool showRetry = false, VoidCallback? onRetry}) {
+  Widget _buildEmptyState({required String emoji, required String message, bool showRetry = false, VoidCallback? onRetry, String? actionLabel, VoidCallback? onAction}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Container(
