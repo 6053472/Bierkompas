@@ -5,6 +5,9 @@ import 'auth_service.dart';
 import 'check_email_page.dart';
 import 'consent_page.dart';
 
+const String _logoImage =
+    'https://lh3.googleusercontent.com/aida-public/AB6AXuBM580LJgGSlvZ-vRLbR8gR8YgCyscQpi9v23krIsU1Guv5lOfaBskJ9JU0mAQfjQ1lLx2JpEin-c8CRLQUKrrp2h9_rlhwvsXtUzKB82_sN9jqFo8KaIZ4p0n6lW7t7-a9ZBD17gqjKLyg7VthIMxzX5MEI8ErfqOXJhOV6IVqqi21Eo84uNNaBkkMfh3dS6SoiH87ofeiFMlfb7V-RoAaWbx94fXBu2zBenGe_GMOUk2P_--GMBAnIrE35R6aGf-bZA';
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -46,13 +49,11 @@ class _RegisterPageState extends State<RegisterPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (mounted) {
-        setState(() {
-          _isGoogleLoading = false;
-          _isOutlookLoading = false;
-        });
-      }
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {
+        _isGoogleLoading = false;
+        _isOutlookLoading = false;
+      });
     }
   }
 
@@ -190,6 +191,7 @@ class _RegisterPageState extends State<RegisterPage>
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
               horizontal: 24,
+              vertical: 20,
             ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(
@@ -198,6 +200,41 @@ class _RegisterPageState extends State<RegisterPage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Groter en netter BierKompas-logo
+                  Container(
+                    width: 120,
+                    height: 120,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: card,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: gold.withOpacity(0.5),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: gold.withOpacity(0.15),
+                          blurRadius: 24,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.network(
+                        _logoImage,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.sports_bar,
+                            color: gold,
+                            size: 50,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Text(
                     'Account aanmaken',
                     style: GoogleFonts.playfairDisplay(
@@ -243,11 +280,9 @@ class _RegisterPageState extends State<RegisterPage>
                             cream: cream,
                             muted: muted,
                             validator: (v) {
-                              if (v == null ||
-                                  v.trim().isEmpty) {
+                              if (v == null || v.trim().isEmpty) {
                                 return 'Vul je naam in.';
                               }
-
                               return null;
                             },
                           ),
@@ -262,11 +297,9 @@ class _RegisterPageState extends State<RegisterPage>
                             keyboardType:
                                 TextInputType.emailAddress,
                             validator: (v) {
-                              if (v == null ||
-                                  v.trim().isEmpty) {
+                              if (v == null || v.trim().isEmpty) {
                                 return 'Vul je e-mailadres in.';
                               }
-
                               return null;
                             },
                           ),
@@ -289,11 +322,9 @@ class _RegisterPageState extends State<RegisterPage>
                               if (v == null || v.isEmpty) {
                                 return 'Vul een wachtwoord in.';
                               }
-
                               if (v.length < 8) {
                                 return 'Minimaal 8 tekens.';
                               }
-
                               return null;
                             },
                           ),
@@ -307,11 +338,9 @@ class _RegisterPageState extends State<RegisterPage>
                             muted: muted,
                             obscure: _obscurePassword,
                             validator: (v) {
-                              if (v !=
-                                  _passwordController.text) {
+                              if (v != _passwordController.text) {
                                 return 'Wachtwoorden komen niet overeen.';
                               }
-
                               return null;
                             },
                           ),
@@ -323,9 +352,10 @@ class _RegisterPageState extends State<RegisterPage>
                           SizedBox(
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _isLoading || _socialLoading
-                                  ? null
-                                  : _submit,
+                              onPressed:
+                                  _isLoading || _socialLoading
+                                      ? null
+                                      : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: gold,
                                 disabledBackgroundColor:
@@ -350,8 +380,7 @@ class _RegisterPageState extends State<RegisterPage>
                                   : Text(
                                       'Registreren',
                                       style: GoogleFonts.inter(
-                                        fontWeight:
-                                            FontWeight.bold,
+                                        fontWeight: FontWeight.bold,
                                         fontSize: 15,
                                       ),
                                     ),
@@ -511,9 +540,7 @@ class _RegisterPageState extends State<RegisterPage>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'OF',
             style: GoogleFonts.inter(
