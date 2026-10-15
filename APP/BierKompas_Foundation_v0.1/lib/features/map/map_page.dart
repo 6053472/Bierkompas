@@ -1323,9 +1323,28 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             Text(emoji, style: const TextStyle(fontSize: 22)),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontSize: 12, height: 1.4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message,
+                    style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontSize: 12, height: 1.4),
+                  ),
+                  if (actionLabel != null && onAction != null) ...[
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: onAction,
+                      icon: const Icon(Icons.settings, size: 16),
+                      label: Text(actionLabel, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4B28C),
+                        foregroundColor: const Color(0xFF1E1712),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             if (showRetry)
@@ -1441,7 +1460,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return _buildEmptyState(
         emoji: '\u{1F4CD}',
         message:
-            'Zet "Deel mijn locatie met vrienden" aan bij Instellingen > Voorkeuren om te zien welke vrienden dichtbij zijn.',
+            'Ga naar Profiel > Instellingen > Voorkeuren en zet "Deel mijn locatie met vrienden" aan om te zien welke vrienden dichtbij zijn.',
+        actionLabel: 'Naar instellingen',
+        onAction: _openSettings,
       );
     }
     if (_nearbyFriends.isEmpty) {
