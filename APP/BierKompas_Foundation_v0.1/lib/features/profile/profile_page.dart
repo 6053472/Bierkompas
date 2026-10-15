@@ -6,6 +6,7 @@ import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
 import '../favorites/favorites_service.dart';
 import '../map/breweries.dart';
+import '../support/faq_page.dart';
 import 'add_friend_page.dart';
 import 'all_badges_page.dart';
 import 'all_tasting_notes_page.dart';
@@ -13,6 +14,8 @@ import 'chat_page.dart';
 import 'cheers_service.dart';
 import 'create_tasting_note_page.dart';
 import 'friends_service.dart';
+import 'notifications_page.dart';
+import 'notifications_service.dart';
 import 'profile_edit_page.dart';
 import 'settings_page.dart';
 import 'stats_service.dart';
@@ -31,6 +34,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final _cheersService = CheersService();
   final _favoritesService = FavoritesService();
   final _tastingNotesService = TastingNotesService();
+  final _notificationsService = NotificationsService();
+  int _unreadNotifications = 0;
   AppUser? _user;
   ProfileStats? _stats;
   List<Brewery>? _favoriteBreweries;
@@ -50,6 +55,22 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadTastingNotes();
     _loadFriends();
     _subscribeToFriendUpdates();
+    _loadUnreadNotifications();
+  }
+
+  Future<void> _loadUnreadNotifications() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+    final count = await _notificationsService.fetchUnreadCount(authUser.id);
+    if (!mounted) return;
+    setState(() => _unreadNotifications = count);
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationsPage()),
+    );
+    _loadUnreadNotifications();
   }
 
   @override
@@ -275,19 +296,35 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Even breed als het agenda-icoon rechts, zodat de titel gecentreerd blijft.
-                  const SizedBox(width: 24),
-                  Text(
-                    'Craft Discoveries',
-                    style: GoogleFonts.playfairDisplay(
-                      color: const Color(0xFFEFE6DD),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  if ((_stats?.currentStreak ?? 0) > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4B28C).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          '🔥 ${_stats!.currentStreak}',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      'Profiel',
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFFEFE6DD),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const Icon(Icons.calendar_today_outlined, color: Color(0xFFEFE6DD)),
                 ],
               ),
             ),
@@ -422,6 +459,51 @@ class _ProfilePageState extends State<ProfilePage> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
+                            onPressed: _openNotifications,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFD4B28C)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Berichten',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFFD4B28C),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (_unreadNotifications > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFD4B28C),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      '$_unreadNotifications',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF1E1712),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(builder: (_) => SettingsPage(user: _user)),
@@ -436,6 +518,32 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             child: Text(
                               'Instellingen',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFD4B28C),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const FaqPage()),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFD4B28C)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              'Help & FAQ',
                               style: GoogleFonts.inter(
                                 color: const Color(0xFFD4B28C),
                                 fontWeight: FontWeight.bold,

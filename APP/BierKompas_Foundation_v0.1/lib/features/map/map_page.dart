@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
@@ -30,10 +31,12 @@ class MapPage extends StatefulWidget {
     super.key,
     this.avatarUrl,
     this.onProfileTap,
+    this.streak = 0,
   });
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
+  final int streak;
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -112,6 +115,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final _searchController = TextEditingController();
 
   final Set<int> _favoriteIds = {};
+  final Set<int> _favoriteHorecaIds = {};
 
   List<BreweryResult> _results = [];
   List<HorecaResult> _horecaResults = [];
@@ -149,9 +153,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // de kaart blijft zo vrij voor knijp-zoomen.
   static const _maxPanelHeight = 230.0;
 
-  // Het lijstje is standaard ingeklapt: met honderden brouwerijen bedekte het
-  // anders de kaart. Opent vanzelf na een zoekopdracht.
-  bool _panelExpanded = false;
+  // De lijst onder de zoekbalk verschijnt pas na een tik op de knop, zodat
+  // de kaart standaard meer ruimte krijgt.
+  bool _showPanel = false;
+
+  // Zodra bekend (met toestemming): sorteert brouwerijen/horeca automatisch
+  // op afstand, i.p.v. de willekeurige volgorde uit de datalijst te tonen.
+  Position? _myPosition;
 
   // Highlight van het aangetikte item (lijst + pin).
   int? _selectedIndex;
@@ -173,8 +181,68 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _loadFavorites();
     _loadEvents();
     _startNearbyRefresh();
+    _tryUseCurrentLocation();
 
     _searchController.addListener(_onSearchChanged);
+  }
+
+  // Herberekent de afstand van elk resultaat tot [_myPosition] en sorteert
+  // van dichtbij naar ver. Zonder bekende locatie blijft de lijst ongewijzigd
+  // (dan staat de volgorde uit de databron, zie _tryUseCurrentLocation).
+  List<BreweryResult> _sortedBreweryResults(List<BreweryResult> results) {
+    final pos = _myPosition;
+    if (pos == null) return results;
+    return results
+        .map((r) => BreweryResult(
+              brewery: r.brewery,
+              distance: _calculateDistance(pos.latitude, pos.longitude, r.brewery.latitude, r.brewery.longitude),
+            ))
+        .toList()
+      ..sort((a, b) => a.distance.compareTo(b.distance));
+  }
+
+  List<HorecaResult> _sortedHorecaResults(List<HorecaResult> results) {
+    final pos = _myPosition;
+    if (pos == null) return results;
+    return results
+        .map((r) => HorecaResult(
+              venue: r.venue,
+              distance: _calculateDistance(pos.latitude, pos.longitude, r.venue.latitude, r.venue.longitude),
+            ))
+        .toList()
+      ..sort((a, b) => a.distance.compareTo(b.distance));
+  }
+
+  // Vraagt (stil, zonder foutmeldingen) de locatie van het toestel op zodat
+  // brouwerijen/horeca standaard op afstand gesorteerd staan i.p.v. in de
+  // willekeurige volgorde van de databron. Lukt dit niet (geen toestemming,
+  // locatievoorziening uit, geen GPS-fix), dan blijft de lijst gewoon
+  // ongesorteerd -- dit mag de kaart nooit blokkeren of een foutmelding geven.
+  Future<void> _tryUseCurrentLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _myPosition = position;
+        _results = _sortedBreweryResults(_results);
+        _horecaResults = _sortedHorecaResults(_horecaResults);
+        if (_searchedLocation.isEmpty) _searchedLocation = 'jouw locatie';
+      });
+    } catch (e) {
+      debugPrint('Locatie ophalen voor kaart-sortering mislukt: $e');
+    }
   }
 
   // Vrienden-locaties zijn zichtbaar op de "Alles"- en "Bierliefhebbers"-tab.
@@ -231,6 +299,34 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFF2C221C),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => _EventDetailSheet(event: event),
+    );
+  }
+
+  Future<void> _openBreweryDetail(Brewery brewery) async {
+    final isFavorite = _favoriteIds.contains(brewery.id);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF2C221C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => _BreweryDetailSheet(
+        brewery: brewery,
+        isFavorite: isFavorite,
+        onFavoriteTap: () => _toggleFavorite(brewery),
+      ),
+    );
+  }
+
+  Future<void> _openHorecaDetail(HorecaVenue venue) async {
+    final isFavorite = _favoriteHorecaIds.contains(venue.id);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF2C221C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => _HorecaDetailSheet(
+        venue: venue,
+        isFavorite: isFavorite,
+        onFavoriteTap: () => _toggleHorecaFavorite(venue),
+      ),
     );
   }
 
@@ -330,7 +426,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         unique[key] = brewery;
       }
 
-      final result = unique.values.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList();
+      final result = _sortedBreweryResults(unique.values.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
 
       if (!mounted) return;
       setState(() {
@@ -362,7 +458,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     try {
       final venues = await _horecaSubmissionService.fetchApproved();
-      final result = venues.map((venue) => HorecaResult(venue: venue, distance: 0)).toList();
+      final result = _sortedHorecaResults(venues.map((venue) => HorecaResult(venue: venue, distance: 0)).toList());
 
       if (!mounted) return;
       setState(() {
@@ -447,9 +543,52 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ..addAll(
             favorites.where((favorite) => favorite.itemType == breweryItemType).map((favorite) => favorite.itemId),
           );
+        _favoriteHorecaIds
+          ..clear()
+          ..addAll(
+            favorites.where((favorite) => favorite.itemType == horecaItemType).map((favorite) => favorite.itemId),
+          );
       });
     } on FavoritesException catch (e) {
       debugPrint('Fout bij ophalen favorieten: $e');
+    }
+  }
+
+  Future<void> _toggleHorecaFavorite(HorecaVenue venue) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Je moet ingelogd zijn om favorieten te gebruiken.')),
+      );
+      return;
+    }
+
+    final wasFavorite = _favoriteHorecaIds.contains(venue.id);
+
+    setState(() {
+      if (wasFavorite) {
+        _favoriteHorecaIds.remove(venue.id);
+      } else {
+        _favoriteHorecaIds.add(venue.id);
+      }
+    });
+
+    try {
+      if (wasFavorite) {
+        await _favoritesService.remove(userId: user.id, itemType: horecaItemType, itemId: venue.id);
+      } else {
+        await _favoritesService.add(userId: user.id, itemType: horecaItemType, itemId: venue.id);
+      }
+    } on FavoritesException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorite) {
+          _favoriteHorecaIds.add(venue.id);
+        } else {
+          _favoriteHorecaIds.remove(venue.id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Favoriet opslaan mislukt: $e')));
     }
   }
 
@@ -645,7 +784,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     setState(() {
       _searchedLocation = _getShortLocationName(location.displayName, 'deze locatie');
-      _panelExpanded = true;
       _results = sortedResults;
       _horecaResults = sortedHoreca;
       _suggestions = [];
@@ -696,11 +834,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _resetSearch() {
     _searchController.clear();
 
-    final resetResults = breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList();
-    final resetHoreca = _horecaResults.map((result) => HorecaResult(venue: result.venue, distance: 0)).toList();
+    final resetResults = _sortedBreweryResults(breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
+    final resetHoreca = _sortedHorecaResults(_horecaResults.map((result) => HorecaResult(venue: result.venue, distance: 0)).toList());
 
     setState(() {
-      _searchedLocation = '';
+      _searchedLocation = _myPosition != null ? 'jouw locatie' : '';
       _suggestions = [];
       _results = resetResults;
       _horecaResults = resetHoreca;
@@ -758,6 +896,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     children: [
                       Row(
                         children: [
+                          if (widget.streak > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4B28C).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
+                                ),
+                                child: Text(
+                                  '🔥 ${widget.streak}',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
                           const Icon(Icons.sports_bar, color: Color(0xFFD4B28C), size: 30),
                           const SizedBox(width: 8),
                           Expanded(
@@ -814,34 +970,30 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 if ((_activeTab == _MapTab.horeca || _activeTab == _MapTab.all) && _loadingHoreca) _buildLoadingHint('Horeca laden...'),
                 if (_activeTab == _MapTab.nearby && _loadingNearby) _buildLoadingHint('Bierliefhebbers zoeken...'),
 
-                // Compact lijstje direct onder de zoekbalk; alleen zo hoog als
-                // nodig. Horizontaal vegen erop wisselt van tab. Geen
-                // TabBarView/Expanded: dat claimt de hele kaart als veeggebied
-                // en blokkeert het knijp-zoomen.
-                if (_activeTab != _MapTab.nearby)
+                // De lijst blijft ingeklapt tot de gebruiker er zelf om vraagt,
+                // zodat de kaart standaard zoveel mogelijk ruimte krijgt.
+                if (!_showPanel)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => setState(() => _panelExpanded = !_panelExpanded),
-                        style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFF2C221C),
-                          foregroundColor: const Color(0xFFD4B28C),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        ),
-                        icon: Icon(_panelExpanded ? Icons.expand_less : Icons.expand_more, size: 18),
-                        label: Text(_panelExpanded ? 'Lijst verbergen' : 'Lijst tonen', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ),
-                if (_panelExpanded || _activeTab == _MapTab.nearby)
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildShowPanelButton(),
+                  )
+                else
+                  // Compact lijstje direct onder de zoekbalk; alleen zo hoog als
+                  // nodig. Horizontaal vegen erop wisselt van tab. Geen
+                  // TabBarView/Expanded: dat claimt de hele kaart als veeggebied
+                  // en blokkeert het knijp-zoomen.
                   GestureDetector(
                     onHorizontalDragEnd: _onPanelSwipe,
                     behavior: HitTestBehavior.deferToChild,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: _maxPanelHeight),
-                      child: _buildActivePanel(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildHidePanelButton(),
+                          Flexible(child: _buildActivePanel()),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -854,19 +1006,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ],
             ),
           ),
-
-          if (_selectedIndex != null &&
-              _selectedIndex! < _results.length &&
-              (_activeTab == _MapTab.breweries || _activeTab == _MapTab.all))
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 24,
-              child: _buildBreweryDetailCard(_results[_selectedIndex!]),
-            ),
         ],
       ),
-      floatingActionButton: _selectedIndex != null && _activeTab == _MapTab.breweries ? null : _buildFab(),
+      floatingActionButton: _buildFab(),
     );
   }
 
@@ -893,6 +1035,57 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case _MapTab.nearby:
         return null;
     }
+  }
+
+  String _panelToggleLabel() {
+    switch (_activeTab) {
+      case _MapTab.all:
+        return 'Toon overzicht';
+      case _MapTab.breweries:
+        return 'Brouwerijen in de buurt';
+      case _MapTab.horeca:
+        return 'Horeca in de buurt';
+      case _MapTab.events:
+        return 'Evenementen bekijken';
+      case _MapTab.nearby:
+        return 'Bierliefhebbers bekijken';
+    }
+  }
+
+  Widget _buildShowPanelButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => setState(() => _showPanel = true),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFD4B28C),
+          side: const BorderSide(color: Color(0xFF3E312A)),
+          backgroundColor: const Color(0xFF2C221C),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        icon: const Icon(Icons.list),
+        label: Text(_panelToggleLabel(), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _buildHidePanelButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(_panelToggleLabel(),
+              style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontWeight: FontWeight.bold, fontSize: 13)),
+          TextButton.icon(
+            onPressed: () => setState(() => _showPanel = false),
+            icon: const Icon(Icons.keyboard_arrow_up, color: Color(0xFF9E8A7D), size: 18),
+            label: Text('Verbergen', style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 12)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLoadingHint(String label) {
@@ -932,7 +1125,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               width: entry.key == _selectedIndex ? 46 : 36,
               height: entry.key == _selectedIndex ? 46 : 36,
               child: GestureDetector(
-                onTap: () => _selectBrewery(entry.key, zoomIn: entry.key == _selectedIndex),
+                onTap: () {
+                  _selectBrewery(entry.key, zoomIn: entry.key == _selectedIndex);
+                  _openBreweryDetail(entry.value.brewery);
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOut,
@@ -959,7 +1155,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               width: entry.key == _selectedHorecaIndex ? 46 : 36,
               height: entry.key == _selectedHorecaIndex ? 46 : 36,
               child: GestureDetector(
-                onTap: () => _selectHoreca(entry.key, zoomIn: entry.key == _selectedHorecaIndex),
+                onTap: () {
+                  _selectHoreca(entry.key, zoomIn: entry.key == _selectedHorecaIndex);
+                  _openHorecaDetail(entry.value.venue);
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOut,
@@ -1246,129 +1445,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  // Detailkaart die onderaan verschijnt na een tik op een brouwerij-pin.
-  Widget _buildBreweryDetailCard(BreweryResult result) {
-    final brewery = result.brewery;
-    final isFavorite = _favoriteIds.contains(brewery.id);
-    final subtitle = _searchedLocation.isEmpty ? brewery.location : '${_formatDistance(result.distance)} vanaf $_searchedLocation';
-    String? website;
-    final otherFacts = <String>[];
-    for (final fact in brewery.facts) {
-      if (fact.startsWith('Website: ')) {
-        website = fact.substring('Website: '.length);
-      } else {
-        otherFacts.add(fact);
-      }
-    }
-
-    Future<void> openUrl(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 340),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C221C),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF3E312A)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (brewery.imageUrl != null)
-              Container(
-                height: 120,
-                width: double.infinity,
-                clipBehavior: Clip.antiAlias,
-                decoration: const BoxDecoration(color: Color(0xFF3E312A), borderRadius: BorderRadius.vertical(top: Radius.circular(15))),
-                child: Image.network(brewery.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(brewery.title, style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                      IconButton(
-                        onPressed: () => _toggleFavorite(brewery),
-                        icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? const Color(0xFFD4B28C) : Colors.white, size: 20),
-                      ),
-                      IconButton(
-                        onPressed: _deselectBrewery,
-                        icon: const Icon(Icons.close, color: Color(0xFF9E8A7D), size: 20),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.navigation, color: Color(0xFF9E8A7D), size: 12),
-                      const SizedBox(width: 4),
-                      Expanded(child: Text(subtitle, style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 12))),
-                    ],
-                  ),
-                  if (brewery.tags.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: brewery.tags
-                          .map((tag) => Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: const Color(0xFF1E1712), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF3E312A))),
-                                child: Text(tag, style: GoogleFonts.inter(color: const Color(0xFFC4A482), fontSize: 10, fontWeight: FontWeight.bold)),
-                              ))
-                          .toList(),
-                    ),
-                  ],
-                  if (brewery.about.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(brewery.about, style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontSize: 12, height: 1.4)),
-                  ],
-                  for (final fact in otherFacts) ...[
-                    const SizedBox(height: 6),
-                    Text(fact, style: GoogleFonts.inter(color: const Color(0xFFEFE6DD), fontSize: 12)),
-                  ],
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => openUrl('https://www.google.com/maps/dir/?api=1&destination=${brewery.latitude},${brewery.longitude}'),
-                            icon: const Icon(Icons.directions, color: Color(0xFFD4B28C), size: 18),
-                            label: Text('Route', style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold)),
-                            style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFD4B28C)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                          ),
-                        ),
-                        if (website != null) ...[
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => openUrl(website!),
-                              icon: const Icon(Icons.language, color: Color(0xFFD4B28C), size: 18),
-                              label: Text('Website', style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold)),
-                              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFD4B28C)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBreweryTile(int index, BreweryResult result) {
     final brewery = result.brewery;
     final isFavorite = _favoriteIds.contains(brewery.id);
@@ -1376,7 +1452,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final subtitle = _searchedLocation.isEmpty ? brewery.location : '${_formatDistance(result.distance)} vanaf $_searchedLocation';
 
     return InkWell(
-      onTap: () => _selectBrewery(index, zoomIn: true),
+      onTap: () {
+        _selectBrewery(index, zoomIn: true);
+        _openBreweryDetail(brewery);
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -1430,7 +1509,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final subtitle = _searchedLocation.isEmpty ? venue.location : '${_formatDistance(result.distance)} vanaf $_searchedLocation';
 
     return InkWell(
-      onTap: () => _selectHoreca(index, zoomIn: true),
+      onTap: () {
+        _selectHoreca(index, zoomIn: true);
+        _openHorecaDetail(venue);
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -1656,6 +1738,200 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
             const Icon(Icons.north_west, color: Color(0xFF7A6355), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottomsheet met brouwerij-details, geopend vanaf een pin of lijstrij.
+class _BreweryDetailSheet extends StatelessWidget {
+  const _BreweryDetailSheet({required this.brewery, required this.isFavorite, required this.onFavoriteTap});
+
+  final Brewery brewery;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
+
+  static const _primary = Color(0xFFD4B28C);
+  static const _onSurface = Color(0xFFEFE6DD);
+  static const _onSurfaceVariant = Color(0xFF9E8A7D);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: brewery.imageUrl != null
+                        ? Image.network(
+                            brewery.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 48))),
+                          )
+                        : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 48)))),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: onFavoriteTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? _primary : Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(brewery.title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, color: _onSurfaceVariant, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(brewery.location, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13))),
+                      if (brewery.founded != null) ...[
+                        const SizedBox(width: 12),
+                        const Icon(Icons.history_edu_outlined, color: _onSurfaceVariant, size: 16),
+                        const SizedBox(width: 4),
+                        Text('Sinds ${brewery.founded}', style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13)),
+                      ],
+                    ],
+                  ),
+                  if (brewery.about.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(brewery.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                  ],
+                  if (brewery.tags.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: brewery.tags
+                          .map((tag) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(color: const Color(0xFF1E1712), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0xFF3E312A))),
+                                child: Text(tag, style: GoogleFonts.inter(color: _primary, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                  if (brewery.facts.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text('WEETJES', style: GoogleFonts.inter(color: _primary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                    const SizedBox(height: 8),
+                    for (final fact in brewery.facts)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ', style: TextStyle(color: _primary)),
+                            Expanded(child: Text(fact, style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4))),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottomsheet met horeca-details, geopend vanaf een pin of lijstrij.
+class _HorecaDetailSheet extends StatelessWidget {
+  const _HorecaDetailSheet({required this.venue, required this.isFavorite, required this.onFavoriteTap});
+
+  final HorecaVenue venue;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
+
+  static const _primary = Color(0xFFD4B28C);
+  static const _onSurface = Color(0xFFEFE6DD);
+  static const _onSurfaceVariant = Color(0xFF9E8A7D);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: venue.imageUrl != null
+                        ? Image.network(
+                            venue.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48))),
+                          )
+                        : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 48)))),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: onFavoriteTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? _primary : Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(venue.title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700)),
+                  if (venue.location.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, color: _onSurfaceVariant, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(venue.location, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13))),
+                      ],
+                    ),
+                  ],
+                  if (venue.about.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(venue.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),

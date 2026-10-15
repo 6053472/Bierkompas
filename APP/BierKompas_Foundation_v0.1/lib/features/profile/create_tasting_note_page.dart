@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../favorites/beers.dart';
+import '../feed/feed_service.dart';
 import 'stats_service.dart';
 import 'tasting_notes_service.dart';
 
@@ -25,11 +26,13 @@ class CreateTastingNotePage extends StatefulWidget {
 
 class _CreateTastingNotePageState extends State<CreateTastingNotePage> {
   final _service = TastingNotesService();
+  final _feedService = FeedService();
   final _beerNameController = TextEditingController();
   final _noteController = TextEditingController();
 
   Beer? _selectedBeer;
   int _rating = 5;
+  bool _shareToFeed = true;
   bool _saving = false;
 
   @override
@@ -45,12 +48,28 @@ class _CreateTastingNotePageState extends State<CreateTastingNotePage> {
     if (beerName.isEmpty || note.isEmpty || _saving) return;
     setState(() => _saving = true);
     try {
+      final beerId = _selectedBeer?.name == beerName ? _selectedBeer?.id : null;
       final created = await _service.create(
         beerName: beerName,
         note: note,
         rating: _rating,
-        beerId: _selectedBeer?.name == beerName ? _selectedBeer?.id : null,
+        beerId: beerId,
       );
+      if (_shareToFeed) {
+        // Mislukt het delen (bijv. geen netwerk), dan is de proefnotitie
+        // zelf al wel opgeslagen -- dat mag niet verloren gaan.
+        try {
+          await _feedService.createPost(
+            body: note,
+            itemType: FeedItemType.review,
+            title: beerName,
+            rating: _rating.toDouble(),
+            beerId: beerId,
+          );
+        } on FeedException catch (e) {
+          debugPrint('Delen als bierpost mislukt: $e');
+        }
+      }
       await _recordStreakActivity();
       if (!mounted) return;
       Navigator.of(context).pop(created);
@@ -215,6 +234,24 @@ class _CreateTastingNotePageState extends State<CreateTastingNotePage> {
                   hintStyle: GoogleFonts.openSans(color: _onSurfaceVariant),
                   border: InputBorder.none,
                   counterStyle: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 11),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _outlineVariant.withOpacity(0.6)),
+              ),
+              child: SwitchListTile(
+                value: _shareToFeed,
+                onChanged: (value) => setState(() => _shareToFeed = value),
+                activeColor: _primary,
+                title: Text('Ook delen als bierpost', style: GoogleFonts.openSans(color: _onSurface, fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  'Verschijnt (na goedkeuring door een beheerder) als review in de Ontdek-feed.',
+                  style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12),
                 ),
               ),
             ),

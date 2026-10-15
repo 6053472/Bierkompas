@@ -17,10 +17,12 @@ class EventsPage extends StatefulWidget {
     super.key,
     this.avatarUrl,
     this.onProfileTap,
+    this.streak = 0,
   });
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
+  final int streak;
 
   @override
   State<EventsPage> createState() => _EventsPageState();
@@ -106,7 +108,7 @@ class _EventsPageState extends State<EventsPage> {
           .from('events')
           .select()
           .eq('user_id', user.id)
-          .eq('status', 'pending')
+          .inFilter('status', ['pending', 'rejected'])
           .order('start_date', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
@@ -209,6 +211,10 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   String _formatTime(Map<String, dynamic> event) {
+    // Geïmporteerde evenementen (bron gevuld) hebben alleen een datum; een
+    // starttijd van 00:00 zou verzonnen informatie zijn.
+    if (event['bron'] != null) return 'Tijd niet bekend';
+
     final eventDate = _getEventDate(event);
 
     if (eventDate == null) return '';
@@ -1032,6 +1038,9 @@ class _EventsPageState extends State<EventsPage> {
       return const SizedBox.shrink();
     }
 
+    final stillPendingCount =
+        pendingEvents.where((e) => e['status'] == 'pending').length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1059,26 +1068,27 @@ class _EventsPageState extends State<EventsPage> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 9,
-                vertical: 5,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent
-                    .withOpacity(0.12),
-                borderRadius:
-                    BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${pendingEvents.length} wachtend',
-                style: GoogleFonts.inter(
-                  color: Colors.orangeAccent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+            if (stillPendingCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent
+                      .withOpacity(0.12),
+                  borderRadius:
+                      BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$stillPendingCount wachtend',
+                  style: GoogleFonts.inter(
+                    color: Colors.orangeAccent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -1128,6 +1138,10 @@ class _EventsPageState extends State<EventsPage> {
         imageUrl.isNotEmpty &&
         imageUrl != 'null';
 
+    final isRejected = event['status']?.toString() == 'rejected';
+    final rejectionReason = event['rejection_reason']?.toString().trim();
+    final statusColor = isRejected ? Colors.redAccent : Colors.orangeAccent;
+
     return Container(
       margin:
           const EdgeInsets.only(bottom: 12),
@@ -1136,7 +1150,7 @@ class _EventsPageState extends State<EventsPage> {
         borderRadius:
             BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.orangeAccent
+          color: statusColor
               .withOpacity(0.35),
         ),
       ),
@@ -1178,7 +1192,7 @@ class _EventsPageState extends State<EventsPage> {
                     Positioned(
                       top: 12,
                       left: 12,
-                      child: _pendingBadge(),
+                      child: _pendingBadge(isRejected: isRejected),
                     ),
                   ],
                 ),
@@ -1193,7 +1207,7 @@ class _EventsPageState extends State<EventsPage> {
                 if (!hasImage)
                   Row(
                     children: [
-                      _pendingBadge(),
+                      _pendingBadge(isRejected: isRejected),
                       const Spacer(),
                       _eventTypeBadge(
                         eventType,
@@ -1261,29 +1275,48 @@ class _EventsPageState extends State<EventsPage> {
                   padding:
                       const EdgeInsets.all(11),
                   decoration: BoxDecoration(
-                    color: Colors.orangeAccent
+                    color: statusColor
                         .withOpacity(0.08),
                     borderRadius:
                         BorderRadius.circular(10),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.hourglass_top,
-                        color: Colors.orangeAccent,
+                      Icon(
+                        isRejected ? Icons.close : Icons.hourglass_top,
+                        color: statusColor,
                         size: 18,
                       ),
                       const SizedBox(width: 9),
                       Expanded(
-                        child: Text(
-                          'In afwachting van goedkeuring',
-                          style: GoogleFonts.inter(
-                            color:
-                                Colors.orangeAccent,
-                            fontSize: 12,
-                            fontWeight:
-                                FontWeight.w600,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isRejected
+                                  ? 'Afgewezen door de beheerder'
+                                  : 'In afwachting van goedkeuring',
+                              style: GoogleFonts.inter(
+                                color: statusColor,
+                                fontSize: 12,
+                                fontWeight:
+                                    FontWeight.w600,
+                              ),
+                            ),
+                            if (isRejected &&
+                                rejectionReason != null &&
+                                rejectionReason.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                rejectionReason,
+                                style: GoogleFonts.inter(
+                                  color: secondaryTextColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
@@ -1328,7 +1361,8 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Widget _pendingBadge() {
+  Widget _pendingBadge({bool isRejected = false}) {
+    final color = isRejected ? Colors.redAccent : Colors.orangeAccent;
     return Container(
       padding:
           const EdgeInsets.symmetric(
@@ -1336,28 +1370,28 @@ class _EventsPageState extends State<EventsPage> {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: Colors.orangeAccent
+        color: color
             .withOpacity(0.15),
         borderRadius:
             BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.orangeAccent
+          color: color
               .withOpacity(0.4),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.hourglass_top,
-            color: Colors.orangeAccent,
+          Icon(
+            isRejected ? Icons.close : Icons.hourglass_top,
+            color: color,
             size: 13,
           ),
           const SizedBox(width: 5),
           Text(
-            'IN AFWACHTING',
+            isRejected ? 'AFGEWEZEN' : 'IN AFWACHTING',
             style: GoogleFonts.inter(
-              color: Colors.orangeAccent,
+              color: color,
               fontSize: 9,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
@@ -2318,6 +2352,10 @@ class _EventsPageState extends State<EventsPage> {
                             Image.network(
                               imageUrl!,
                               fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: backgroundColor,
+                                child: const Icon(Icons.local_bar, color: beigeColor, size: 45),
+                              ),
                             ),
                             Positioned.fill(
                               child: DecoratedBox(
@@ -2801,6 +2839,24 @@ class _EventsPageState extends State<EventsPage> {
                 children: [
                   Row(
                     children: [
+                      if (widget.streak > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: beigeColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: beigeColor.withOpacity(0.4)),
+                            ),
+                            child: Text(
+                              '🔥 ${widget.streak}',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: GoogleFonts.inter(color: beigeColor, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
                       Container(
                         width: 44,
                         height: 44,

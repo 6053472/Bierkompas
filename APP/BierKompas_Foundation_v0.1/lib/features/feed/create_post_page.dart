@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shared/image_utils.dart';
+import '../favorites/beers.dart';
 import '../profile/stats_service.dart';
 import 'feed_service.dart';
 
@@ -28,6 +29,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
   final _feedService = FeedService();
   final _bodyController = TextEditingController();
 
+  // 'brouwerij' is bewust geen optie: dat type blijft redactioneel/alleen
+  // voor beheerders (zie supabase/add_feed_post_moderation.sql).
+  static const _typeOptions = [FeedItemType.post, FeedItemType.review, FeedItemType.tip, FeedItemType.weetje];
+  FeedItemType _selectedType = FeedItemType.post;
+  double _rating = 4;
+  final _beerNameController = TextEditingController();
+  Beer? _selectedBeer;
+
   Uint8List? _imageBytes;
   String? _imageExt;
   bool _posting = false;
@@ -36,6 +45,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   @override
   void dispose() {
     _bodyController.dispose();
+    _beerNameController.dispose();
     super.dispose();
   }
 
@@ -63,6 +73,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
+  String _typeLabel(FeedItemType type) => switch (type) {
+        FeedItemType.post => 'Post',
+        FeedItemType.review => 'Mini-review',
+        FeedItemType.tip => 'Biertip',
+        FeedItemType.weetje => 'Weetje',
+        _ => type.name,
+      };
+
   void _removeImage() => setState(() {
         _imageBytes = null;
         _imageExt = null;
@@ -78,10 +96,19 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (bytes != null) {
         imageUrl = await _feedService.uploadImage(bytes: bytes, fileExt: _imageExt ?? 'jpg');
       }
-      final post = await _feedService.createPost(body: body, imageUrl: imageUrl);
+      final beerName = _beerNameController.text.trim();
+      final beerId = _selectedType == FeedItemType.review && _selectedBeer?.name == beerName ? _selectedBeer?.id : null;
+      await _feedService.createPost(
+        body: body,
+        itemType: _selectedType,
+        title: _selectedType == FeedItemType.review && beerName.isNotEmpty ? beerName : null,
+        imageUrl: imageUrl,
+        rating: _selectedType == FeedItemType.review ? _rating : null,
+        beerId: beerId,
+      );
       await _recordStreakActivity();
       if (!mounted) return;
-      Navigator.of(context).pop(post);
+      Navigator.of(context).pop(true);
     } on FeedException catch (e) {
       if (!mounted) return;
       setState(() => _posting = false);
@@ -145,9 +172,119 @@ class _CreatePostPageState extends State<CreatePostPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Deel iets met de BierKompas-gemeenschap: een biertip, een ervaring of gewoon een gedachte.',
+                "Deel iets met de BierKompas-gemeenschap: een biertip, een ervaring of gewoon een gedachte. "
+                "Je post wordt eerst beoordeeld door een beheerder voordat 'm anderen zien.",
                 style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13),
               ),
+              const SizedBox(height: 16),
+              Text('Soort post', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final type in _typeOptions)
+                    GestureDetector(
+                      onTap: () => setState(() => _selectedType = type),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: _selectedType == type ? _primary : _cardColor,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: _selectedType == type ? _primary : _outlineVariant),
+                        ),
+                        child: Text(
+                          _typeLabel(type),
+                          style: GoogleFonts.openSans(
+                            color: _selectedType == type ? _onPrimary : _onSurfaceVariant,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (_selectedType == FeedItemType.review) ...[
+                const SizedBox(height: 16),
+                Text('Welk bier?', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Autocomplete<Beer>(
+                  textEditingController: _beerNameController,
+                  optionsBuilder: (value) {
+                    if (value.text.trim().isEmpty) return const Iterable<Beer>.empty();
+                    final query = value.text.toLowerCase();
+                    return beers.where((b) => b.name.toLowerCase().contains(query));
+                  },
+                  displayStringForOption: (b) => b.name,
+                  onSelected: (b) => setState(() => _selectedBeer = b),
+                  fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      onChanged: (text) => setState(() {
+                        if (text.trim() != _selectedBeer?.name) _selectedBeer = null;
+                      }),
+                      style: GoogleFonts.openSans(color: _onSurface, fontSize: 15),
+                      cursorColor: _primary,
+                      decoration: InputDecoration(
+                        hintText: 'Naam van het bier (optioneel)',
+                        hintStyle: GoogleFonts.openSans(color: _onSurfaceVariant),
+                        filled: true,
+                        fillColor: _cardColor,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _outlineVariant.withOpacity(0.6))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _outlineVariant.withOpacity(0.6))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _primary)),
+                      ),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) => Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      color: _cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 220, maxWidth: 400),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option.name, style: GoogleFonts.openSans(color: _onSurface)),
+                              subtitle: option.brewery != null
+                                  ? Text(option.brewery!, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12))
+                                  : null,
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Beoordeling', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    for (var i = 1; i <= 5; i++)
+                      GestureDetector(
+                        onTap: () => setState(() => _rating = i.toDouble()),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            i <= _rating ? Icons.star : Icons.star_border,
+                            color: _primary,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(

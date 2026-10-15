@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../shared/share_sheet.dart';
+import 'feed_comments_sheet.dart';
 import 'feed_service.dart';
 
 // Zelfde kleurenpalet als de rest van de app.
@@ -46,7 +46,10 @@ class FeedCard extends StatelessWidget {
       FeedItemType.evenement => ('EVENEMENT', Icons.event_outlined),
       FeedItemType.post => ('POST', Icons.chat_bubble_outline),
     };
-    final imageUrl = item.imageUrl;
+    // Elke Biertip krijgt altijd dezelfde vaste afbeelding (los van wat er
+    // eventueel in image_url staat), zodat biertips er consistent uitzien.
+    final isTip = item.type == FeedItemType.tip;
+    final imageUrl = isTip ? null : item.imageUrl;
     final footer = _buildFooter();
 
     final card = Container(
@@ -59,15 +62,25 @@ class FeedCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (imageUrl != null)
+          if (isTip)
+            const AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image(image: AssetImage('assets/feed/biertip.png'), fit: BoxFit.cover),
+            )
+          else if (imageUrl != null)
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
+              child: Image.network(
+                imageUrl,
                 fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 200),
-                placeholder: (context, url) => Container(color: _surfaceContainer),
-                errorWidget: (context, url, error) => Container(
+                // Sommige externe fotobronnen (bijv. heinekencollection.com)
+                // sturen geen CORS-toestemming mee, waardoor de browser de
+                // afbeelding niet via canvas mag inladen. Deze fallback toont
+                // 'm dan alsnog via een gewoon <img>-element.
+                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                loadingBuilder: (context, child, progress) =>
+                    progress == null ? child : Container(color: _surfaceContainer),
+                errorBuilder: (context, error, stackTrace) => Container(
                   color: _surfaceContainer,
                   child: Icon(Icons.image_outlined, color: _onSurfaceVariant.withOpacity(0.4), size: 40),
                 ),
@@ -82,11 +95,21 @@ class FeedCard extends StatelessWidget {
                   children: [
                     _buildLabel(label, icon),
                     const Spacer(),
+                    if (_feedItemId != null)
+                      GestureDetector(
+                        onTap: () => showFeedCommentsSheet(context, feedItemId: _feedItemId!, itemType: item.type),
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.mode_comment_outlined, color: _onSurfaceVariant, size: 20),
+                        ),
+                      ),
                     GestureDetector(
                       onTap: () => showAppShareSheet(
                         context,
                         shareText: _buildShareText(),
                         subject: item.title,
+                        onShared: recordBadgeShareAction,
                       ),
                       behavior: HitTestBehavior.opaque,
                       child: const Padding(
@@ -213,6 +236,14 @@ class FeedCard extends StatelessWidget {
         final author = item.author;
         return author == null ? null : Text(author, style: metaStyle);
     }
+  }
+
+  /// Het numerieke id voor `feed_comments.feed_item_id`, of null als dit een
+  /// evenement is (die komen uit de `events`-tabel, niet uit `feed_items`, en
+  /// zijn dus niet op deze manier te becommentariëren).
+  int? get _feedItemId {
+    if (!item.key.startsWith('item-')) return null;
+    return int.tryParse(item.key.substring('item-'.length));
   }
 
   String _buildShareText() {

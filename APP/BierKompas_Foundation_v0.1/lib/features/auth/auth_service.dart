@@ -177,6 +177,32 @@ class AuthService {
     }
   }
 
+  // Woonplaats staat los van AppUser: de kolom komt uit add_notifications.sql,
+  // en zo blijft inloggen werken op een database waar die nog ontbreekt.
+  Future<String?> fetchCity(String userId) async {
+    try {
+      final row = await _client
+          .from('profiles')
+          .select('city')
+          .eq('id', userId)
+          .maybeSingle();
+      return row?['city'] as String?;
+    } on PostgrestException {
+      return null;
+    }
+  }
+
+  Future<void> updateCity({
+    required String userId,
+    required String? city,
+  }) async {
+    try {
+      await _client.from('profiles').update({'city': city}).eq('id', userId);
+    } on PostgrestException catch (e) {
+      throw AuthException('Woonplaats opslaan mislukt: ${e.message}');
+    }
+  }
+
   Future<void> saveConsent({
     required String userId,
   }) async {

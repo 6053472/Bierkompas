@@ -3,7 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Kent de 'Bottle Share'-badge toe (zie supabase/add_remaining_badges.sql).
+/// Niet-blokkerend: lukt dit niet (geen netwerk, migratie nog niet gedraaid),
+/// dan mag dat het delen zelf niet verstoren.
+void recordBadgeShareAction() {
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  if (userId == null) return;
+  Supabase.instance.client.rpc('record_share_action', params: {'p_user_id': userId}).catchError((e) {
+    debugPrint('Kon Bottle Share-badge niet bijwerken: $e');
+    return null;
+  });
+}
 
 // Zelfde kleurenpalet als de rest van de app.
 const _background = Color(0xFF2C221C);
@@ -23,6 +36,10 @@ Future<void> showAppShareSheet(
   String? subject,
   String title = 'Delen',
   WidgetBuilder? extraOption,
+  // Aangeroepen zodra er echt iets gedeeld is (niet bij "Tekst kopiëren"),
+  // zodat de 'Bottle Share'-badge toegekend kan worden. Fouten hierin mogen
+  // het delen zelf nooit blokkeren.
+  VoidCallback? onShared,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -54,6 +71,7 @@ Future<void> showAppShareSheet(
                 onTap: () {
                   Navigator.pop(sheetContext);
                   Share.share(shareText, subject: subject);
+                  onShared?.call();
                 },
               ),
               if (kIsWeb)
@@ -63,6 +81,7 @@ Future<void> showAppShareSheet(
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _shareViaUrl(context, 'https://wa.me/?text=${Uri.encodeComponent(shareText)}');
+                    onShared?.call();
                   },
                 ),
               if (!kIsWeb) ...[
@@ -81,6 +100,7 @@ Future<void> showAppShareSheet(
                       appUrls: const ['fb://', 'https://www.facebook.com'],
                       appName: 'Facebook',
                     );
+                    onShared?.call();
                   },
                 ),
                 ListTile(
@@ -98,6 +118,7 @@ Future<void> showAppShareSheet(
                       appUrls: const ['instagram://app', 'https://www.instagram.com'],
                       appName: 'Instagram',
                     );
+                    onShared?.call();
                   },
                 ),
                 ListTile(
@@ -115,6 +136,7 @@ Future<void> showAppShareSheet(
                       appUrls: const ['tiktok://', 'https://www.tiktok.com'],
                       appName: 'TikTok',
                     );
+                    onShared?.call();
                   },
                 ),
               ],

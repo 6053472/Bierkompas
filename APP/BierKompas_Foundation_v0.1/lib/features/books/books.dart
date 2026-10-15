@@ -22,17 +22,24 @@ class Book {
   final String? subtitle;
   final String coverAsset;
 
+  /// Cover-URL van een door een beheerder toegevoegd boek (zie
+  /// supabase/add_admin_content_management.sql); de vaste boeken gebruiken [coverAsset].
+  final String? coverUrl;
+
   const Book({
     required this.id,
     required this.title,
     required this.author,
     required this.coverAsset,
     this.subtitle,
+    this.coverUrl,
   });
 }
 
+// Geen `const`: boeken die een beheerder via de admin-pagina toevoegt worden
+// bij het opstarten aan deze lijst toegevoegd (zie books_service.dart).
 /// De boeken uit de Bierkompas-bibliotheek (covers: assets/books/).
-const books = <Book>[
+final List<Book> books = [
   Book(
     id: 'bierwandelboek',
     title: 'Het grote Nederlandse Bierwandelboek',

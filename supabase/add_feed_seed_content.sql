@@ -1,0 +1,32 @@
+-- BierKompas: 20 redactionele Ontdek-feed items (weetjes, biertips,
+-- mini-reviews, brouwerijposts) aangeleverd door Mayson als testdata om de
+-- Ontdek-pagina te vullen. Zelfde soort content als wat al via het
+-- admin-paneel (tabblad "Ontdek-feed") handmatig toegevoegd kan worden.
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit
+-- bestand -> Run. Vereist add_feed.sql (en idealiter add_feed_post_moderation.sql,
+-- al werkt dit ook zonder -- deze rijen hebben sowieso geen 'status'-kolom nodig
+-- omdat redactionele content altijd meteen zichtbaar is).
+
+insert into public.feed_items (item_type, title, body, author) values
+    ('weetje', 'Wist je dat bier duizenden jaren oud is?', 'Bier behoort tot de oudste alcoholische dranken ter wereld. Er zijn aanwijzingen dat mensen al duizenden jaren geleden bier brouwden. In de oudheid was bier bovendien niet alleen een drankje, maar ook een belangrijk onderdeel van het dagelijkse voedingspatroon.', 'BierKompas'),
+    ('tip', 'Proef eerst de geur', 'Ruik even aan je bier voordat je een slok neemt. Hop kan aroma''s geven die doen denken aan citrus, tropisch fruit, bloemen of dennen. Door eerst te ruiken herken je vaak meer smaken tijdens het drinken.', 'BierKompas'),
+    ('review', 'Een frisse Blond voor een zonnige dag', 'Een blond bier is vaak een fijne keuze wanneer je iets fris en toegankelijk zoekt. Verwacht een lichte moutigheid, zachte bitterheid en een frisse afdronk. Vooral lekker goed gekoeld op een zonnige middag.', 'BierKompas'),
+    ('weetje', 'Niet iedere IPA is super bitter', 'IPA staat bekend om zijn hopkarakter, maar dat betekent niet dat iedere IPA extreem bitter is. Moderne IPA''s kunnen juist veel aroma''s van citrus en tropisch fruit hebben met een relatief zachte bitterheid.', 'BierKompas'),
+    ('tip', 'Drink je bier uit het juiste glas', 'Het glas kan invloed hebben op hoe je bier ruikt en proeft. Een tulpvormig glas houdt aroma''s beter vast en is daardoor interessant voor speciaalbier met veel geur.', 'BierKompas'),
+    ('brouwerij', 'Brouwerij Homeland – bier met een maritiem tintje', 'Brouwerij Homeland is gevestigd op het historische Marineterrein in Amsterdam. De brouwerij heeft een duidelijke link met de maritieme geschiedenis van de locatie. Een mooi voorbeeld van hoe een brouwerij zijn omgeving kan verwerken in zijn identiteit en bier.', 'BierKompas'),
+    ('review', 'Tijd voor een stevige Tripel', 'Zin in iets krachtigers? Een Belgische Tripel combineert vaak een stevige alcoholwarmte met fruitige en kruidige tonen. Neem rustig de tijd voor iedere slok: dit is een bier om te ontdekken, niet om snel achterover te slaan.', 'BierKompas'),
+    ('weetje', 'Waar komt de graansmaak vandaan?', 'Gerst is voor veel bieren het belangrijkste graan. Tijdens het brouwen worden de suikers uit het graan vrijgemaakt. Die suikers worden vervolgens door gist omgezet in alcohol en koolzuur.', 'BierKompas'),
+    ('tip', 'Proef bier niet ijskoud', 'Heel koud bier kan sommige aroma''s en smaken minder duidelijk laten overkomen. Laat een speciaalbier daarom eventueel een paar minuten op temperatuur komen. Je zult merken dat het karakter langzaam verandert.', 'BierKompas'),
+    ('weetje', 'Waarom heeft bier schuim?', 'Het schuim ontstaat voornamelijk door koolzuur dat uit het bier ontsnapt. Eiwitten en andere stoffen uit het bier helpen het schuim stabiel te houden. Een goede schuimkraag kan daardoor veel langer blijven staan.', 'BierKompas'),
+    ('brouwerij', 'De Amsterdamse biergeschiedenis van Heineken', 'Heineken heeft zijn oorsprong in Amsterdam. Gerard Heineken kocht in 1864 brouwerij De Hooiberg en richtte zich sterk op de ontwikkeling van lagerbier. In 1873 begon de brouwerij onder de naam Heineken''s Bierbrouwerij Maatschappij verder te groeien.', 'BierKompas'),
+    ('review', 'Een IPA voor de hopliefhebber', 'Deze IPA-stijl draait om hop. Denk aan aroma''s van citrus, tropisch fruit en soms dennen. De bitterheid blijft aanwezig, maar de geur maakt het bier interessant en zorgt voor een lange afdronk.', 'BierKompas'),
+    ('tip', 'Combineer bier met eten', 'Bier kan verrassend goed samengaan met eten. Een fris witbier past bijvoorbeeld mooi bij lichte gerechten, terwijl een donker en moutig bier juist goed kan werken naast stevige of geroosterde gerechten.', 'BierKompas'),
+    ('weetje', 'Waarom heet het India Pale Ale?', 'Het verhaal dat IPA speciaal werd uitgevonden voor de zeereis naar India is minder simpel dan vaak wordt verteld. Sterk gehopte pale ales bestonden al en de stijl ontwikkelde zich geleidelijk. De moderne IPA is bovendien flink veranderd ten opzichte van zijn historische voorgangers.', 'BierKompas'),
+    ('review', 'Donker bier, diepe smaken', 'Donkere bieren kunnen aroma''s hebben die doen denken aan koffie, chocolade, karamel en geroosterde mout. Ondanks de donkere kleur hoeft een donker bier niet automatisch zwaar of zoet te zijn. Zeker de moeite waard om eens rustig te ontdekken.', 'BierKompas'),
+    ('tip', 'Kijk naar de kleur', 'De kleur van bier kan je alvast een kleine hint geven over wat je kunt verwachten. Een licht bier is vaak fris en subtiel, terwijl donkere bieren vaker geroosterde of karamelachtige tonen hebben. Maar let op: kleur zegt niet alles!', 'BierKompas'),
+    ('brouwerij', 'Brouwerij De Prael in Amsterdam', 'Brouwerij De Prael is een Nederlandse brouwerij uit Amsterdam. De brouwerij werd opgericht in 2002 en heeft door de jaren heen verschillende bierstijlen gebrouwen, waaronder IPA, Weizen, Tripel en stout.', 'BierKompas'),
+    ('weetje', 'Gist doet het belangrijkste werk', 'Zonder gist geen alcoholisch bier. Tijdens de vergisting zet gist suikers om in alcohol en koolzuur. Daarnaast produceert gist allerlei smaak- en geurstoffen die een grote invloed hebben op het uiteindelijke bier.', 'BierKompas'),
+    ('tip', 'Proef eens buiten je comfortzone', 'Drink je normaal pils? Probeer dan eens een Weizen, Blond of Saison. Ben je vooral fan van IPA? Ga dan eens voor een stout of dubbel. Door verschillende stijlen te proberen ontdek je misschien een compleet nieuwe favoriet.', 'BierKompas'),
+    ('weetje', 'Bier bestaat uit meer dan alleen water en hop', 'De vier bekende basisingrediënten van traditioneel bier zijn water, mout, hop en gist. Door te variëren met deze ingrediënten en het brouwproces kunnen brouwers enorm veel verschillende smaken en stijlen creëren.', 'BierKompas');
+
+NOTIFY pgrst, 'reload schema';

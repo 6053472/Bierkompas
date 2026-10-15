@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../shared/cover_image.dart';
 import 'music.dart';
 
 const _background = Color(0xFF1E1712);
@@ -132,7 +133,7 @@ class _MusicPageState extends State<MusicPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(song.coverAsset, fit: BoxFit.cover, cacheHeight: 900),
+            CoverImage(asset: song.coverAsset, url: song.coverUrl, fit: BoxFit.cover, cacheHeight: 900),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -189,7 +190,7 @@ class _MusicPageState extends State<MusicPage> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.asset(song.coverAsset, width: 56, height: 56, fit: BoxFit.cover, cacheWidth: 200),
+              child: CoverImage(asset: song.coverAsset, url: song.coverUrl, width: 56, height: 56, fit: BoxFit.cover, cacheWidth: 200),
             ),
             const SizedBox(width: 12),
             Expanded(

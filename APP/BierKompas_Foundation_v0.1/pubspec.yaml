@@ -23,6 +23,10 @@ dependencies:
   mobile_scanner: ^7.4.2
   permission_handler: ^11.3.1
   geolocator: ^13.0.1
+  video_player: ^2.9.2
+  youtube_player_iframe: ^6.0.2
+  webview_flutter: ^4.14.1
+  web: ^1.1.1
 
 flutter:
   uses-material-design: true
@@ -30,3 +34,4 @@ flutter:
     - assets/badges/
     - assets/books/
     - assets/music/
+    - assets/feed/

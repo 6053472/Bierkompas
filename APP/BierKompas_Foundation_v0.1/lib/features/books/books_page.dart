@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../shared/cover_image.dart';
 import '../../shared/share_sheet.dart';
 import 'books.dart';
 
@@ -197,7 +198,7 @@ class _BooksPageState extends State<BooksPage> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.asset(book.coverAsset, width: 84, height: 112, fit: BoxFit.cover, cacheWidth: 300),
+              child: CoverImage(asset: book.coverAsset, url: book.coverUrl, width: 84, height: 112, fit: BoxFit.cover, cacheWidth: 300),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -285,7 +286,7 @@ class _BooksPageState extends State<BooksPage> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(book.coverAsset, fit: BoxFit.cover, cacheWidth: 500),
+                  CoverImage(asset: book.coverAsset, url: book.coverUrl, fit: BoxFit.cover, cacheWidth: 500),
                   Positioned(
                     left: 8,
                     bottom: 8,
@@ -352,7 +353,7 @@ class _BookSheetState extends State<_BookSheet> {
             Center(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.asset(book.coverAsset, height: 260, fit: BoxFit.cover, cacheHeight: 800),
+                child: CoverImage(asset: book.coverAsset, url: book.coverUrl, height: 260, fit: BoxFit.cover, cacheHeight: 800),
               ),
             ),
             const SizedBox(height: 20),
@@ -401,6 +402,7 @@ class _BookSheetState extends State<_BookSheet> {
                   shareText: '${book.title} van ${book.author}\n\nBekijk het in Bierkompas! \u{1F37B}',
                   subject: book.title,
                   title: 'Boek delen',
+                  onShared: recordBadgeShareAction,
                 ),
                 icon: const Icon(Icons.ios_share, color: _primary, size: 18),
                 label: Text('Delen', style: GoogleFonts.openSans(color: _primary, fontWeight: FontWeight.bold)),

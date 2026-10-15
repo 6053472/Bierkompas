@@ -136,12 +136,16 @@ class FeedService {
   }
 
   /// Plaatst een eigen post in de feed. [title] mag leeg zijn (dan wordt de
-  /// tekst zelf als titel gebruikt); de post verschijnt bovenaan bij `Sanne`/
-  /// andere gebruikers omdat de feed op `created_at` sorteert.
-  Future<FeedItem> createPost({
+  /// tekst zelf als titel gebruikt). De post komt er als 'pending' in en
+  /// verschijnt pas in de Ontdek-feed van iedereen nadat een beheerder 'm
+  /// heeft goedgekeurd (zie supabase/add_feed_post_moderation.sql).
+  Future<void> createPost({
     required String body,
+    required FeedItemType itemType,
     String? title,
     String? imageUrl,
+    double? rating,
+    int? beerId,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) throw FeedException('Je bent niet ingelogd.');
@@ -153,24 +157,31 @@ class FeedService {
           .maybeSingle();
       final authorName = profile?['name'] as String? ?? 'Bierliefhebber';
       final avatarUrl = profile?['avatar_url'] as String?;
-      final row = await _client
-          .from('feed_items')
-          .insert({
-            'item_type': 'post',
-            'title': (title == null || title.trim().isEmpty)
-                ? (body.length > 60 ? '${body.substring(0, 60)}…' : body)
-                : title.trim(),
-            'body': body,
-            'image_url': imageUrl,
-            'author': authorName,
-            'user_id': user.id,
-            'avatar_url': avatarUrl,
-          })
-          .select()
-          .single();
-      // De insert leest uit feed_items, niet uit de view `feed`; feed_key
-      // hier zelf samenstellen zodat het resultaat meteen bruikbaar is.
-      return FeedItem.fromJson({...row, 'feed_key': 'item-${row['id']}'});
+      await _client.from('feed_items').insert({
+        'item_type': itemType.name,
+        'title': (title == null || title.trim().isEmpty)
+            ? (body.length > 60 ? '${body.substring(0, 60)}…' : body)
+            : title.trim(),
+        'body': body,
+        'image_url': imageUrl,
+        'author': authorName,
+        'user_id': user.id,
+        'avatar_url': avatarUrl,
+        'rating': itemType == FeedItemType.review ? rating : null,
+        'beer_id': beerId,
+        'status': 'pending',
+      });
+      if (itemType == FeedItemType.post) {
+        // Een eigen post plaatsen is de dichtstbijzijnde bestaande "eigen
+        // gemaakte content"-actie voor de 'Home Brewed Goodness'-badge (zie
+        // supabase/add_remaining_badges.sql). Mag het plaatsen van de post
+        // zelf niet blokkeren als dit faalt.
+        try {
+          await _client.rpc('record_own_post', params: {'p_user_id': user.id});
+        } catch (_) {
+          // Negeren: badge is secundair aan de post zelf.
+        }
+      }
     } on PostgrestException catch (e) {
       throw FeedException(e.message);
     }

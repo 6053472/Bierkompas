@@ -46,6 +46,19 @@ class FavoritesService {
         'item_type': itemType,
         'item_id': itemId,
       });
+      // Kent locatie-badges toe als deze brouwerij/horeca door een beheerder
+      // getagd is (zie supabase/add_remaining_badges.sql); no-op voor andere
+      // itemTypes of ongetagde locaties. Mag het favorieten zelf niet
+      // blokkeren als dit faalt.
+      try {
+        await _client.rpc('record_item_favorited', params: {
+          'p_user_id': userId,
+          'p_item_type': itemType,
+          'p_item_id': itemId,
+        });
+      } catch (_) {
+        // Negeren: badge is secundair aan het favorieten zelf.
+      }
     } on PostgrestException catch (e) {
       throw FavoritesException(e.message);
     }

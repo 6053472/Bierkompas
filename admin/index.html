@@ -55,6 +55,24 @@
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   .copper-glow { box-shadow: 0px 4px 20px rgba(251, 185, 123, 0.15); }
   .hidden { display: none !important; }
+  /* Losse classes voor "alleen zichtbaar vanaf desktop / alleen op mobiel",
+     bewust NIET gecombineerd met .hidden: die heeft !important nodig voor
+     JS-geschakelde elementen (bv. #dashboard-view) en zou daardoor altijd
+     winnen van een gewone "@media (min-width: 768px) { display: ... }"
+     regel, ongeacht schermbreedte -- precies het probleem dat hier speelde. */
+  .only-desktop-inline, .only-desktop-block, .only-desktop-flex { display: none; }
+  @media (min-width: 768px) {
+    .only-desktop-inline { display: inline; }
+    .only-desktop-block { display: block; }
+    .only-desktop-flex { display: flex; }
+    .only-mobile { display: none; }
+  }
+  /* Standaard invoerveld voor de nieuwere beheerformulieren. */
+  .fi {
+    width: 100%; background: #251911; border: 1px solid rgba(81,68,58,0.3); color: #f6ded1;
+    padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; outline: none;
+  }
+  .fi:focus { border-color: #fbb97b; box-shadow: 0 0 0 1px #fbb97b; }
   .nav-item.active { background-color: #d4975c22; color: #fbb97b; font-weight: 600; }
   .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -117,40 +135,123 @@
 
 <!-- ===================== DASHBOARD VIEW ===================== -->
 <div id="dashboard-view" class="hidden flex flex-col md:flex-row min-h-screen">
-  <!-- Sidebar (horizontale balk op mobiel, verticale zijbalk vanaf md) -->
-  <aside class="flex md:flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 items-center md:items-stretch gap-2 md:gap-1 z-10">
-    <div class="mb-0 md:mb-8 px-2 mr-auto md:mr-0 flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary text-2xl hidden md:inline">sports_bar</span>
+  <!-- Sidebar (op mobiel: titel + dropdown-keuzemenu; vanaf md: volledige verticale zijbalk) -->
+  <aside class="flex flex-col md:h-screen md:w-64 md:fixed left-0 top-0 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline-variant/20 p-3 md:p-5 shrink-0 gap-2 md:gap-1 z-10">
+    <div class="mb-0 md:mb-8 px-2 shrink-0 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary text-2xl only-desktop-inline">sports_bar</span>
       <div>
         <h1 class="font-display text-lg md:text-xl text-primary leading-tight">Bierkompas</h1>
-        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hidden md:block">Beheer</p>
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant only-desktop-block">Beheer</p>
       </div>
     </div>
-    <nav class="flex md:flex-col gap-1 md:flex-1">
-      <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+
+    <!-- Mobiel: dropdown i.p.v. een scrollende knoppenrij, zodat elke optie altijd met volledige tekst leesbaar is. -->
+    <div class="only-mobile px-2 pb-1">
+      <select id="mobile-panel-select"
+        class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-3 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+        <optgroup label="Goedkeuringen">
+          <option value="events">Evenementen</option>
+          <option value="brouwerijen">Brouwerij-aanmeldingen</option>
+          <option value="horeca">Horeca-aanmeldingen</option>
+        </optgroup>
+        <optgroup label="Content">
+          <option value="feed">Ontdek-feed</option>
+          <option value="bieren">Bieren &amp; barcodes</option>
+          <option value="pairings">Bier &amp; Spijs</option>
+          <option value="videos">Video's</option>
+          <option value="news">Nieuws</option>
+          <option value="faq">Support &amp; FAQ</option>
+          <option value="music">Muziek</option>
+          <option value="books">Boeken</option>
+          <option value="locations">Locaties toevoegen</option>
+        </optgroup>
+        <optgroup label="Overzicht &amp; beheer">
+          <option value="stats">Statistieken</option>
+          <option value="locationbadges">Locatie-badges</option>
+          <option value="messages">Berichten</option>
+          <option value="imports">Data-imports</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <nav class="only-desktop-flex flex-col gap-1 flex-1 min-w-0">
+      <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-3 pb-1">Goedkeuringen</p>
+      <button data-panel="events" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">event</span>
-        <span class="font-body text-sm hidden sm:inline">Evenementen</span>
+        <span class="font-body text-sm only-desktop-inline">Evenementen</span>
         <span id="events-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
-      <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
-        <span class="material-symbols-outlined">sports_bar</span>
-        <span class="font-body text-sm hidden sm:inline">Bieren &amp; barcodes</span>
-        <span id="bieren-count-badge" class="hidden ml-auto bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
-      </button>
-      <button data-panel="brouwerijen" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+      <button data-panel="brouwerijen" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">add_business</span>
-        <span class="font-body text-sm hidden sm:inline">Brouwerij-aanmeldingen</span>
+        <span class="font-body text-sm only-desktop-inline">Brouwerij-aanmeldingen</span>
         <span id="brouwerijen-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
-      <button data-panel="horeca" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors">
+      <button data-panel="horeca" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">restaurant</span>
-        <span class="font-body text-sm hidden sm:inline">Horeca-aanmeldingen</span>
+        <span class="font-body text-sm only-desktop-inline">Horeca-aanmeldingen</span>
         <span id="horeca-count-badge" class="hidden ml-auto bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
       </button>
+
+      <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Content</p>
+      <button data-panel="feed" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">dynamic_feed</span>
+        <span class="font-body text-sm only-desktop-inline">Ontdek-feed</span>
+      </button>
+      <button data-panel="bieren" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">sports_bar</span>
+        <span class="font-body text-sm only-desktop-inline">Bieren &amp; barcodes</span>
+        <span id="bieren-count-badge" class="hidden ml-auto bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center"></span>
+      </button>
+      <button data-panel="pairings" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">restaurant_menu</span>
+        <span class="font-body text-sm only-desktop-inline">Bier &amp; Spijs</span>
+      </button>
+      <button data-panel="videos" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">smart_display</span>
+        <span class="font-body text-sm only-desktop-inline">Video's</span>
+      </button>
+      <button data-panel="news" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">newspaper</span>
+        <span class="font-body text-sm only-desktop-inline">Nieuws</span>
+      </button>
+      <button data-panel="faq" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">help</span>
+        <span class="font-body text-sm only-desktop-inline">Support &amp; FAQ</span>
+      </button>
+      <button data-panel="music" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">music_note</span>
+        <span class="font-body text-sm only-desktop-inline">Muziek</span>
+      </button>
+      <button data-panel="books" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">menu_book</span>
+        <span class="font-body text-sm only-desktop-inline">Boeken</span>
+      </button>
+      <button data-panel="locations" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">add_location_alt</span>
+        <span class="font-body text-sm only-desktop-inline">Locaties toevoegen</span>
+      </button>
+
+      <p class="only-desktop-block font-label text-[10px] uppercase tracking-widest text-on-surface-variant/60 px-4 pt-4 pb-1">Overzicht &amp; beheer</p>
+      <button data-panel="stats" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">query_stats</span>
+        <span class="font-body text-sm only-desktop-inline">Statistieken</span>
+      </button>
+      <button data-panel="locationbadges" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">emoji_events</span>
+        <span class="font-body text-sm only-desktop-inline">Locatie-badges</span>
+      </button>
+      <button data-panel="messages" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">campaign</span>
+        <span class="font-body text-sm only-desktop-inline">Berichten</span>
+      </button>
+      <button data-panel="imports" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">cloud_download</span>
+        <span class="font-body text-sm only-desktop-inline">Data-imports</span>
+      </button>
     </nav>
-    <button id="logout-button" class="md:mt-auto flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
+    <button id="logout-button" class="md:mt-auto shrink-0 flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
       <span class="material-symbols-outlined">logout</span>
-      <span class="font-body text-sm hidden sm:inline">Uitloggen</span>
+      <span class="font-body text-sm only-desktop-inline">Uitloggen</span>
     </button>
   </aside>
 
@@ -169,16 +270,58 @@
             <h2 class="font-display text-2xl text-on-surface mb-1">Evenement aanmeldingen</h2>
             <p class="text-on-surface-variant text-sm">Controleer nieuwe evenementen voordat ze zichtbaar worden in de agenda.</p>
           </div>
-          <button id="events-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
-            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
-          </button>
+          <div class="flex items-center gap-2">
+            <button id="event-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span class="material-symbols-outlined text-[18px]">add</span> Nieuw evenement
+            </button>
+            <button id="events-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+              <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+            </button>
+          </div>
         </div>
+
+        <!-- Evenement rechtstreeks aanmaken en publiceren (zonder goedkeuringsronde) -->
+        <div id="event-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-1">Nieuw evenement</h3>
+          <p class="text-on-surface-variant text-xs mb-4">Wordt direct gepubliceerd in de agenda.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input id="event-new-name" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
+              <select id="event-new-type" class="fi">
+                <option>Festival</option><option>Proeverij</option><option>Brouwersmarkt</option><option>Lezing</option><option>Bokbiertocht</option><option>Bierwandeltocht</option>
+              </select></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Begin*</span><input id="event-new-start" type="datetime-local" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Einde*</span><input id="event-new-end" type="datetime-local" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Locatienaam*</span><input id="event-new-location" type="text" placeholder="Bijv. Brouwerij De Gouden Hop" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Straat*</span><input id="event-new-street" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Huisnummer*</span><input id="event-new-number" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Postcode*</span><input id="event-new-postal" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="event-new-city" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Omschrijving*</span><textarea id="event-new-desc" rows="3" class="fi"></textarea></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="event-new-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
+            <div class="md:col-span-2 flex items-center gap-6 flex-wrap text-sm text-on-surface">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Tickets</span>
+              <label class="flex items-center gap-2 cursor-pointer select-none"><input id="event-new-t-regular" type="checkbox" class="rounded accent-primary"/> Regulier</label>
+              <label class="flex items-center gap-2 cursor-pointer select-none"><input id="event-new-t-beer" type="checkbox" class="rounded accent-primary"/> Bierticket</label>
+              <label class="flex items-center gap-2 cursor-pointer select-none"><input id="event-new-t-vip" type="checkbox" class="rounded accent-primary"/> VIP</label>
+            </div>
+          </div>
+          <p id="event-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="event-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="event-new-save" class="px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"><span id="event-new-save-label">Opslaan en publiceren</span></button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div id="events-list" class="lg:col-span-5 flex flex-col gap-3"></div>
           <div id="events-detail" class="lg:col-span-7 bg-surface-container-low rounded-2xl border border-outline-variant/20 p-6 md:p-8 min-h-[280px] flex items-center justify-center text-on-surface-variant text-sm text-center">
             Selecteer een evenement om details te bekijken.
           </div>
         </div>
+
+        <h3 class="font-display text-lg text-on-surface mt-10 mb-3">Gepubliceerde evenementen</h3>
+        <div id="events-published-list" class="flex flex-col gap-2"></div>
       </div>
     </section>
 
@@ -236,8 +379,9 @@
             </label>
             <label class="flex flex-col gap-1 md:col-span-2">
               <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL</span>
-              <input id="bier-new-foto" type="text" placeholder="https://..."
+              <input id="bier-new-foto" type="text" placeholder="https://.../afbeelding.jpg"
                 class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Let op: dit moet een link zijn die rechtstreeks naar een afbeeldingsbestand wijst (eindigt meestal op .jpg/.png/.webp), niet een link naar een webpagina.</span>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Barcode (optioneel)</span>
@@ -311,6 +455,570 @@
         </div>
       </div>
     </section>
+
+    <!-- Ontdek-feed panel -->
+    <section id="panel-feed" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Ontdek-feed</h2>
+            <p class="text-on-surface-variant text-sm">Mini-reviews, biertips en weetjes die op de Ontdek-pagina in de app verschijnen. Posts van gebruikers zelf staan hier niet bij en kun je hier niet beheren.</p>
+          </div>
+          <button id="feed-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw item
+          </button>
+        </div>
+
+        <!-- Nieuw/bewerk feed-item (ingeklapt totdat je op de knop klikt) -->
+        <div id="feed-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="feed-form-title" class="font-display text-lg text-on-surface mb-4">Nieuw feed-item</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
+              <select id="feed-new-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="tip">Biertip</option>
+                <option value="weetje">Weetje</option>
+                <option value="review">Mini-review</option>
+                <option value="brouwerij">Brouwerij-post</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Auteur (optioneel)</span>
+              <input id="feed-new-author" type="text" placeholder="Bijv. Bierkompas Redactie"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="feed-new-titel" type="text" placeholder="Bijv. Wist je dat..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Tekst*</span>
+              <textarea id="feed-new-body" rows="3" placeholder="De inhoud van dit feed-item"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span>
+              <input id="feed-new-foto" type="text" placeholder="https://.../afbeelding.jpg"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Let op: dit moet een link zijn die rechtstreeks naar een afbeeldingsbestand wijst (eindigt meestal op .jpg/.png/.webp), niet een link naar een webpagina of artikel. Rechtermuisknop op de foto &rarr; "Afbeeldingsadres kopiëren" geeft meestal de juiste link.</span>
+            </label>
+            <label id="feed-new-rating-wrap" class="flex flex-col gap-1 hidden">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beoordeling (0-5, alleen bij mini-review)</span>
+              <input id="feed-new-rating" type="number" min="0" max="5" step="0.5" placeholder="4.5"
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+          </div>
+          <p id="feed-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="feed-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="feed-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="feed-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 mt-8 mb-2">
+          <h3 class="font-display text-lg text-on-surface">Posts wachtend op goedkeuring</h3>
+          <span id="feed-pending-count-badge" class="hidden bg-primary text-on-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center"></span>
+        </div>
+        <p class="text-on-surface-variant text-sm mb-3">Eigen posts van gebruikers verschijnen pas in ieders Ontdek-feed nadat je ze hier goedkeurt.</p>
+        <div id="feed-pending-list" class="flex flex-col gap-2 mb-8"></div>
+
+        <h3 class="font-display text-lg text-on-surface mb-3">Redactionele content</h3>
+        <div id="feed-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Bier & Spijs panel -->
+    <section id="panel-pairings" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Bier &amp; Spijs</h2>
+            <p class="text-on-surface-variant text-sm">Combinaties van bier en gerecht die in de Foodpairing Hub van de app verschijnen.</p>
+          </div>
+          <button id="pairing-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe combinatie
+          </button>
+        </div>
+
+        <div id="pairing-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-4">Nieuwe combinatie toevoegen</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Brouwerij*</span>
+              <input id="pairing-new-brouwerij" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Biernaam*</span>
+              <input id="pairing-new-biernaam" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Aanbevolen gerecht*</span>
+              <input id="pairing-new-gerecht" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Aankoop-context</span>
+              <input id="pairing-new-context" type="text" placeholder="Bijv. Webshop / Slijterij" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Prijs</span>
+              <input id="pairing-new-prijs" type="text" placeholder="Bijv. € 3" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Website (optioneel)</span>
+              <input id="pairing-new-link" type="text" placeholder="https://..." class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+          </div>
+          <p id="pairing-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="pairing-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="pairing-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="pairing-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mb-6 mt-4 flex-wrap">
+          <div class="relative flex-1 min-w-[200px] max-w-sm">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+            <input id="pairings-search" type="text" placeholder="Zoek op bier of brouwerij..."
+              class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface pl-10 pr-4 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-sm"/>
+          </div>
+          <span id="pairings-summary" class="ml-auto text-xs text-on-surface-variant"></span>
+        </div>
+        <div id="pairings-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Video's panel -->
+    <section id="panel-videos" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Video's</h2>
+            <p class="text-on-surface-variant text-sm">Korte video's (brouwerijtours, proeverijen) die als "Brouwerij Highlights" in de app verschijnen.</p>
+          </div>
+          <button id="video-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe video
+          </button>
+        </div>
+
+        <div id="video-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 class="font-display text-lg text-on-surface mb-4">Nieuwe video toevoegen</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort video*</span>
+              <select id="video-new-kind" class="fi">
+                <option value="link">Link naar YouTube, TikTok of Instagram</option>
+                <option value="hosted">Eigen video (uploaden of directe link)</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="video-new-title" type="text" class="fi"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Categorie</span>
+              <input id="video-new-category" type="text" placeholder="Bijv. New Pour, Tour, Tasting" class="fi"/>
+            </label>
+
+            <label id="video-link-wrap" class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Link*</span>
+              <input id="video-new-link" type="text" placeholder="https://www.youtube.com/watch?v=..." class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Plak de gewone link van de video. Alleen de link en het video-ID worden opgeslagen; de video wordt getoond met de officiële speler van het platform. Verkorte TikTok-links (vm.tiktok.com) werken niet: open de video en kopieer de lange link.</span>
+            </label>
+
+            <div id="video-hosted-wrap" class="hidden md:col-span-2 flex flex-col gap-4">
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Videobestand uploaden (.mp4, .webm of .mov, max. 50 MB)</span>
+                <input id="video-new-file" type="file" accept="video/mp4,video/webm,video/quicktime" class="fi"/>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">...of een directe link</span>
+                <input id="video-new-url" type="text" placeholder="https://.../video.mp4 of https://.../stream.m3u8" class="fi"/>
+                <span class="text-xs text-on-surface-variant/70">Een HLS-stream (.m3u8, bijvoorbeeld via Cloudflare Stream of Mux) laadt sneller en soepeler; die speelt in de app (Android/iOS), niet in elke browser.</span>
+              </label>
+            </div>
+
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Thumbnail-URL (optioneel)</span>
+              <input id="video-new-thumbnail" type="text" placeholder="https://.../thumbnail.jpg" class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Bij YouTube wordt de thumbnail automatisch gebruikt. Bij TikTok en Instagram is er zonder eigen afbeelding een donker beeld totdat de video laadt.</span>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span>
+              <input id="video-new-sort" type="number" value="0" class="fi"/>
+            </label>
+          </div>
+          <p id="video-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="video-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="video-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="video-new-save-label">Video opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="videos-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></div>
+      </div>
+    </section>
+
+    <!-- Nieuws panel -->
+    <section id="panel-news" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Nieuws</h2>
+            <p class="text-on-surface-variant text-sm">Artikelen voor de nieuwsrubriek. Een artikel is pas zichtbaar in de app na publiceren.</p>
+          </div>
+          <button id="news-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw artikel
+          </button>
+        </div>
+
+        <div id="news-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="news-form-title" class="font-display text-lg text-on-surface mb-4">Nieuw artikel</h3>
+          <div class="grid grid-cols-1 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="news-new-titel" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Samenvatting*</span>
+              <textarea id="news-new-samenvatting" rows="2" placeholder="Korte samenvatting voor op de Ontdek-pagina" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Inhoud*</span>
+              <textarea id="news-new-inhoud" rows="6" placeholder="Volledige tekst van het artikel" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span>
+              <input id="news-new-foto" type="text" placeholder="https://.../afbeelding.jpg" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand, geen link naar een webpagina.</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="news-new-published" type="checkbox" class="rounded accent-primary"/> Direct publiceren
+            </label>
+          </div>
+          <p id="news-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="news-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="news-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="news-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="news-list" class="flex flex-col gap-2 mt-4"></div>
+      </div>
+    </section>
+
+    <!-- Support & FAQ panel -->
+    <section id="panel-faq" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-4xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Support &amp; FAQ</h2>
+            <p class="text-on-surface-variant text-sm">Veelgestelde vragen die gebruikers in de app zien onder Profiel &gt; Help &amp; FAQ, per vaste rubriek.</p>
+          </div>
+          <button id="faq-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe vraag
+          </button>
+        </div>
+
+        <div id="faq-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="faq-form-title" class="font-display text-lg text-on-surface mb-4">Nieuwe vraag</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Rubriek*</span>
+              <select id="faq-new-category" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span>
+              <input id="faq-new-sort" type="number" value="0" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-3">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Vraag*</span>
+              <input id="faq-new-question" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-3">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Antwoord*</span>
+              <textarea id="faq-new-answer" rows="4" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+          </div>
+          <p id="faq-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="faq-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="faq-new-save" class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+              <span id="faq-new-save-label">Opslaan</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="faq-list" class="flex flex-col gap-6 mt-4"></div>
+      </div>
+    </section>
+
+    <!-- Muziek panel -->
+    <section id="panel-music" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-4xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Muziek</h2>
+            <p class="text-on-surface-variant text-sm">Nummers voor "Brouwers Beats". Alle nummers in de app. Bewerk of verwijder ze hier, of voeg een nieuw nummer toe. (De vaste nummers verschijnen hier zodra supabase/add_builtin_content.sql is uitgevoerd.)</p>
+          </div>
+          <button id="music-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw nummer
+          </button>
+        </div>
+        <div id="music-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span><input id="music-new-title" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Artiest*</span><input id="music-new-artist" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Cover-URL*</span><input id="music-new-cover" type="text" placeholder="https://.../cover.jpg" class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand. Bij een vast nummer leeg laten = de meegeleverde cover blijft.</span></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Luisterlink (optioneel)</span><input id="music-new-listen" type="text" placeholder="https://..." class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Leeg laten = de app zoekt het nummer op YouTube.</span></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span><input id="music-new-sort" type="number" value="0" class="fi"/></label>
+          </div>
+          <p id="music-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="music-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="music-new-save" class="px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"><span id="music-new-save-label">Opslaan</span></button>
+          </div>
+        </div>
+        <div id="music-list" class="flex flex-col gap-2 mt-4"></div>
+      </div>
+    </section>
+
+    <!-- Boeken panel -->
+    <section id="panel-books" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-4xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Boeken</h2>
+            <p class="text-on-surface-variant text-sm">Boeken voor de Bierkompas-bibliotheek. Alle boeken in de app. Bewerk of verwijder ze hier, of voeg een nieuw boek toe. (De vaste boeken verschijnen hier zodra supabase/add_builtin_content.sql is uitgevoerd.)</p>
+          </div>
+          <button id="books-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuw boek
+          </button>
+        </div>
+        <div id="books-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span><input id="books-new-title" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Auteur*</span><input id="books-new-author" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Ondertitel (optioneel)</span><input id="books-new-subtitle" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Cover-URL*</span><input id="books-new-cover" type="text" placeholder="https://.../cover.jpg" class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand. Bij een vast boek leeg laten = de meegeleverde cover blijft.</span></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span><input id="books-new-sort" type="number" value="0" class="fi"/></label>
+          </div>
+          <p id="books-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="books-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="books-new-save" class="px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"><span id="books-new-save-label">Opslaan</span></button>
+          </div>
+        </div>
+        <div id="books-list" class="flex flex-col gap-2 mt-4"></div>
+      </div>
+    </section>
+
+    <!-- Locaties toevoegen panel (brouwerijen en proeflokalen/horeca) -->
+    <section id="panel-locations" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-4xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Locaties toevoegen</h2>
+            <p class="text-on-surface-variant text-sm">Voeg zelf een brouwerij of een proeflokaal/biergelegenheid toe; die staat direct op de kaart. De positie wordt automatisch bepaald op basis van het adres. De vaste brouwerijen op de kaart beheer je onderaan deze pagina.</p>
+          </div>
+          <button id="loc-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe locatie
+          </button>
+        </div>
+        <div id="loc-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
+              <select id="loc-new-type" class="fi"><option value="brewery">Brouwerij</option><option value="horeca">Proeflokaal / biergelegenheid (horeca)</option></select></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input id="loc-new-naam" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Straat*</span><input id="loc-new-street" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Huisnummer*</span><input id="loc-new-number" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Postcode*</span><input id="loc-new-postal" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="loc-new-city" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beschrijving (optioneel)</span><textarea id="loc-new-desc" rows="3" class="fi"></textarea></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="loc-new-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
+          </div>
+          <p id="loc-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="loc-new-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="loc-new-save" class="px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"><span id="loc-new-save-label">Opslaan en publiceren</span></button>
+          </div>
+        </div>
+        <h3 class="font-display text-lg text-on-surface mt-6 mb-3">Gepubliceerde locaties</h3>
+        <div id="loc-list" class="flex flex-col gap-2"></div>
+
+        <h3 class="font-display text-lg text-on-surface mt-10 mb-1">Vaste brouwerijen op de kaart</h3>
+        <p class="text-on-surface-variant text-sm mb-3">De brouwerijen uit de aangeleverde lijsten van Nederland en België. Zoek, bewerk of verwijder ze hier; de app neemt de wijziging over bij de volgende keer opstarten.</p>
+        <input id="fixed-br-search" type="search" placeholder="Zoek op naam of plaats..." class="fi w-full mb-2"/>
+        <p id="fixed-br-info" class="text-on-surface-variant text-xs mb-3"></p>
+        <div id="fixed-br-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-4 fade-in">
+          <p class="text-on-surface text-sm mb-3">Brouwerij bewerken <span id="fixed-br-id" class="text-on-surface-variant text-xs"></span></p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input id="fixed-br-title" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="fixed-br-location" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Land*</span>
+              <select id="fixed-br-country" class="fi"><option value="NEDERLAND">Nederland</option><option value="BELGIË">België</option></select></label>
+            <label class="flex items-center gap-2 mt-6"><input id="fixed-br-taproom" type="checkbox"/><span class="text-sm text-on-surface">Heeft een proeflokaal</span></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Over deze brouwerij</span><textarea id="fixed-br-about" rows="2" class="fi"></textarea></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Gegevens (één per regel)</span><textarea id="fixed-br-facts" rows="3" class="fi" placeholder="Adres: Straat 1, Plaats&#10;Website: https://..."></textarea></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Breedtegraad*</span><input id="fixed-br-lat" type="number" step="any" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Lengtegraad*</span><input id="fixed-br-lng" type="number" step="any" class="fi"/></label>
+          </div>
+          <p id="fixed-br-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <div class="flex gap-3 mt-4">
+            <button id="fixed-br-cancel" class="px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm">Annuleren</button>
+            <button id="fixed-br-save" class="px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">Wijzigingen opslaan</button>
+          </div>
+        </div>
+        <div id="fixed-br-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Data-imports panel -->
+    <section id="panel-imports" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Data-imports</h2>
+          <p class="text-on-surface-variant text-sm">
+            Laad verzamelde gegevens uit externe bronnen in de database. Een import kun je veilig opnieuw draaien:
+            bestaande regels worden bijgewerkt in plaats van dubbel aangemaakt.
+          </p>
+        </div>
+        <div id="imports-list" class="flex flex-col gap-4"></div>
+      </div>
+    </section>
+
+    <!-- Statistieken panel -->
+    <section id="panel-stats" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-start justify-between flex-wrap gap-3 mb-6">
+          <div>
+            <h2 class="font-display text-2xl text-on-surface mb-1">Statistieken</h2>
+            <p class="text-on-surface-variant text-sm">Overzicht van actieve gebruikers en openstaande goedkeuringen.</p>
+          </div>
+          <button id="stats-refresh" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">
+            <span class="material-symbols-outlined text-[18px]">refresh</span> Vernieuwen
+          </button>
+        </div>
+        <div id="stats-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- Locatie-badges panel -->
+    <section id="panel-locationbadges" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Locatie-badges</h2>
+          <p class="text-on-surface-variant text-sm">
+            Markeer welke brouwerij of horecagelegenheid een boerderijbrouwerij of een "beer garden" is.
+            Een gebruiker die zo'n locatie favorieten krijgt de bijbehorende badge. Alleen jij weet welke
+            locaties dit echt zijn -- zonder tag hieronder blijft die badge voor iedereen vergrendeld.
+          </p>
+        </div>
+
+        <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort</span>
+              <select id="locbadge-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="brewery">Brouwerij</option>
+                <option value="horeca">Horeca</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam</span>
+              <input id="locbadge-name" type="text" list="locbadge-options" placeholder="Typ om te zoeken..."
+                class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <datalist id="locbadge-options"></datalist>
+            </label>
+          </div>
+          <div class="flex items-center gap-6 mt-4">
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="locbadge-farm" type="checkbox" class="rounded accent-primary"/> Boerderijbrouwerij
+            </label>
+            <label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+              <input id="locbadge-garden" type="checkbox" class="rounded accent-primary"/> Beer garden
+            </label>
+          </div>
+          <p id="locbadge-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <button id="locbadge-save" class="mt-4 flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            <span id="locbadge-save-label">Tags opslaan</span>
+          </button>
+        </div>
+
+        <h3 class="font-display text-lg text-on-surface mb-3">Huidige tags</h3>
+        <div id="locbadge-list" class="flex flex-col gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Berichten panel -->
+    <section id="panel-messages" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+          <h2 class="font-display text-2xl text-on-surface mb-1">Berichten</h2>
+          <p class="text-on-surface-variant text-sm">
+            Stuur een bericht naar het berichtencentrum van gebruikers -- geen OS-pushmelding, maar een
+            bericht dat ze zien in de app onder Profiel &gt; Berichten.
+          </p>
+        </div>
+
+        <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-5">
+          <div class="grid grid-cols-1 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span>
+              <input id="msg-title" type="text" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Bericht*</span>
+              <textarea id="msg-body" rows="3" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Doelgroep</span>
+              <select id="msg-target" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                <option value="all">Iedereen</option>
+                <option value="city">Op woonplaats</option>
+                <option value="favorites">Op favorieten (brouwerij/horeca)</option>
+              </select>
+            </label>
+            <label id="msg-city-wrap" class="hidden flex flex-col gap-1">
+              <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Woonplaats</span>
+              <input id="msg-city" type="text" placeholder="Bijv. Amsterdam" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+              <span class="text-xs text-on-surface-variant/70">Alleen gebruikers die zelf een woonplaats hebben ingesteld in hun profiel krijgen dit bericht.</span>
+            </label>
+            <div id="msg-favorites-wrap" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort</span>
+                <select id="msg-fav-type" class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm">
+                  <option value="brewery">Brouwerij</option>
+                  <option value="horeca">Horeca</option>
+                </select>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam</span>
+                <input id="msg-fav-name" type="text" list="msg-fav-options" placeholder="Typ om te zoeken..." class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"/>
+                <datalist id="msg-fav-options"></datalist>
+              </label>
+            </div>
+          </div>
+          <p id="msg-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
+          <p id="msg-success" class="hidden text-success text-sm bg-success/10 border border-success/30 rounded-lg px-3 py-2 mt-4"></p>
+          <button id="msg-send" class="mt-4 flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            <span id="msg-send-label">Versturen</span>
+          </button>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -377,6 +1085,19 @@
     loadBieren();
     loadBrouwerijen();
     loadHoreca();
+    loadFeed();
+    loadPairings();
+    loadVideos();
+    loadNews();
+    loadFaq();
+    loadMusicAdmin();
+    loadBooksAdmin();
+    loadLocationsAdmin();
+    loadFixedBreweries();
+    loadPublishedEvents();
+    loadImportCards();
+    loadStats();
+    loadLocationBadgeOptions();
   }
 
   document.getElementById("logout-button").addEventListener("click", async () => {
@@ -394,13 +1115,29 @@
     bieren: document.getElementById("panel-bieren"),
     brouwerijen: document.getElementById("panel-brouwerijen"),
     horeca: document.getElementById("panel-horeca"),
+    feed: document.getElementById("panel-feed"),
+    pairings: document.getElementById("panel-pairings"),
+    videos: document.getElementById("panel-videos"),
+    news: document.getElementById("panel-news"),
+    faq: document.getElementById("panel-faq"),
+    music: document.getElementById("panel-music"),
+    books: document.getElementById("panel-books"),
+    locations: document.getElementById("panel-locations"),
+    stats: document.getElementById("panel-stats"),
+    locationbadges: document.getElementById("panel-locationbadges"),
+    messages: document.getElementById("panel-messages"),
+    imports: document.getElementById("panel-imports"),
   };
+
+  const mobilePanelSelect = document.getElementById("mobile-panel-select");
 
   function setActivePanel(name) {
     Object.entries(panels).forEach(([key, el]) => el.classList.toggle("hidden", key !== name));
     navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.panel === name));
+    mobilePanelSelect.value = name;
   }
   navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
+  mobilePanelSelect.addEventListener("change", () => setActivePanel(mobilePanelSelect.value));
   setActivePanel("events");
 
   // ---------- Evenementen goedkeuren ----------
@@ -491,7 +1228,17 @@
             <p class="text-on-surface-variant mt-1">${escapeHtml(event.opening_hours || "")}</p>
           </div>
         </div>
-        <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4"></div>
+        <div id="event-reject-reason-wrap" class="hidden mt-4">
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Reden voor afwijzing (optioneel, de indiener ziet dit)</span>
+            <textarea id="event-reject-reason" rows="2" placeholder="Bijv. locatie onvolledig, probeer het opnieuw met adresgegevens"
+              class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-3 py-2 rounded-lg focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none text-sm"></textarea>
+          </label>
+          <button class="reject-confirm-btn mt-2 w-full py-2 rounded-lg bg-error text-on-error font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+            Afwijzing bevestigen
+          </button>
+        </div>
+        <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4 mt-4"></div>
         <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
           <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
             Afwijzen
@@ -502,32 +1249,59 @@
         </div>
       </div>`;
 
-    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget));
-    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", (e) => {
-      if (!confirm(`"${event.name}" definitief afwijzen? Dit evenement is nog nooit gepubliceerd en wordt verwijderd.`)) return;
-      moderateEvent(event.id, "reject", e.currentTarget);
+    eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget, null));
+    eventsDetailEl.querySelector(".reject-btn").addEventListener("click", () => {
+      document.getElementById("event-reject-reason-wrap").classList.toggle("hidden");
+    });
+    eventsDetailEl.querySelector(".reject-confirm-btn").addEventListener("click", (e) => {
+      const reason = document.getElementById("event-reject-reason").value.trim();
+      moderateEvent(event.id, "reject", e.currentTarget, reason);
     });
   }
 
-  async function moderateEvent(eventId, action, buttonEl) {
-    const otherBtn = buttonEl.parentElement.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
+  async function moderateEvent(eventId, action, buttonEl, reason) {
+    const otherBtn = eventsDetailEl.querySelector(action === "approve" ? ".reject-btn" : ".approve-btn");
     buttonEl.disabled = true;
-    otherBtn.disabled = true;
+    if (otherBtn) otherBtn.disabled = true;
     const originalLabel = buttonEl.innerHTML;
     buttonEl.innerHTML = '<span class="spinner"></span> Bezig...';
 
     const rpcName = action === "approve" ? "approve_event" : "reject_event";
-    const { error } = await client.rpc(rpcName, { p_event_id: eventId });
+    const params = action === "approve" ? { p_event_id: eventId } : { p_event_id: eventId, p_reason: reason || null };
+    const { error } = await client.rpc(rpcName, params);
     if (error) {
       const errorBox = document.getElementById("event-action-error");
       errorBox.textContent = `Actie mislukt: ${error.message}`;
       errorBox.classList.remove("hidden");
       buttonEl.disabled = false;
-      otherBtn.disabled = false;
+      if (otherBtn) otherBtn.disabled = false;
       buttonEl.innerHTML = originalLabel;
       return;
     }
     loadEvents();
+  }
+
+  // Controleert of een foto-URL ook echt als afbeelding laadt (en geen link
+  // naar een gewone webpagina is), zodat je dit meteen bij het opslaan ziet
+  // i.p.v. pas achteraf in de app. Geen URL ingevuld telt als geldig (optioneel veld).
+  function checkImageUrl(url) {
+    return new Promise((resolve) => {
+      if (!url) {
+        resolve(true);
+        return;
+      }
+      const img = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      img.src = url;
+    });
   }
 
   // ---------- Nieuw bier toevoegen ----------
@@ -559,8 +1333,20 @@
     }
 
     bierNewSaveBtn.disabled = true;
-    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
     bierNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("bier-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      bierNewSaveBtn.disabled = false;
+      bierNewSaveLabel.textContent = "Bier opslaan";
+      bierNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is (geen link naar een webpagina).";
+      bierNewError.classList.remove("hidden");
+      return;
+    }
+
+    bierNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
 
     const { error } = await client.from("bieren").insert({
       naam,
@@ -570,7 +1356,7 @@
       beschrijving: document.getElementById("bier-new-beschrijving").value.trim() || null,
       hoe_gemaakt: document.getElementById("bier-new-hoegemaakt").value.trim() || null,
       stijl_info: document.getElementById("bier-new-stijlinfo").value.trim() || null,
-      foto_url: document.getElementById("bier-new-foto").value.trim() || null,
+      foto_url: fotoUrl,
       barcode: document.getElementById("bier-new-barcode").value.trim() || null,
     });
 
@@ -916,6 +1702,228 @@
     loadHoreca();
   }
 
+  // ---------- Ontdek-feed ----------
+  const feedListEl = document.getElementById("feed-list");
+  const feedNewToggle = document.getElementById("feed-new-toggle");
+  const feedNewForm = document.getElementById("feed-new-form");
+  const feedFormTitle = document.getElementById("feed-form-title");
+  const feedNewError = document.getElementById("feed-new-error");
+  const feedNewSaveBtn = document.getElementById("feed-new-save");
+  const feedNewSaveLabel = document.getElementById("feed-new-save-label");
+  const feedTypeSelect = document.getElementById("feed-new-type");
+  const feedRatingWrap = document.getElementById("feed-new-rating-wrap");
+  let feedItems = [];
+  let feedEditingId = null;
+
+  const feedTypeLabels = { tip: "Biertip", weetje: "Weetje", review: "Mini-review", brouwerij: "Brouwerij-post" };
+
+  feedNewToggle.addEventListener("click", () => {
+    feedEditingId = null;
+    clearFeedForm();
+    feedFormTitle.textContent = "Nieuw feed-item";
+    feedNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("feed-new-cancel").addEventListener("click", () => {
+    feedNewForm.classList.add("hidden");
+    clearFeedForm();
+  });
+  feedTypeSelect.addEventListener("change", () => {
+    feedRatingWrap.classList.toggle("hidden", feedTypeSelect.value !== "review");
+  });
+
+  function clearFeedForm() {
+    feedEditingId = null;
+    feedTypeSelect.value = "tip";
+    feedRatingWrap.classList.add("hidden");
+    ["author", "titel", "body", "foto", "rating"].forEach((field) => {
+      document.getElementById(`feed-new-${field}`).value = "";
+    });
+    feedNewError.classList.add("hidden");
+  }
+
+  feedNewSaveBtn.addEventListener("click", async () => {
+    const titel = document.getElementById("feed-new-titel").value.trim();
+    const body = document.getElementById("feed-new-body").value.trim();
+    if (!titel || !body) {
+      feedNewError.textContent = "Titel en tekst zijn verplicht.";
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    feedNewSaveBtn.disabled = true;
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
+    feedNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("feed-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      feedNewSaveBtn.disabled = false;
+      feedNewSaveLabel.textContent = "Opslaan";
+      feedNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is (geen link naar een webpagina).";
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    feedNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const ratingValue = document.getElementById("feed-new-rating").value.trim();
+    const payload = {
+      item_type: feedTypeSelect.value,
+      title: titel,
+      body,
+      author: document.getElementById("feed-new-author").value.trim() || null,
+      image_url: fotoUrl,
+      rating: feedTypeSelect.value === "review" && ratingValue ? parseFloat(ratingValue) : null,
+    };
+
+    const { error } = feedEditingId
+      ? await client.from("feed_items").update(payload).eq("id", feedEditingId)
+      : await client.from("feed_items").insert(payload);
+
+    feedNewSaveBtn.disabled = false;
+    feedNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      feedNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      feedNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearFeedForm();
+    feedNewForm.classList.add("hidden");
+    loadFeed();
+  });
+
+  const feedPendingListEl = document.getElementById("feed-pending-list");
+  const feedPendingCountBadge = document.getElementById("feed-pending-count-badge");
+
+  async function loadPendingPosts() {
+    feedPendingListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("feed_items")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      feedPendingListEl.innerHTML = `<p class="text-error text-sm">Kon aanmeldingen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    setBadge(feedPendingCountBadge, data.length);
+
+    if (!data.length) {
+      feedPendingListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-4 text-center">Geen posts die wachten op goedkeuring.</p>';
+      return;
+    }
+
+    feedPendingListEl.innerHTML = "";
+    data.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-primary/30 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-primary/20 text-primary">${escapeHtml(feedTypeLabels[item.item_type] || item.item_type)}</span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(item.title)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(item.body)}</p>
+            <p class="text-on-surface-variant text-xs truncate">Door ${escapeHtml(item.author || "Onbekend")}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="feed-reject-btn px-3 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors text-sm">Afwijzen</button>
+          <button class="feed-approve-btn px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-label uppercase tracking-wide hover:opacity-90 transition-opacity">Goedkeuren</button>
+        </div>`;
+
+      row.querySelector(".feed-approve-btn").addEventListener("click", async () => {
+        const { error: approveError } = await client.from("feed_items").update({ status: "approved" }).eq("id", item.id);
+        if (approveError) {
+          alert(`Goedkeuren mislukt: ${approveError.message}`);
+          return;
+        }
+        loadPendingPosts();
+      });
+
+      row.querySelector(".feed-reject-btn").addEventListener("click", async () => {
+        if (!confirm(`Post van ${item.author || "deze gebruiker"} afwijzen en verwijderen?`)) return;
+        const { error: rejectError } = await client.from("feed_items").delete().eq("id", item.id);
+        if (rejectError) {
+          alert(`Afwijzen mislukt: ${rejectError.message}`);
+          return;
+        }
+        loadPendingPosts();
+      });
+
+      feedPendingListEl.appendChild(row);
+    });
+  }
+
+  async function loadFeed() {
+    loadPendingPosts();
+    feedListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client
+      .from("feed_items")
+      .select("*")
+      .is("user_id", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      feedListEl.innerHTML = `<p class="text-error text-sm">Kon de feed niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    feedItems = data;
+    if (!feedItems.length) {
+      feedListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen feed-items. Voeg er een toe zodat de Ontdek-pagina content heeft.</p>';
+      return;
+    }
+
+    feedListEl.innerHTML = "";
+    feedItems.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="shrink-0 text-[10px] uppercase tracking-wide font-label px-2 py-1 rounded-full bg-surface-container-highest text-on-surface-variant">${escapeHtml(feedTypeLabels[item.item_type] || item.item_type)}</span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(item.title)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(item.body)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="feed-edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-sm">Bewerken</button>
+          <button class="feed-delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-sm">Verwijderen</button>
+        </div>`;
+
+      row.querySelector(".feed-edit-btn").addEventListener("click", () => {
+        feedEditingId = item.id;
+        feedFormTitle.textContent = "Feed-item bewerken";
+        feedTypeSelect.value = item.item_type;
+        feedRatingWrap.classList.toggle("hidden", item.item_type !== "review");
+        document.getElementById("feed-new-author").value = item.author || "";
+        document.getElementById("feed-new-titel").value = item.title || "";
+        document.getElementById("feed-new-body").value = item.body || "";
+        document.getElementById("feed-new-foto").value = item.image_url || "";
+        document.getElementById("feed-new-rating").value = item.rating ?? "";
+        feedNewError.classList.add("hidden");
+        feedNewForm.classList.remove("hidden");
+        feedNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      row.querySelector(".feed-delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${item.title}" verwijderen uit de Ontdek-feed?`)) return;
+        const { error: deleteError } = await client.from("feed_items").delete().eq("id", item.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadFeed();
+      });
+
+      feedListEl.appendChild(row);
+    });
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
@@ -928,6 +1936,1603 @@
       return value;
     }
   }
+
+  // ---------- Nieuwe bier-spijscombinatie toevoegen ----------
+  const pairingNewToggle = document.getElementById("pairing-new-toggle");
+  const pairingNewForm = document.getElementById("pairing-new-form");
+  const pairingNewError = document.getElementById("pairing-new-error");
+  const pairingNewSaveBtn = document.getElementById("pairing-new-save");
+  const pairingNewSaveLabel = document.getElementById("pairing-new-save-label");
+
+  pairingNewToggle.addEventListener("click", () => pairingNewForm.classList.toggle("hidden"));
+  document.getElementById("pairing-new-cancel").addEventListener("click", () => {
+    pairingNewForm.classList.add("hidden");
+    clearPairingNewForm();
+  });
+
+  function clearPairingNewForm() {
+    ["brouwerij", "biernaam", "gerecht", "context", "prijs", "link"].forEach((field) => {
+      document.getElementById(`pairing-new-${field}`).value = "";
+    });
+    pairingNewError.classList.add("hidden");
+  }
+
+  pairingNewSaveBtn.addEventListener("click", async () => {
+    const brouwerij = document.getElementById("pairing-new-brouwerij").value.trim();
+    const biernaam = document.getElementById("pairing-new-biernaam").value.trim();
+    const gerecht = document.getElementById("pairing-new-gerecht").value.trim();
+    if (!brouwerij || !biernaam || !gerecht) {
+      pairingNewError.textContent = "Brouwerij, biernaam en gerecht zijn verplicht.";
+      pairingNewError.classList.remove("hidden");
+      return;
+    }
+
+    pairingNewSaveBtn.disabled = true;
+    pairingNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    pairingNewError.classList.add("hidden");
+
+    const { error } = await client.from("beer_pairings").insert({
+      brouwerij,
+      biernaam,
+      aanbevolen_gerecht: gerecht,
+      aankoop_context: document.getElementById("pairing-new-context").value.trim() || null,
+      prijs: document.getElementById("pairing-new-prijs").value.trim() || null,
+      link_website: document.getElementById("pairing-new-link").value.trim() || null,
+    });
+
+    pairingNewSaveBtn.disabled = false;
+    pairingNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      pairingNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      pairingNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearPairingNewForm();
+    pairingNewForm.classList.add("hidden");
+    loadPairings();
+  });
+
+  // ---------- Bier & Spijs ----------
+  const pairingsListEl = document.getElementById("pairings-list");
+  const pairingsSearchEl = document.getElementById("pairings-search");
+  const pairingsSummaryEl = document.getElementById("pairings-summary");
+  let allPairings = [];
+
+  pairingsSearchEl.addEventListener("input", renderPairings);
+
+  async function loadPairings() {
+    pairingsListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("beer_pairings").select("*").order("brouwerij");
+
+    if (error) {
+      pairingsListEl.innerHTML = `<p class="text-error text-sm">Kon combinaties niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    allPairings = data;
+    renderPairings();
+  }
+
+  function renderPairings() {
+    const query = pairingsSearchEl.value.trim().toLowerCase();
+    const filtered = allPairings.filter((p) => {
+      if (!query) return true;
+      return p.biernaam.toLowerCase().includes(query) || p.brouwerij.toLowerCase().includes(query);
+    });
+
+    pairingsSummaryEl.textContent = `${filtered.length} van ${allPairings.length} combinaties`;
+
+    if (!filtered.length) {
+      pairingsListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Geen combinaties gevonden.</p>';
+      return;
+    }
+
+    pairingsListEl.innerHTML = "";
+    filtered.slice(0, 200).forEach((pairing) => {
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <p class="font-display text-lg text-on-surface truncate">${escapeHtml(pairing.biernaam)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(pairing.brouwerij)}</p>
+          <p class="text-on-surface text-sm mt-1 truncate">${escapeHtml(pairing.aanbevolen_gerecht)}</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
+          </button>
+        </div>`;
+
+      row.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${pairing.biernaam}" verwijderen?`)) return;
+        const { error: deleteError } = await client.from("beer_pairings").delete().eq("id", pairing.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadPairings();
+      });
+
+      pairingsListEl.appendChild(row);
+    });
+  }
+
+  // ---------- Nieuwe video toevoegen ----------
+  const videoNewToggle = document.getElementById("video-new-toggle");
+  const videoNewForm = document.getElementById("video-new-form");
+  const videoNewError = document.getElementById("video-new-error");
+  const videoNewSaveBtn = document.getElementById("video-new-save");
+  const videoNewSaveLabel = document.getElementById("video-new-save-label");
+  const videoKindEl = document.getElementById("video-new-kind");
+  const videoLinkWrap = document.getElementById("video-link-wrap");
+  const videoHostedWrap = document.getElementById("video-hosted-wrap");
+  const VIDEO_BUCKET = "videos";
+  const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+  const VIDEO_SOURCE_LABELS = { youtube: "YouTube", tiktok: "TikTok", instagram: "Instagram", hosted: "Eigen video" };
+
+  function syncVideoKind() {
+    const hosted = videoKindEl.value === "hosted";
+    videoLinkWrap.classList.toggle("hidden", hosted);
+    videoHostedWrap.classList.toggle("hidden", !hosted);
+  }
+  videoKindEl.addEventListener("change", syncVideoKind);
+
+  videoNewToggle.addEventListener("click", () => videoNewForm.classList.toggle("hidden"));
+  document.getElementById("video-new-cancel").addEventListener("click", () => {
+    videoNewForm.classList.add("hidden");
+    clearVideoNewForm();
+  });
+
+  function clearVideoNewForm() {
+    ["title", "category", "thumbnail", "url", "link", "file"].forEach((field) => {
+      document.getElementById(`video-new-${field}`).value = "";
+    });
+    document.getElementById("video-new-sort").value = "0";
+    videoKindEl.value = "link";
+    syncVideoKind();
+    videoNewError.classList.add("hidden");
+  }
+
+  // Herkent een gewone YouTube-, TikTok- of Instagram-link en haalt het video-ID eruit.
+  // Alleen dat ID en de link worden opgeslagen, nooit de video zelf.
+  function parseVideoLink(raw) {
+    let url;
+    try { url = new URL(raw); } catch (_e) { return null; }
+    const host = url.hostname.replace(/^(www|m)\./, "");
+
+    if (host === "youtu.be") {
+      const id = url.pathname.slice(1).split("/")[0];
+      return id ? { source: "youtube", id } : null;
+    }
+    if (host.endsWith("youtube.com")) {
+      const v = url.searchParams.get("v");
+      if (v) return { source: "youtube", id: v };
+      const m = url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/);
+      return m ? { source: "youtube", id: m[1] } : null;
+    }
+    if (host.endsWith("tiktok.com")) {
+      const m = url.pathname.match(/\/video\/(\d+)/);
+      return m ? { source: "tiktok", id: m[1] } : null;
+    }
+    if (host.endsWith("instagram.com")) {
+      const m = url.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
+      return m ? { source: "instagram", id: `${m[1] === "reels" ? "reel" : m[1]}/${m[2]}` } : null;
+    }
+    return null;
+  }
+
+  function videoStoragePath(publicUrl) {
+    const marker = `/object/public/${VIDEO_BUCKET}/`;
+    const i = (publicUrl || "").indexOf(marker);
+    return i >= 0 ? decodeURIComponent(publicUrl.slice(i + marker.length).split("?")[0]) : null;
+  }
+
+  function videoSaveError(message) {
+    const needsMigration = /column|bucket|source|external_id/i.test(message || "");
+    showFormError(videoNewError, `Opslaan mislukt: ${message}${needsMigration ? " Is supabase/add_video_reel.sql al uitgevoerd?" : ""}`);
+  }
+
+  videoNewSaveBtn.addEventListener("click", async () => {
+    const resetBtn = () => {
+      videoNewSaveBtn.disabled = false;
+      videoNewSaveLabel.textContent = "Video opslaan";
+    };
+    const title = document.getElementById("video-new-title").value.trim();
+    const thumbnailUrl = document.getElementById("video-new-thumbnail").value.trim() || null;
+    if (!title) return showFormError(videoNewError, "Titel is verplicht.");
+
+    let source, externalId = null, videoUrl;
+    const file = document.getElementById("video-new-file").files[0];
+
+    if (videoKindEl.value === "link") {
+      const link = document.getElementById("video-new-link").value.trim();
+      if (!link) return showFormError(videoNewError, "Plak de link van de video.");
+      const parsed = parseVideoLink(link);
+      if (!parsed) return showFormError(videoNewError, "Deze link wordt niet herkend. Gebruik een gewone YouTube-, TikTok- of Instagram-link (geen verkorte link).");
+      source = parsed.source;
+      externalId = parsed.id;
+      videoUrl = link;
+    } else {
+      source = "hosted";
+      videoUrl = document.getElementById("video-new-url").value.trim();
+      if (!file && !/^https?:\/\//i.test(videoUrl)) return showFormError(videoNewError, "Kies een videobestand of vul een directe link in.");
+      if (file && file.size > VIDEO_MAX_BYTES) return showFormError(videoNewError, "Dit bestand is groter dan 50 MB. Gebruik een directe link naar een streamingdienst voor grotere video's.");
+    }
+
+    videoNewSaveBtn.disabled = true;
+    videoNewError.classList.add("hidden");
+
+    if (thumbnailUrl) {
+      videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Thumbnail controleren...';
+      if (!(await checkImageUrl(thumbnailUrl))) {
+        resetBtn();
+        return showFormError(videoNewError, "De thumbnail-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+      }
+    }
+
+    if (source === "hosted" && file) {
+      videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Video uploaden...';
+      const safeName = file.name.replace(/[^\w.-]+/g, "_");
+      const path = `${Date.now()}-${safeName}`;
+      const { error: uploadError } = await client.storage.from(VIDEO_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) {
+        resetBtn();
+        return videoSaveError(uploadError.message);
+      }
+      videoUrl = client.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+    }
+
+    videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    const { error } = await client.from("videos").insert({
+      title,
+      category: document.getElementById("video-new-category").value.trim() || "Tasting",
+      thumbnail_url: thumbnailUrl,
+      video_url: videoUrl,
+      source,
+      external_id: externalId,
+      sort_order: Number(document.getElementById("video-new-sort").value) || 0,
+    });
+    resetBtn();
+    if (error) return videoSaveError(error.message);
+
+    clearVideoNewForm();
+    videoNewForm.classList.add("hidden");
+    loadVideos();
+  });
+
+  // ---------- Video's ----------
+  const videosListEl = document.getElementById("videos-list");
+  let allVideos = [];
+
+  async function loadVideos() {
+    videosListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4 col-span-full"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("videos").select("*").order("sort_order").order("created_at", { ascending: false });
+
+    if (error) {
+      videosListEl.innerHTML = `<p class="text-error text-sm col-span-full">Kon video's niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+
+    allVideos = data;
+    renderVideos();
+  }
+
+  function renderVideos() {
+    if (!allVideos.length) {
+      videosListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center col-span-full">Nog geen video\'s toegevoegd.</p>';
+      return;
+    }
+
+    videosListEl.innerHTML = "";
+    allVideos.forEach((video) => {
+      const source = video.source || "hosted";
+      const preview = video.thumbnail_url || (source === "youtube" && video.external_id ? `https://img.youtube.com/vi/${video.external_id}/hqdefault.jpg` : null);
+      const card = document.createElement("div");
+      card.className = "bg-surface-container rounded-xl border border-outline-variant/20 overflow-hidden fade-in";
+      card.innerHTML = `
+        ${preview
+          ? `<img src="${escapeHtml(preview)}" class="w-full h-32 object-cover" alt=""/>`
+          : '<div class="w-full h-32 bg-surface-container-low flex items-center justify-center"><span class="material-symbols-outlined text-on-surface-variant text-4xl">smart_display</span></div>'}
+        <div class="p-3">
+          <p class="font-display text-base text-on-surface truncate">${escapeHtml(video.title)}</p>
+          <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(video.category)} &middot; ${escapeHtml(VIDEO_SOURCE_LABELS[source] || source)}</p>
+          <button class="delete-btn w-full px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
+          </button>
+        </div>`;
+
+      card.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${video.title}" verwijderen?`)) return;
+        const { error: deleteError } = await client.from("videos").delete().eq("id", video.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        // Een zelf geüpload bestand ook uit de opslag halen (alleen als dat beschikbaar is).
+        const storagePath = source === "hosted" ? videoStoragePath(video.video_url) : null;
+        if (storagePath) await client.storage.from(VIDEO_BUCKET).remove([storagePath]);
+        loadVideos();
+      });
+
+      videosListEl.appendChild(card);
+    });
+  }
+
+  // ---------- Nieuw artikel toevoegen ----------
+  const newsNewToggle = document.getElementById("news-new-toggle");
+  const newsNewForm = document.getElementById("news-new-form");
+  const newsNewError = document.getElementById("news-new-error");
+  const newsNewSaveBtn = document.getElementById("news-new-save");
+  const newsNewSaveLabel = document.getElementById("news-new-save-label");
+
+  newsNewToggle.addEventListener("click", () => newsNewForm.classList.toggle("hidden"));
+  document.getElementById("news-new-cancel").addEventListener("click", () => {
+    newsNewForm.classList.add("hidden");
+    clearNewsNewForm();
+  });
+
+  function clearNewsNewForm() {
+    ["titel", "samenvatting", "inhoud", "foto"].forEach((field) => {
+      document.getElementById(`news-new-${field}`).value = "";
+    });
+    document.getElementById("news-new-published").checked = false;
+    newsNewError.classList.add("hidden");
+  }
+
+  newsNewSaveBtn.addEventListener("click", async () => {
+    const titel = document.getElementById("news-new-titel").value.trim();
+    const samenvatting = document.getElementById("news-new-samenvatting").value.trim();
+    const inhoud = document.getElementById("news-new-inhoud").value.trim();
+    if (!titel || !samenvatting || !inhoud) {
+      newsNewError.textContent = "Titel, samenvatting en inhoud zijn verplicht.";
+      newsNewError.classList.remove("hidden");
+      return;
+    }
+
+    newsNewSaveBtn.disabled = true;
+    newsNewSaveLabel.innerHTML = '<span class="spinner"></span> Foto controleren...';
+    newsNewError.classList.add("hidden");
+
+    const fotoUrl = document.getElementById("news-new-foto").value.trim() || null;
+    const fotoOk = await checkImageUrl(fotoUrl);
+    if (!fotoOk) {
+      newsNewSaveBtn.disabled = false;
+      newsNewSaveLabel.textContent = "Opslaan";
+      newsNewError.textContent = "De Foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.";
+      newsNewError.classList.remove("hidden");
+      return;
+    }
+
+    newsNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const published = document.getElementById("news-new-published").checked;
+    const { error } = await client.from("news_articles").insert({
+      titel,
+      samenvatting,
+      inhoud,
+      foto_url: fotoUrl,
+      status: published ? "gepubliceerd" : "concept",
+      gepubliceerd_op: new Date().toISOString(),
+    });
+
+    newsNewSaveBtn.disabled = false;
+    newsNewSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      newsNewError.textContent = `Opslaan mislukt: ${error.message}`;
+      newsNewError.classList.remove("hidden");
+      return;
+    }
+
+    clearNewsNewForm();
+    newsNewForm.classList.add("hidden");
+    loadNews();
+  });
+
+  // ---------- Nieuws ----------
+  const newsListEl = document.getElementById("news-list");
+  let allNews = [];
+
+  async function loadNews() {
+    newsListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("news_articles").select("*").order("gepubliceerd_op", { ascending: false });
+
+    if (error) {
+      newsListEl.innerHTML = `<p class="text-error text-sm">Kon nieuws niet laden: ${escapeHtml(error.message)}. Is supabase/add_news_articles.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allNews = data;
+    renderNews();
+  }
+
+  function renderNews() {
+    if (!allNews.length) {
+      newsListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen artikelen toegevoegd.</p>';
+      return;
+    }
+
+    newsListEl.innerHTML = "";
+    allNews.forEach((article) => {
+      const published = article.status === "gepubliceerd";
+      const row = document.createElement("div");
+      row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 fade-in";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="w-2 h-2 rounded-full shrink-0 ${published ? "bg-success" : "bg-outline-variant"}" title="${published ? "Gepubliceerd" : "Concept"}"></span>
+          <div class="min-w-0">
+            <p class="font-display text-lg text-on-surface truncate">${escapeHtml(article.titel)}</p>
+            <p class="text-on-surface-variant text-xs truncate">${escapeHtml(article.samenvatting)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="toggle-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs">
+            ${published ? "Terug naar concept" : "Publiceren"}
+          </button>
+          <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+          </button>
+        </div>`;
+
+      row.querySelector(".toggle-btn").addEventListener("click", async () => {
+        const { error: updateError } = await client
+          .from("news_articles")
+          .update({ status: published ? "concept" : "gepubliceerd" })
+          .eq("id", article.id);
+        if (updateError) {
+          alert(`Bijwerken mislukt: ${updateError.message}`);
+          return;
+        }
+        loadNews();
+      });
+
+      row.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${article.titel}" verwijderen?`)) return;
+        const { error: deleteError } = await client.from("news_articles").delete().eq("id", article.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadNews();
+      });
+
+      newsListEl.appendChild(row);
+    });
+  }
+
+  // ---------- Support & FAQ ----------
+  // Zelfde sleutels/volgorde als faqCategories in de app (lib/features/support/faq_service.dart).
+  const FAQ_CATEGORIES = [
+    { key: "account", label: "Account- en profielinstellingen" },
+    { key: "inchecken", label: "Inchecken" },
+    { key: "bieren", label: "Bieren en beoordelingen" },
+    { key: "badges", label: "Badges" },
+    { key: "vrienden", label: "Vrienden en interactie" },
+    { key: "bronnen", label: "Toevoegen van bronnen en content" },
+  ];
+
+  const faqNewToggle = document.getElementById("faq-new-toggle");
+  const faqNewForm = document.getElementById("faq-new-form");
+  const faqFormTitle = document.getElementById("faq-form-title");
+  const faqCategoryEl = document.getElementById("faq-new-category");
+  const faqQuestionEl = document.getElementById("faq-new-question");
+  const faqAnswerEl = document.getElementById("faq-new-answer");
+  const faqSortEl = document.getElementById("faq-new-sort");
+  const faqErrorEl = document.getElementById("faq-new-error");
+  const faqSaveBtn = document.getElementById("faq-new-save");
+  const faqSaveLabel = document.getElementById("faq-new-save-label");
+  const faqListEl = document.getElementById("faq-list");
+  let allFaq = [];
+  let faqEditingId = null;
+
+  faqCategoryEl.innerHTML = FAQ_CATEGORIES.map((c) => `<option value="${c.key}">${escapeHtml(c.label)}</option>`).join("");
+
+  function resetFaqForm() {
+    faqEditingId = null;
+    faqFormTitle.textContent = "Nieuwe vraag";
+    faqQuestionEl.value = "";
+    faqAnswerEl.value = "";
+    faqSortEl.value = "0";
+    faqErrorEl.classList.add("hidden");
+  }
+
+  faqNewToggle.addEventListener("click", () => {
+    if (faqNewForm.classList.contains("hidden")) resetFaqForm();
+    faqNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("faq-new-cancel").addEventListener("click", () => {
+    faqNewForm.classList.add("hidden");
+    resetFaqForm();
+  });
+
+  faqSaveBtn.addEventListener("click", async () => {
+    const question = faqQuestionEl.value.trim();
+    const answer = faqAnswerEl.value.trim();
+    if (!question || !answer) {
+      faqErrorEl.textContent = "Vraag en antwoord zijn verplicht.";
+      faqErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    faqSaveBtn.disabled = true;
+    faqSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
+    faqErrorEl.classList.add("hidden");
+
+    const row = {
+      category: faqCategoryEl.value,
+      question,
+      answer,
+      sort_order: Number(faqSortEl.value) || 0,
+    };
+    const { error } = faqEditingId
+      ? await client.from("faq_items").update(row).eq("id", faqEditingId)
+      : await client.from("faq_items").insert(row);
+
+    faqSaveBtn.disabled = false;
+    faqSaveLabel.textContent = "Opslaan";
+
+    if (error) {
+      faqErrorEl.textContent = `Opslaan mislukt: ${error.message}`;
+      faqErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    faqNewForm.classList.add("hidden");
+    resetFaqForm();
+    loadFaq();
+  });
+
+  async function loadFaq() {
+    faqListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("faq_items").select("*").order("sort_order").order("id");
+
+    if (error) {
+      faqListEl.innerHTML = `<p class="text-error text-sm">Kon FAQ niet laden: ${escapeHtml(error.message)}. Is supabase/add_faq.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allFaq = data;
+    renderFaq();
+  }
+
+  function renderFaq() {
+    if (!allFaq.length) {
+      faqListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen vragen toegevoegd.</p>';
+      return;
+    }
+
+    faqListEl.innerHTML = "";
+    FAQ_CATEGORIES.forEach((category) => {
+      const items = allFaq.filter((item) => item.category === category.key);
+      const section = document.createElement("div");
+      section.innerHTML = `
+        <h3 class="font-display text-lg text-primary mb-2">${escapeHtml(category.label)} <span class="text-on-surface-variant text-xs font-body">(${items.length})</span></h3>
+        <div class="flex flex-col gap-2"></div>`;
+      const listEl = section.querySelector("div");
+
+      if (!items.length) {
+        listEl.innerHTML = '<p class="text-on-surface-variant text-sm px-1">Nog geen vragen in deze rubriek.</p>';
+      }
+
+      items.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-4 flex flex-col md:flex-row md:items-start gap-3 md:gap-6 fade-in";
+        row.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <p class="text-on-surface text-sm font-semibold">${escapeHtml(item.question)}</p>
+            <p class="text-on-surface-variant text-sm mt-1 whitespace-pre-line">${escapeHtml(item.answer)}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs">Bewerken</button>
+            <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">delete</span>
+            </button>
+          </div>`;
+
+        row.querySelector(".edit-btn").addEventListener("click", () => {
+          faqEditingId = item.id;
+          faqFormTitle.textContent = "Vraag bewerken";
+          faqCategoryEl.value = item.category;
+          faqQuestionEl.value = item.question;
+          faqAnswerEl.value = item.answer;
+          faqSortEl.value = String(item.sort_order ?? 0);
+          faqErrorEl.classList.add("hidden");
+          faqNewForm.classList.remove("hidden");
+          faqNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        row.querySelector(".delete-btn").addEventListener("click", async () => {
+          if (!confirm(`"${item.question}" verwijderen?`)) return;
+          const { error: deleteError } = await client.from("faq_items").delete().eq("id", item.id);
+          if (deleteError) {
+            alert(`Verwijderen mislukt: ${deleteError.message}`);
+            return;
+          }
+          loadFaq();
+        });
+
+        listEl.appendChild(row);
+      });
+
+      faqListEl.appendChild(section);
+    });
+  }
+
+  // ---------- Gedeelde helpers voor het direct toevoegen van content ----------
+  async function currentAdminId() {
+    const { data } = await client.auth.getUser();
+    return data?.user?.id || null;
+  }
+
+  // Zet een adres om in coördinaten via Nominatim (OpenStreetMap), dezelfde
+  // gratis dienst die de app gebruikt. Geeft null terug als het adres niet gevonden wordt.
+  async function geocodeAddress(street, number, postal, city) {
+    try {
+      const q = `${street} ${number}, ${postal} ${city}`;
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!data.length) return null;
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function showFormError(el, message) {
+    el.textContent = message;
+    el.classList.remove("hidden");
+  }
+
+  // Cover van een nummer of boek: een eigen URL, of bij de vaste items de
+  // afbeelding die met de app wordt meegeleverd (../assets/ naast deze pagina).
+  function coverSrc(row) {
+    if (row.cover_url) return row.cover_url;
+    return row.cover_asset ? `../assets/${row.cover_asset}` : "";
+  }
+
+  // Een eenvoudig "lijst met bewerk- en verwijderknop"-blok, gedeeld door muziek en boeken.
+  function renderSimpleList(listEl, rows, table, reload, describe, emptyText, onEdit) {
+    if (!rows.length) {
+      listEl.innerHTML = `<p class="text-on-surface-variant text-sm py-6 text-center">${emptyText}</p>`;
+      return;
+    }
+    listEl.innerHTML = "";
+    rows.forEach((row) => {
+      const { image, title, subtitle } = describe(row);
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center gap-3 fade-in";
+      item.innerHTML = `
+        <img src="${escapeHtml(image)}" class="w-12 h-12 rounded-lg object-cover shrink-0" alt=""/>
+        <div class="flex-1 min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(title)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(subtitle)}</p>
+        </div>
+        ${onEdit ? `<button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs shrink-0" title="Bewerken">
+          <span class="material-symbols-outlined text-[16px]">edit</span>
+        </button>` : ""}
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0" title="Verwijderen">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+      if (onEdit) item.querySelector(".edit-btn").addEventListener("click", () => onEdit(row));
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${title}" verwijderen?`)) return;
+        const { error } = await client.from(table).delete().eq("id", row.id);
+        if (error) {
+          alert(`Verwijderen mislukt: ${error.message}`);
+          return;
+        }
+        reload();
+      });
+      listEl.appendChild(item);
+    });
+  }
+
+  // ---------- Muziek ----------
+  const musicNewForm = document.getElementById("music-new-form");
+  const musicNewError = document.getElementById("music-new-error");
+  const musicListEl = document.getElementById("music-list");
+
+  let editingMusic = null;
+
+  function clearMusicForm() {
+    ["title", "artist", "cover", "listen"].forEach((f) => (document.getElementById(`music-new-${f}`).value = ""));
+    document.getElementById("music-new-sort").value = "0";
+    musicNewError.classList.add("hidden");
+    editingMusic = null;
+  }
+  function editMusic(row) {
+    clearMusicForm();
+    editingMusic = row;
+    document.getElementById("music-new-title").value = row.title || "";
+    document.getElementById("music-new-artist").value = row.artist || "";
+    document.getElementById("music-new-cover").value = row.cover_url || "";
+    document.getElementById("music-new-listen").value = row.listen_url || "";
+    document.getElementById("music-new-sort").value = row.sort_order ?? 0;
+    musicNewForm.classList.remove("hidden");
+    musicNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.getElementById("music-new-toggle").addEventListener("click", () => {
+    clearMusicForm();
+    musicNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("music-new-cancel").addEventListener("click", () => {
+    musicNewForm.classList.add("hidden");
+    clearMusicForm();
+  });
+
+  document.getElementById("music-new-save").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const label = document.getElementById("music-new-save-label");
+    const title = document.getElementById("music-new-title").value.trim();
+    const artist = document.getElementById("music-new-artist").value.trim();
+    const cover = document.getElementById("music-new-cover").value.trim();
+    const hasBuiltinCover = !!(editingMusic && editingMusic.cover_asset);
+    if (!title || !artist || (!cover && !hasBuiltinCover)) return showFormError(musicNewError, "Titel, artiest en cover-URL zijn verplicht.");
+
+    btn.disabled = true;
+    musicNewError.classList.add("hidden");
+    if (cover) {
+      label.innerHTML = '<span class="spinner"></span> Cover controleren...';
+      if (!(await checkImageUrl(cover))) {
+        btn.disabled = false;
+        label.textContent = "Opslaan";
+        return showFormError(musicNewError, "De cover-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+      }
+    }
+
+    const values = {
+      title,
+      artist,
+      cover_url: cover || null,
+      listen_url: document.getElementById("music-new-listen").value.trim() || null,
+      sort_order: Number(document.getElementById("music-new-sort").value) || 0,
+    };
+    const { error } = editingMusic
+      ? await client.from("music_tracks").update(values).eq("id", editingMusic.id)
+      : await client.from("music_tracks").insert(values);
+    btn.disabled = false;
+    label.textContent = "Opslaan";
+    if (error) return showFormError(musicNewError, `Opslaan mislukt: ${error.message}`);
+
+    clearMusicForm();
+    musicNewForm.classList.add("hidden");
+    loadMusicAdmin();
+  });
+
+  async function loadMusicAdmin() {
+    const { data, error } = await client.from("music_tracks").select("*").order("sort_order").order("id");
+    if (error) {
+      musicListEl.innerHTML = `<p class="text-error text-sm">Kon muziek niet laden: ${escapeHtml(error.message)}. Is supabase/add_admin_content_management.sql al uitgevoerd?</p>`;
+      return;
+    }
+    renderSimpleList(musicListEl, data, "music_tracks", loadMusicAdmin,
+      (r) => ({ image: coverSrc(r), title: r.title, subtitle: r.builtin_key ? `${r.artist} · vast nummer` : r.artist }),
+      "Nog geen nummers in de database. Voer supabase/add_builtin_content.sql uit om de vaste nummers hier te beheren.",
+      editMusic);
+  }
+
+  // ---------- Boeken ----------
+  const booksNewForm = document.getElementById("books-new-form");
+  const booksNewError = document.getElementById("books-new-error");
+  const booksListEl = document.getElementById("books-list");
+
+  let editingBook = null;
+
+  function clearBooksForm() {
+    ["title", "author", "subtitle", "cover"].forEach((f) => (document.getElementById(`books-new-${f}`).value = ""));
+    document.getElementById("books-new-sort").value = "0";
+    booksNewError.classList.add("hidden");
+    editingBook = null;
+  }
+  function editBook(row) {
+    clearBooksForm();
+    editingBook = row;
+    document.getElementById("books-new-title").value = row.title || "";
+    document.getElementById("books-new-author").value = row.author || "";
+    document.getElementById("books-new-subtitle").value = row.subtitle || "";
+    document.getElementById("books-new-cover").value = row.cover_url || "";
+    document.getElementById("books-new-sort").value = row.sort_order ?? 0;
+    booksNewForm.classList.remove("hidden");
+    booksNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.getElementById("books-new-toggle").addEventListener("click", () => {
+    clearBooksForm();
+    booksNewForm.classList.toggle("hidden");
+  });
+  document.getElementById("books-new-cancel").addEventListener("click", () => {
+    booksNewForm.classList.add("hidden");
+    clearBooksForm();
+  });
+
+  document.getElementById("books-new-save").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const label = document.getElementById("books-new-save-label");
+    const title = document.getElementById("books-new-title").value.trim();
+    const author = document.getElementById("books-new-author").value.trim();
+    const cover = document.getElementById("books-new-cover").value.trim();
+    const hasBuiltinCover = !!(editingBook && editingBook.cover_asset);
+    if (!title || !author || (!cover && !hasBuiltinCover)) return showFormError(booksNewError, "Titel, auteur en cover-URL zijn verplicht.");
+
+    btn.disabled = true;
+    booksNewError.classList.add("hidden");
+    if (cover) {
+      label.innerHTML = '<span class="spinner"></span> Cover controleren...';
+      if (!(await checkImageUrl(cover))) {
+        btn.disabled = false;
+        label.textContent = "Opslaan";
+        return showFormError(booksNewError, "De cover-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+      }
+    }
+
+    const values = {
+      title,
+      author,
+      subtitle: document.getElementById("books-new-subtitle").value.trim() || null,
+      cover_url: cover || null,
+      sort_order: Number(document.getElementById("books-new-sort").value) || 0,
+    };
+    const { error } = editingBook
+      ? await client.from("library_books").update(values).eq("id", editingBook.id)
+      : await client.from("library_books").insert(values);
+    btn.disabled = false;
+    label.textContent = "Opslaan";
+    if (error) return showFormError(booksNewError, `Opslaan mislukt: ${error.message}`);
+
+    clearBooksForm();
+    booksNewForm.classList.add("hidden");
+    loadBooksAdmin();
+  });
+
+  async function loadBooksAdmin() {
+    const { data, error } = await client.from("library_books").select("*").order("sort_order").order("id");
+    if (error) {
+      booksListEl.innerHTML = `<p class="text-error text-sm">Kon boeken niet laden: ${escapeHtml(error.message)}. Is supabase/add_admin_content_management.sql al uitgevoerd?</p>`;
+      return;
+    }
+    renderSimpleList(booksListEl, data, "library_books", loadBooksAdmin,
+      (r) => ({ image: coverSrc(r), title: r.title, subtitle: r.builtin_key ? `${r.author} · vast boek` : r.author }),
+      "Nog geen boeken in de database. Voer supabase/add_builtin_content.sql uit om de vaste boeken hier te beheren.",
+      editBook);
+  }
+
+  // ---------- Vaste brouwerijen op de kaart (tabel breweries) ----------
+  const fixedBrListEl = document.getElementById("fixed-br-list");
+  const fixedBrInfoEl = document.getElementById("fixed-br-info");
+  const fixedBrSearchEl = document.getElementById("fixed-br-search");
+  const fixedBrForm = document.getElementById("fixed-br-form");
+  const fixedBrError = document.getElementById("fixed-br-error");
+  const FIXED_BR_SHOWN = 50;
+  let fixedBreweries = [];
+  let editingFixedBr = null;
+
+  async function loadFixedBreweries() {
+    fixedBrInfoEl.textContent = "Laden...";
+    const { data, error } = await client.from("breweries").select("*").order("title").range(0, 4999);
+    if (error) {
+      fixedBrInfoEl.textContent = "";
+      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">De vaste brouwerijen staan nog niet in de database. Voer supabase/add_builtin_content.sql uit om ze hier te beheren.</p>`;
+      return;
+    }
+    fixedBreweries = data;
+    renderFixedBreweries();
+  }
+
+  function renderFixedBreweries() {
+    const q = fixedBrSearchEl.value.trim().toLowerCase();
+    const matches = q
+      ? fixedBreweries.filter((b) => `${b.title} ${b.location}`.toLowerCase().includes(q))
+      : fixedBreweries;
+    if (!fixedBreweries.length) {
+      fixedBrInfoEl.textContent = "";
+      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">Nog geen vaste brouwerijen in de database. Voer supabase/add_builtin_content.sql uit.</p>`;
+      return;
+    }
+    fixedBrInfoEl.textContent = matches.length > FIXED_BR_SHOWN
+      ? `${matches.length} brouwerijen gevonden, de eerste ${FIXED_BR_SHOWN} worden getoond. Zoek om verder te filteren.`
+      : `${matches.length} brouwerij${matches.length === 1 ? "" : "en"} gevonden (van ${fixedBreweries.length}).`;
+    fixedBrListEl.innerHTML = "";
+    matches.slice(0, FIXED_BR_SHOWN).forEach((b) => {
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center gap-3";
+      const country = (b.tags || []).includes("BELGIË") ? "België" : "Nederland";
+      const taproom = (b.tags || []).includes("PROEFLOKAAL") ? " · proeflokaal" : "";
+      item.innerHTML = `
+        <span class="material-symbols-outlined text-primary shrink-0">sports_bar</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(b.title)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${escapeHtml(b.location)} · ${country}${taproom}</p>
+        </div>
+        <button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs shrink-0" title="Bewerken">
+          <span class="material-symbols-outlined text-[16px]">edit</span>
+        </button>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0" title="Verwijderen">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+      item.querySelector(".edit-btn").addEventListener("click", () => editFixedBrewery(b));
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${b.title}" van de kaart verwijderen?`)) return;
+        const { error } = await client.from("breweries").delete().eq("id", b.id);
+        if (error) return alert(`Verwijderen mislukt: ${error.message}`);
+        fixedBreweries = fixedBreweries.filter((x) => x.id !== b.id);
+        renderFixedBreweries();
+      });
+      fixedBrListEl.appendChild(item);
+    });
+  }
+
+  function editFixedBrewery(b) {
+    editingFixedBr = b;
+    fixedBrError.classList.add("hidden");
+    document.getElementById("fixed-br-id").textContent = `(nr. ${b.id})`;
+    document.getElementById("fixed-br-title").value = b.title || "";
+    document.getElementById("fixed-br-location").value = b.location || "";
+    document.getElementById("fixed-br-country").value = (b.tags || []).includes("BELGIË") ? "BELGIË" : "NEDERLAND";
+    document.getElementById("fixed-br-taproom").checked = (b.tags || []).includes("PROEFLOKAAL");
+    document.getElementById("fixed-br-about").value = b.about || "";
+    document.getElementById("fixed-br-facts").value = (b.facts || []).join("\n");
+    document.getElementById("fixed-br-lat").value = b.latitude;
+    document.getElementById("fixed-br-lng").value = b.longitude;
+    fixedBrForm.classList.remove("hidden");
+    fixedBrForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  fixedBrSearchEl.addEventListener("input", renderFixedBreweries);
+  document.getElementById("fixed-br-cancel").addEventListener("click", () => {
+    editingFixedBr = null;
+    fixedBrForm.classList.add("hidden");
+  });
+  document.getElementById("fixed-br-save").addEventListener("click", async (e) => {
+    if (!editingFixedBr) return;
+    const title = document.getElementById("fixed-br-title").value.trim();
+    const location = document.getElementById("fixed-br-location").value.trim();
+    const lat = Number(document.getElementById("fixed-br-lat").value);
+    const lng = Number(document.getElementById("fixed-br-lng").value);
+    if (!title || !location) return showFormError(fixedBrError, "Naam en plaats zijn verplicht.");
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return showFormError(fixedBrError, "Vul een geldige breedte- en lengtegraad in.");
+    }
+    const tags = [document.getElementById("fixed-br-country").value];
+    if (document.getElementById("fixed-br-taproom").checked) tags.push("PROEFLOKAAL");
+    const values = {
+      title,
+      location,
+      tags,
+      about: document.getElementById("fixed-br-about").value.trim(),
+      facts: document.getElementById("fixed-br-facts").value.split("\n").map((l) => l.trim()).filter(Boolean),
+      latitude: lat,
+      longitude: lng,
+    };
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const { error } = await client.from("breweries").update(values).eq("id", editingFixedBr.id);
+    btn.disabled = false;
+    if (error) return showFormError(fixedBrError, `Opslaan mislukt: ${error.message}`);
+    Object.assign(editingFixedBr, values);
+    editingFixedBr = null;
+    fixedBrForm.classList.add("hidden");
+    renderFixedBreweries();
+  });
+
+  // ---------- Locaties toevoegen (brouwerijen en proeflokalen/horeca) ----------
+  const locNewForm = document.getElementById("loc-new-form");
+  const locNewError = document.getElementById("loc-new-error");
+  const locListEl = document.getElementById("loc-list");
+  const LOC_TABLES = { brewery: "brewery_submissions", horeca: "horeca_submissions" };
+
+  function clearLocForm() {
+    ["naam", "street", "number", "postal", "city", "desc", "photo"].forEach((f) => (document.getElementById(`loc-new-${f}`).value = ""));
+    locNewError.classList.add("hidden");
+  }
+  document.getElementById("loc-new-toggle").addEventListener("click", () => locNewForm.classList.toggle("hidden"));
+  document.getElementById("loc-new-cancel").addEventListener("click", () => {
+    locNewForm.classList.add("hidden");
+    clearLocForm();
+  });
+
+  document.getElementById("loc-new-save").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const label = document.getElementById("loc-new-save-label");
+    const type = document.getElementById("loc-new-type").value;
+    const naam = document.getElementById("loc-new-naam").value.trim();
+    const street = document.getElementById("loc-new-street").value.trim();
+    const number = document.getElementById("loc-new-number").value.trim();
+    const postal = document.getElementById("loc-new-postal").value.trim();
+    const city = document.getElementById("loc-new-city").value.trim();
+    const photo = document.getElementById("loc-new-photo").value.trim() || null;
+    if (!naam || !street || !number || !postal || !city) return showFormError(locNewError, "Naam, straat, huisnummer, postcode en plaats zijn verplicht.");
+
+    btn.disabled = true;
+    locNewError.classList.add("hidden");
+    label.innerHTML = '<span class="spinner"></span> Foto en adres controleren...';
+    const resetBtn = () => {
+      btn.disabled = false;
+      label.textContent = "Opslaan en publiceren";
+    };
+
+    if (!(await checkImageUrl(photo))) {
+      resetBtn();
+      return showFormError(locNewError, "De foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+    }
+    const coords = await geocodeAddress(street, number, postal, city);
+    if (!coords) {
+      resetBtn();
+      return showFormError(locNewError, "Dit adres is niet gevonden op de kaart. Controleer straat, huisnummer, postcode en plaats. Zonder positie kan de locatie niet op de kaart staan.");
+    }
+    const adminId = await currentAdminId();
+    if (!adminId) {
+      resetBtn();
+      return showFormError(locNewError, "Je bent niet meer ingelogd. Log opnieuw in.");
+    }
+
+    const { error } = await client.from(LOC_TABLES[type]).insert({
+      user_id: adminId,
+      naam,
+      beschrijving: document.getElementById("loc-new-desc").value.trim() || null,
+      street,
+      house_number: number,
+      postal_code: postal,
+      city,
+      latitude: coords.lat,
+      longitude: coords.lng,
+      photo_url: photo,
+      status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: adminId,
+    });
+    resetBtn();
+    if (error) return showFormError(locNewError, `Opslaan mislukt: ${error.message}`);
+
+    clearLocForm();
+    locNewForm.classList.add("hidden");
+    loadLocationsAdmin();
+  });
+
+  async function loadLocationsAdmin() {
+    const [breweries, horeca] = await Promise.all(
+      Object.values(LOC_TABLES).map((table) =>
+        client.from(table).select("id, naam, city, photo_url, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(200)
+      )
+    );
+    const failure = breweries.error || horeca.error;
+    if (failure) {
+      locListEl.innerHTML = `<p class="text-error text-sm">Kon locaties niet laden: ${escapeHtml(failure.message)}</p>`;
+      return;
+    }
+
+    const rows = [
+      ...breweries.data.map((r) => ({ ...r, type: "brewery" })),
+      ...horeca.data.map((r) => ({ ...r, type: "horeca" })),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (!rows.length) {
+      locListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen gepubliceerde locaties.</p>';
+      return;
+    }
+
+    locListEl.innerHTML = "";
+    rows.forEach((row) => {
+      const typeLabel = row.type === "brewery" ? "Brouwerij" : "Horeca";
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center gap-3 fade-in";
+      item.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(row.naam)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${typeLabel} &middot; ${escapeHtml(row.city || "")}</p>
+        </div>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${row.naam}" verwijderen? Dit haalt de locatie van de kaart.`)) return;
+        const { error } = await client.from(LOC_TABLES[row.type]).delete().eq("id", row.id);
+        if (error) {
+          alert(`Verwijderen mislukt: ${error.message}`);
+          return;
+        }
+        loadLocationsAdmin();
+      });
+      locListEl.appendChild(item);
+    });
+  }
+
+  // ---------- Evenement rechtstreeks aanmaken en publiceren ----------
+  const eventNewForm = document.getElementById("event-new-form");
+  const eventNewError = document.getElementById("event-new-error");
+  const eventsPublishedListEl = document.getElementById("events-published-list");
+
+  function clearEventForm() {
+    ["name", "start", "end", "location", "street", "number", "postal", "city", "desc", "photo"].forEach((f) => (document.getElementById(`event-new-${f}`).value = ""));
+    ["t-regular", "t-beer", "t-vip"].forEach((f) => (document.getElementById(`event-new-${f}`).checked = false));
+    eventNewError.classList.add("hidden");
+  }
+  document.getElementById("event-new-toggle").addEventListener("click", () => eventNewForm.classList.toggle("hidden"));
+  document.getElementById("event-new-cancel").addEventListener("click", () => {
+    eventNewForm.classList.add("hidden");
+    clearEventForm();
+  });
+
+  document.getElementById("event-new-save").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const label = document.getElementById("event-new-save-label");
+    const val = (id) => document.getElementById(`event-new-${id}`).value.trim();
+    const required = ["name", "start", "end", "location", "street", "number", "postal", "city", "desc"];
+    if (required.some((f) => !val(f))) return showFormError(eventNewError, "Alle velden met een * zijn verplicht.");
+
+    const start = new Date(val("start"));
+    const end = new Date(val("end"));
+    if (!(end > start)) return showFormError(eventNewError, "Het einde moet na het begin liggen.");
+
+    btn.disabled = true;
+    eventNewError.classList.add("hidden");
+    label.innerHTML = '<span class="spinner"></span> Foto controleren...';
+    const resetBtn = () => {
+      btn.disabled = false;
+      label.textContent = "Opslaan en publiceren";
+    };
+
+    const photo = val("photo") || null;
+    if (!(await checkImageUrl(photo))) {
+      resetBtn();
+      return showFormError(eventNewError, "De foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+    }
+    const adminId = await currentAdminId();
+    if (!adminId) {
+      resetBtn();
+      return showFormError(eventNewError, "Je bent niet meer ingelogd. Log opnieuw in.");
+    }
+
+    const pad = (n) => String(n).padStart(2, "0");
+    const { error } = await client.from("events").insert({
+      user_id: adminId,
+      name: val("name"),
+      event_type: document.getElementById("event-new-type").value,
+      start_date: start.toISOString(),
+      end_date: end.toISOString(),
+      opening_hours: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+      street: val("street"),
+      house_number: val("number"),
+      postal_code: val("postal"),
+      city: val("city"),
+      location_name: val("location"),
+      description: val("desc"),
+      image_asset: photo,
+      ticket_regular: document.getElementById("event-new-t-regular").checked,
+      ticket_beer: document.getElementById("event-new-t-beer").checked,
+      ticket_vip: document.getElementById("event-new-t-vip").checked,
+      price: 0,
+      price_incl_btw: true,
+      price_excl_btw: false,
+      status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: adminId,
+    });
+    resetBtn();
+    if (error) return showFormError(eventNewError, `Opslaan mislukt: ${error.message}`);
+
+    clearEventForm();
+    eventNewForm.classList.add("hidden");
+    loadPublishedEvents();
+  });
+
+  async function loadPublishedEvents() {
+    const { data, error } = await client
+      .from("events")
+      .select("id, name, city, start_date")
+      .eq("status", "approved")
+      .order("start_date", { ascending: false })
+      .limit(100);
+    if (error) {
+      eventsPublishedListEl.innerHTML = `<p class="text-error text-sm">Kon evenementen niet laden: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+    if (!data.length) {
+      eventsPublishedListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen gepubliceerde evenementen.</p>';
+      return;
+    }
+    eventsPublishedListEl.innerHTML = "";
+    data.forEach((event) => {
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center gap-3 fade-in";
+      item.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(event.name)}</p>
+          <p class="text-on-surface-variant text-xs truncate">${formatDate(event.start_date)} &middot; ${escapeHtml(event.city || "")}</p>
+        </div>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        if (!confirm(`"${event.name}" verwijderen? Dit haalt het evenement uit de agenda.`)) return;
+        const { error: deleteError } = await client.from("events").delete().eq("id", event.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadPublishedEvents();
+      });
+      eventsPublishedListEl.appendChild(item);
+    });
+  }
+
+  // ---------- Data-imports ----------
+  // De JSON-bestanden staan naast deze pagina in de map data/ en zijn verzameld
+  // uit publieke pagina's van de bron, met een beleefd tempo en zonder de
+  // robots.txt van die sites te omzeilen.
+  const IMPORTS = [
+    {
+      key: "beers", title: "Bierdatabase", file: "data/beers_import.json", table: "beer_catalog", conflict: "id",
+      source: "Stichting Erfgoed Nederlandse Biercultuur (databank)",
+      note: "Biernaam, brouwerij, bierstijl, alcoholpercentage, IBU, gisting en smaaktonen. Untappd-score en aantal beoordelingen staan niet in deze bron en blijven leeg.",
+    },
+    {
+      key: "events", title: "Agenda-evenementen", file: "data/events_import.json", table: "events", conflict: "bron,bron_id,start_date",
+      source: "Stichting Erfgoed Nederlandse Biercultuur (evenementenkalender, alleen Nederland en België)",
+      note: "Datums en locaties, zonder starttijden (de app toont dan 'Tijd niet bekend'). Staan direct in de agenda.",
+      countFilter: (q) => q.not("bron", "is", null),
+    },
+    {
+      key: "news", title: "Nieuws", file: "data/news_import.json", table: "news_articles", conflict: "bron_url",
+      source: "Stichting Erfgoed Nederlandse Biercultuur (nieuws, persberichten en 'in het nieuws')",
+      note: "Titel, korte samenvatting en een link naar de bron; de volledige tekst blijft bij de bron. Direct gepubliceerd; je kunt ze onder Nieuws terug naar concept zetten.",
+    },
+  ];
+  const importsListEl = document.getElementById("imports-list");
+
+  async function loadImportCards() {
+    importsListEl.innerHTML = "";
+    IMPORTS.forEach((imp) => {
+      const card = document.createElement("div");
+      card.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-5";
+      card.innerHTML = `
+        <h3 class="font-display text-lg text-on-surface">${escapeHtml(imp.title)}</h3>
+        <p class="text-on-surface-variant text-xs mt-1">Bron: ${escapeHtml(imp.source)}</p>
+        <p class="text-on-surface-variant text-sm mt-2">${escapeHtml(imp.note)}</p>
+        <p class="imp-info text-on-surface text-sm mt-3">Gegevens ophalen...</p>
+        <div class="flex items-center gap-3 mt-3 flex-wrap">
+          <button class="imp-btn px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-40" disabled>Importeren</button>
+          <span class="imp-status text-sm text-on-surface-variant"></span>
+        </div>`;
+      importsListEl.appendChild(card);
+      const infoEl = card.querySelector(".imp-info");
+      const btn = card.querySelector(".imp-btn");
+      const statusEl = card.querySelector(".imp-status");
+      imp.refresh = async () => {
+        try {
+          const res = await fetch(imp.file, { cache: "no-store" });
+          if (!res.ok) throw new Error("bestand ontbreekt");
+          const rows = await res.json();
+          let q = client.from(imp.table).select("id", { count: "exact", head: true });
+          if (imp.countFilter) q = imp.countFilter(q);
+          const { count, error } = await q;
+          const inDb = error ? "onbekend (is supabase/add_external_content_imports.sql uitgevoerd?)" : count;
+          infoEl.textContent = `${rows.length} regels klaar om te importeren. Nu in de database: ${inDb}.`;
+          btn.disabled = false;
+        } catch (e) {
+          infoEl.textContent = `Importbestand ${imp.file} niet beschikbaar (${e.message}).`;
+        }
+      };
+      btn.addEventListener("click", () => runImport(imp, btn, statusEl));
+      imp.refresh();
+    });
+  }
+
+  async function runImport(imp, btn, statusEl) {
+    if (!confirm(`${imp.title} importeren? Bestaande regels uit deze bron worden bijgewerkt.`)) return;
+    btn.disabled = true;
+    statusEl.className = "imp-status text-sm text-on-surface-variant";
+    statusEl.textContent = "Bestand laden...";
+    try {
+      const res = await fetch(imp.file, { cache: "no-store" });
+      if (!res.ok) throw new Error(`${imp.file} niet gevonden`);
+      let rows = await res.json();
+
+      if (imp.key === "events") {
+        const adminId = await currentAdminId();
+        if (!adminId) throw new Error("Je bent niet meer ingelogd. Log opnieuw in.");
+        const now = new Date().toISOString();
+        rows = rows.map((r) => ({
+          ...r, user_id: adminId, status: "approved", approved_at: now, approved_by: adminId,
+          ticket_regular: false, ticket_beer: false, ticket_vip: false, price: 0, price_incl_btw: true, price_excl_btw: false,
+        }));
+      }
+
+      const BATCH = 300;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        statusEl.textContent = `Bezig... ${Math.min(i + BATCH, rows.length)} van ${rows.length}`;
+        const { error } = await client.from(imp.table).upsert(rows.slice(i, i + BATCH), { onConflict: imp.conflict });
+        if (error) throw new Error(error.message);
+      }
+      statusEl.className = "imp-status text-sm text-success";
+      statusEl.textContent = `Klaar: ${rows.length} regels geïmporteerd.`;
+      if (imp.key === "events") loadPublishedEvents();
+      if (imp.key === "news") loadNews();
+    } catch (e) {
+      statusEl.className = "imp-status text-sm text-error";
+      statusEl.textContent = `Import mislukt: ${e.message}`;
+    }
+    btn.disabled = false;
+    imp.refresh();
+  }
+
+  // ---------- Statistieken ----------
+  const statsGridEl = document.getElementById("stats-grid");
+  const statsErrorEl = document.getElementById("stats-error");
+  document.getElementById("stats-refresh").addEventListener("click", loadStats);
+
+  async function loadStats() {
+    statsErrorEl.classList.add("hidden");
+    statsGridEl.innerHTML = '<div class="col-span-full flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.rpc("admin_stats");
+
+    if (error) {
+      statsGridEl.innerHTML = "";
+      statsErrorEl.textContent = `Kon statistieken niet laden: ${error.message}. Is supabase/add_admin_stats_rpc.sql al uitgevoerd?`;
+      statsErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    const tiles = [
+      { label: "Totaal gebruikers", value: data.total_users },
+      { label: "Actief afgelopen 7 dagen", value: data.active_7d },
+      { label: "Actief afgelopen 30 dagen", value: data.active_30d },
+      { label: "Langste streak (dagen)", value: data.longest_streak },
+      { label: "Bieren geproefd (totaal)", value: data.total_beers_tasted },
+      { label: "Brouwerijen verkend (totaal)", value: data.total_breweries_explored },
+      { label: "Badges behaald", value: data.total_badges_earned },
+      { label: "Wachtend: evenementen", value: data.pending_events },
+      { label: "Wachtend: brouwerijen", value: data.pending_breweries },
+      { label: "Wachtend: horeca", value: data.pending_horeca },
+      { label: "Wachtend: posts", value: data.pending_posts },
+    ];
+
+    statsGridEl.innerHTML = tiles.map((t) => `
+      <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-4 fade-in">
+        <p class="text-on-surface-variant text-xs uppercase tracking-wide mb-1">${escapeHtml(t.label)}</p>
+        <p class="font-display text-2xl text-primary">${t.value ?? 0}</p>
+      </div>
+    `).join("");
+  }
+
+  // ---------- Locatie-badges ----------
+  const locbadgeTypeEl = document.getElementById("locbadge-type");
+  const locbadgeNameEl = document.getElementById("locbadge-name");
+  const locbadgeOptionsEl = document.getElementById("locbadge-options");
+  const locbadgeFarmEl = document.getElementById("locbadge-farm");
+  const locbadgeGardenEl = document.getElementById("locbadge-garden");
+  const locbadgeErrorEl = document.getElementById("locbadge-error");
+  const locbadgeSaveBtn = document.getElementById("locbadge-save");
+  const locbadgeSaveLabelEl = document.getElementById("locbadge-save-label");
+  const locbadgeListEl = document.getElementById("locbadge-list");
+
+  // { brewery: Map(naam-lowercase -> {id, title}), horeca: Map(...) }
+  let locbadgeOptionsByType = { brewery: new Map(), horeca: new Map() };
+  let allLocationBadges = [];
+
+  async function loadLocationBadgeOptions() {
+    try {
+      const res = await fetch("breweries.json");
+      const breweries = await res.json();
+      locbadgeOptionsByType.brewery = new Map(breweries.map((b) => [b.title.toLowerCase(), b]));
+    } catch (e) {
+      console.warn("Kon breweries.json niet laden:", e);
+    }
+
+    const { data, error } = await client.from("horeca_submissions").select("id, naam").eq("status", "approved");
+    if (!error && data) {
+      locbadgeOptionsByType.horeca = new Map(data.map((h) => [h.naam.toLowerCase(), { id: h.id, title: h.naam }]));
+    }
+
+    renderLocationBadgeOptions();
+    loadLocationBadges();
+  }
+
+  function renderLocationBadgeOptions() {
+    const options = locbadgeOptionsByType[locbadgeTypeEl.value] || new Map();
+    locbadgeOptionsEl.innerHTML = "";
+    for (const { title } of options.values()) {
+      const opt = document.createElement("option");
+      opt.value = title;
+      locbadgeOptionsEl.appendChild(opt);
+    }
+  }
+
+  locbadgeTypeEl.addEventListener("change", () => {
+    locbadgeNameEl.value = "";
+    renderLocationBadgeOptions();
+  });
+
+  locbadgeSaveBtn.addEventListener("click", async () => {
+    locbadgeErrorEl.classList.add("hidden");
+    const type = locbadgeTypeEl.value;
+    const name = locbadgeNameEl.value.trim();
+    const options = locbadgeOptionsByType[type] || new Map();
+    const match = options.get(name.toLowerCase());
+
+    if (!match) {
+      locbadgeErrorEl.textContent = `Geen ${type === "brewery" ? "brouwerij" : "horecagelegenheid"} gevonden met die naam. Kies een naam uit de suggesties.`;
+      locbadgeErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    locbadgeSaveBtn.disabled = true;
+    locbadgeSaveLabelEl.innerHTML = '<span class="spinner"></span> Opslaan...';
+
+    const wantedTags = [];
+    if (locbadgeFarmEl.checked) wantedTags.push("farm");
+    if (locbadgeGardenEl.checked) wantedTags.push("beer_garden");
+
+    const { error: deleteError } = await client
+      .from("location_badge_tags")
+      .delete()
+      .eq("item_type", type)
+      .eq("item_id", match.id);
+
+    let saveError = deleteError;
+    if (!saveError && wantedTags.length) {
+      const rows = wantedTags.map((tag) => ({ item_type: type, item_id: match.id, tag }));
+      const { error: insertError } = await client.from("location_badge_tags").insert(rows);
+      saveError = insertError;
+    }
+
+    locbadgeSaveBtn.disabled = false;
+    locbadgeSaveLabelEl.textContent = "Tags opslaan";
+
+    if (saveError) {
+      locbadgeErrorEl.textContent = `Opslaan mislukt: ${saveError.message}`;
+      locbadgeErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    locbadgeNameEl.value = "";
+    locbadgeFarmEl.checked = false;
+    locbadgeGardenEl.checked = false;
+    loadLocationBadges();
+  });
+
+  async function loadLocationBadges() {
+    locbadgeListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
+    const { data, error } = await client.from("location_badge_tags").select("*").order("item_type").order("item_id");
+
+    if (error) {
+      locbadgeListEl.innerHTML = `<p class="text-error text-sm">Kon tags niet laden: ${escapeHtml(error.message)}. Is supabase/add_remaining_badges.sql al uitgevoerd?</p>`;
+      return;
+    }
+
+    allLocationBadges = data;
+    renderLocationBadges();
+  }
+
+  function nameForLocationBadge(row) {
+    const options = locbadgeOptionsByType[row.item_type] || new Map();
+    for (const entry of options.values()) {
+      if (entry.id === row.item_id) return entry.title;
+    }
+    return `#${row.item_id}`;
+  }
+
+  function renderLocationBadges() {
+    if (!allLocationBadges.length) {
+      locbadgeListEl.innerHTML = '<p class="text-on-surface-variant text-sm py-6 text-center">Nog geen locaties getagd.</p>';
+      return;
+    }
+
+    locbadgeListEl.innerHTML = "";
+    allLocationBadges.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "bg-surface-container rounded-xl border border-outline-variant/20 p-3 flex items-center justify-between gap-3 fade-in";
+      const typeLabel = row.item_type === "brewery" ? "Brouwerij" : "Horeca";
+      const tagLabel = row.tag === "farm" ? "Boerderijbrouwerij" : "Beer garden";
+      item.innerHTML = `
+        <div class="min-w-0">
+          <p class="text-on-surface text-sm truncate">${escapeHtml(nameForLocationBadge(row))}</p>
+          <p class="text-on-surface-variant text-xs">${typeLabel} &middot; ${tagLabel}</p>
+        </div>
+        <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1 shrink-0">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>`;
+
+      item.querySelector(".delete-btn").addEventListener("click", async () => {
+        const { error: deleteError } = await client.from("location_badge_tags").delete().eq("id", row.id);
+        if (deleteError) {
+          alert(`Verwijderen mislukt: ${deleteError.message}`);
+          return;
+        }
+        loadLocationBadges();
+      });
+
+      locbadgeListEl.appendChild(item);
+    });
+  }
+
+  // ---------- Berichten ----------
+  const msgTitleEl = document.getElementById("msg-title");
+  const msgBodyEl = document.getElementById("msg-body");
+  const msgTargetEl = document.getElementById("msg-target");
+  const msgCityWrapEl = document.getElementById("msg-city-wrap");
+  const msgCityEl = document.getElementById("msg-city");
+  const msgFavoritesWrapEl = document.getElementById("msg-favorites-wrap");
+  const msgFavTypeEl = document.getElementById("msg-fav-type");
+  const msgFavNameEl = document.getElementById("msg-fav-name");
+  const msgFavOptionsEl = document.getElementById("msg-fav-options");
+  const msgErrorEl = document.getElementById("msg-error");
+  const msgSuccessEl = document.getElementById("msg-success");
+  const msgSendBtn = document.getElementById("msg-send");
+  const msgSendLabelEl = document.getElementById("msg-send-label");
+
+  function renderMsgFavOptions() {
+    const options = locbadgeOptionsByType[msgFavTypeEl.value] || new Map();
+    msgFavOptionsEl.innerHTML = "";
+    for (const { title } of options.values()) {
+      const opt = document.createElement("option");
+      opt.value = title;
+      msgFavOptionsEl.appendChild(opt);
+    }
+  }
+
+  msgTargetEl.addEventListener("change", () => {
+    msgCityWrapEl.classList.toggle("hidden", msgTargetEl.value !== "city");
+    msgFavoritesWrapEl.classList.toggle("hidden", msgTargetEl.value !== "favorites");
+    if (msgTargetEl.value === "favorites") renderMsgFavOptions();
+  });
+  msgFavTypeEl.addEventListener("change", renderMsgFavOptions);
+
+  msgSendBtn.addEventListener("click", async () => {
+    msgErrorEl.classList.add("hidden");
+    msgSuccessEl.classList.add("hidden");
+
+    const title = msgTitleEl.value.trim();
+    const body = msgBodyEl.value.trim();
+    if (!title || !body) {
+      msgErrorEl.textContent = "Titel en bericht zijn verplicht.";
+      msgErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    const target = msgTargetEl.value;
+    const params = { p_title: title, p_body: body, p_target: target };
+
+    if (target === "city") {
+      const city = msgCityEl.value.trim();
+      if (!city) {
+        msgErrorEl.textContent = "Vul een woonplaats in.";
+        msgErrorEl.classList.remove("hidden");
+        return;
+      }
+      params.p_city = city;
+    } else if (target === "favorites") {
+      const favType = msgFavTypeEl.value;
+      const favName = msgFavNameEl.value.trim();
+      const match = (locbadgeOptionsByType[favType] || new Map()).get(favName.toLowerCase());
+      if (!match) {
+        msgErrorEl.textContent = `Geen ${favType === "brewery" ? "brouwerij" : "horecagelegenheid"} gevonden met die naam. Kies een naam uit de suggesties.`;
+        msgErrorEl.classList.remove("hidden");
+        return;
+      }
+      params.p_item_type = favType;
+      params.p_item_id = match.id;
+    }
+
+    msgSendBtn.disabled = true;
+    msgSendLabelEl.innerHTML = '<span class="spinner"></span> Versturen...';
+
+    const { data, error } = await client.rpc("send_admin_notification", params);
+
+    msgSendBtn.disabled = false;
+    msgSendLabelEl.textContent = "Versturen";
+
+    if (error) {
+      msgErrorEl.textContent = `Versturen mislukt: ${error.message}. Is supabase/add_notifications.sql al uitgevoerd?`;
+      msgErrorEl.classList.remove("hidden");
+      return;
+    }
+
+    msgSuccessEl.textContent = `Bericht verstuurd naar ${data} ${data === 1 ? "gebruiker" : "gebruikers"}.`;
+    msgSuccessEl.classList.remove("hidden");
+    msgTitleEl.value = "";
+    msgBodyEl.value = "";
+  });
 
   // Al ingelogd? (bv. na een refresh) -- meteen doorschakelen als het een beheerder is.
   (async () => {
