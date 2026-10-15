@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,7 +35,8 @@ class _EventCreatePageState extends State<EventCreatePage> {
   String _selectedEventType = 'Festival';
 
   DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  TimeOfDay? _selectedStartTime;
+  TimeOfDay? _selectedEndTime;
 
   bool _isRegularChecked = false;
   bool _isBierTicketChecked = false;
@@ -67,6 +72,57 @@ class _EventCreatePageState extends State<EventCreatePage> {
     _locationNameController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _lookupPostcode(String value) async {
+    final postcode = value.replaceAll(' ', '').toUpperCase();
+
+    // Nederlandse postcode: vier cijfers en twee letters.
+    if (!RegExp(r'^\d{4}[A-Z]{2}$').hasMatch(postcode)) return;
+
+
+    try {
+      final uri = Uri.https(
+        'api.pdok.nl',
+        '/bzk/locatieserver/search/v3_1/free',
+        {
+          'q': 'postcode:$postcode',
+          'fq': 'type:adres',
+          'rows': '1',
+        },
+      );
+
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 8),
+      );
+
+      if (response.statusCode != 200 ||
+          _postalCodeController.text.replaceAll(' ', '').toUpperCase() != postcode) {
+        return;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final responseData = data['response'] as Map<String, dynamic>?;
+      final docs = responseData?['docs'] as List<dynamic>?;
+
+      if (docs == null || docs.isEmpty) return;
+
+      final first = docs.first as Map<String, dynamic>;
+      final city = first['woonplaatsnaam']?.toString() ?? '';
+      final street = first['straatnaam']?.toString() ?? '';
+
+      if (!mounted) return;
+
+      setState(() {
+        if (city.isNotEmpty) _cityController.text = city;
+        if (_streetController.text.trim().isEmpty && street.isNotEmpty) {
+          _streetController.text = street;
+        }
+      });
+    } catch (e) {
+      debugPrint('Postcode opzoeken mislukt: $e');
+    } finally {
+    }
   }
 
   Future<void> _pickImage() async {
@@ -168,10 +224,10 @@ class _EventCreatePageState extends State<EventCreatePage> {
     }
   }
 
-  Future<void> _selectTime(BuildContext context) async {
+  Future<void> _selectStartTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
+      initialTime: _selectedStartTime ?? TimeOfDay.now(),
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
@@ -193,7 +249,43 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
     if (picked != null && mounted) {
       setState(() {
-        _selectedTime = picked;
+        _selectedStartTime = picked;
+      });
+    }
+  }
+
+  Future<void> _selectEndTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedEndTime ??
+          (_selectedStartTime != null
+              ? TimeOfDay(
+                  hour: (_selectedStartTime!.hour + 2) % 24,
+                  minute: _selectedStartTime!.minute,
+                )
+              : const TimeOfDay(hour: 18, minute: 0)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            scaffoldBackgroundColor: backgroundColor,
+            dialogBackgroundColor: cardColor,
+            colorScheme: const ColorScheme.dark(
+              primary: beigeColor,
+              onPrimary: backgroundColor,
+              secondary: beigeColor,
+              onSecondary: backgroundColor,
+              surface: cardColor,
+              onSurface: textColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedEndTime = picked;
       });
     }
   }
@@ -207,9 +299,11 @@ class _EventCreatePageState extends State<EventCreatePage> {
       return;
     }
 
-    if (_selectedDate == null || _selectedTime == null) {
+    if (_selectedDate == null ||
+        _selectedStartTime == null ||
+        _selectedEndTime == null) {
       _showMessage(
-        'Selecteer een datum en tijd.',
+        'Selecteer een datum, starttijd en eindtijd.',
         isError: true,
       );
       return;
@@ -274,16 +368,35 @@ class _EventCreatePageState extends State<EventCreatePage> {
         _selectedDate!.year,
         _selectedDate!.month,
         _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
+        _selectedStartTime!.hour,
+        _selectedStartTime!.minute,
       );
 
-      final DateTime endDateTime =
-          startDateTime.add(const Duration(hours: 4));
+      final DateTime endDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedEndTime!.hour,
+        _selectedEndTime!.minute,
+      );
 
-      final String formattedTime =
-          '${_selectedTime!.hour.toString().padLeft(2, '0')}:'
-          '${_selectedTime!.minute.toString().padLeft(2, '0')}';
+      if (!endDateTime.isAfter(startDateTime)) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          _showMessage(
+            'De eindtijd moet na de starttijd liggen.',
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      final String formattedStartTime =
+          '${_selectedStartTime!.hour.toString().padLeft(2, '0')}:'
+          '${_selectedStartTime!.minute.toString().padLeft(2, '0')}';
+      final String formattedEndTime =
+          '${_selectedEndTime!.hour.toString().padLeft(2, '0')}:'
+          '${_selectedEndTime!.minute.toString().padLeft(2, '0')}';
 
       await supabase.from('events').insert({
         'user_id': user.id,
@@ -291,7 +404,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'event_type': _selectedEventType,
         'start_date': startDateTime.toIso8601String(),
         'end_date': endDateTime.toIso8601String(),
-        'opening_hours': formattedTime,
+        'opening_hours': '$formattedStartTime - $formattedEndTime',
         'street': _streetController.text.trim(),
         'house_number': _houseNumberController.text.trim(),
         'postal_code': _postalCodeController.text.trim(),
@@ -368,12 +481,20 @@ class _EventCreatePageState extends State<EventCreatePage> {
         '${_selectedDate!.year}';
   }
 
-  String get _selectedTimeText {
-    if (_selectedTime == null) {
+  String get _selectedStartTimeText {
+    if (_selectedStartTime == null) {
       return 'Selecteer tijd';
     }
 
-    return _selectedTime!.format(context);
+    return _selectedStartTime!.format(context);
+  }
+
+  String get _selectedEndTimeText {
+    if (_selectedEndTime == null) {
+      return 'Selecteer tijd';
+    }
+
+    return _selectedEndTime!.format(context);
   }
 
   @override
@@ -425,26 +546,46 @@ class _EventCreatePageState extends State<EventCreatePage> {
                   icon: Icons.event_outlined,
                   title: 'Datum & tijd',
                   subtitle: 'Wanneer vindt het evenement plaats?',
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: _buildSelectionCard(
-                          icon: Icons.calendar_month_outlined,
-                          title: 'Datum',
-                          value: _selectedDateText,
-                          selected: _selectedDate != null,
-                          onTap: () => _selectDate(context),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSelectionCard(
+                              icon: Icons.calendar_month_outlined,
+                              title: 'Datum',
+                              value: _selectedDateText,
+                              selected: _selectedDate != null,
+                              onTap: () => _selectDate(context),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildSelectionCard(
+                              icon: Icons.schedule_outlined,
+                              title: 'Starttijd',
+                              value: _selectedStartTimeText,
+                              selected: _selectedStartTime != null,
+                              onTap: () => _selectStartTime(context),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSelectionCard(
-                          icon: Icons.schedule_outlined,
-                          title: 'Starttijd',
-                          value: _selectedTimeText,
-                          selected: _selectedTime != null,
-                          onTap: () => _selectTime(context),
-                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSelectionCard(
+                              icon: Icons.schedule_rounded,
+                              title: 'Eindtijd',
+                              value: _selectedEndTimeText,
+                              selected: _selectedEndTime != null,
+                              onTap: () => _selectEndTime(context),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(child: SizedBox()),
+                        ],
                       ),
                     ],
                   ),
@@ -483,6 +624,11 @@ class _EventCreatePageState extends State<EventCreatePage> {
                         controller: _streetController,
                         hintText: 'Bijv. Dorpsstraat',
                         icon: Icons.signpost_outlined,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r"[a-zA-ZÀ-ÿ0-9 '\- .]"),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 18),
                       Row(
@@ -496,9 +642,11 @@ class _EventCreatePageState extends State<EventCreatePage> {
                                 _buildLabel('Huisnummer'),
                                 const SizedBox(height: 7),
                                 _buildTextField(
-                                  controller:
-                                      _houseNumberController,
-                                  hintText: '42 A',
+                                  controller: _houseNumberController,
+                                  hintText: '42',
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
                                 ),
                               ],
                             ),
@@ -516,6 +664,23 @@ class _EventCreatePageState extends State<EventCreatePage> {
                                   controller:
                                       _postalCodeController,
                                   hintText: '1234 AB',
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'[a-zA-Z0-9 ]'),
+                                    ),
+                                    LengthLimitingTextInputFormatter(7),
+                                    TextInputFormatter.withFunction(
+                                      (oldValue, newValue) => newValue.copyWith(
+                                        text: newValue.text.toUpperCase(),
+                                        selection: newValue.selection,
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value.replaceAll(' ', '').length == 6) {
+                                      _lookupPostcode(value);
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -529,6 +694,11 @@ class _EventCreatePageState extends State<EventCreatePage> {
                         controller: _cityController,
                         hintText: 'Bijv. Utrecht',
                         icon: Icons.location_city_outlined,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r"[a-zA-ZÀ-ÿ '\-]"),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -824,9 +994,13 @@ class _EventCreatePageState extends State<EventCreatePage> {
     required TextEditingController controller,
     required String hintText,
     IconData? icon,
+    ValueChanged<String>? onChanged,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
+      onChanged: onChanged,
+      inputFormatters: inputFormatters,
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
           return 'Dit veld is verplicht';
