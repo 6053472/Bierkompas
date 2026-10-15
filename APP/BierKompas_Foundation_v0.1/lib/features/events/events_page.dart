@@ -223,6 +223,20 @@ class _EventsPageState extends State<EventsPage> {
         '${eventDate.minute.toString().padLeft(2, '0')}';
   }
 
+
+  String? _formatEndTime(Map<String, dynamic> event) {
+    // Geïmporteerde evenementen hebben niet altijd een bekende eindtijd.
+    if (event['bron'] != null || event['end_date'] == null) return null;
+
+    try {
+      final endDate = DateTime.parse(event['end_date'].toString()).toLocal();
+      return '${endDate.hour.toString().padLeft(2, '0')}:'
+          '${endDate.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _previousMonth() {
     setState(() {
       _selectedMonth = DateTime(
@@ -1789,24 +1803,40 @@ class _EventsPageState extends State<EventsPage> {
                     Row(
                       children: [
                         const Icon(
-                          Icons
-                              .schedule_outlined,
-                          color:
-                              secondaryTextColor,
+                          Icons.schedule_outlined,
+                          color: secondaryTextColor,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _formatTime(event),
-                          style:
-                              GoogleFonts.inter(
-                            color:
-                                secondaryTextColor,
+                          'Starttijd: ${_formatTime(event)}',
+                          style: GoogleFonts.inter(
+                            color: secondaryTextColor,
                             fontSize: 12,
                           ),
                         ),
                       ],
                     ),
+                    if (_formatEndTime(event) != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_outlined,
+                            color: secondaryTextColor,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Eindtijd: ${_formatEndTime(event)!}',
+                            style: GoogleFonts.inter(
+                              color: secondaryTextColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (description
                         .isNotEmpty) ...[
                       const SizedBox(height: 12),
@@ -2486,6 +2516,13 @@ class _EventsPageState extends State<EventsPage> {
                                 .schedule_outlined,
                             'Starttijd',
                             _formatTime(event),
+                          ),
+                        if (_formatEndTime(event) != null)
+                          _detailRow(
+                            Icons
+                                .schedule_outlined,
+                            'Eindtijd',
+                            _formatEndTime(event)!,
                           ),
                         if (openingHours
                             .isNotEmpty)

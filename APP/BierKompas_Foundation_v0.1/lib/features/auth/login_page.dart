@@ -7,6 +7,9 @@ import 'auth_storage.dart';
 import 'consent_page.dart';
 import 'register_page.dart';
 
+const String _logoImage =
+    'https://lh3.googleusercontent.com/aida-public/AB6AXuBM580LJgGSlvZ-vRLbR8gR8YgCyscQpi9v23krIsU1Guv5lOfaBskJ9JU0mAQfjQ1lLx2JpEin-c8CRLQUKrrp2h9_rlhwvsXtUzKB82_sN9jqFo8KaIZ4p0n6lW7t7-a9ZBD17gqjKLyg7VthIMxzX5MEI8ErfqOXJhOV6IVqqi21Eo84uNNaBkkMfh3dS6SoiH87ofeiFMlfb7V-RoAaWbx94fXBu2zBenGe_GMOUk2P_--GMBAnIrE35R6aGf-bZA';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -44,20 +47,16 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (mounted) {
-        setState(() {
-          _isGoogleLoading = false;
-          _isOutlookLoading = false;
-        });
-      }
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {
+        _isGoogleLoading = false;
+        _isOutlookLoading = false;
+      });
     }
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() {
       _isLoading = true;
@@ -84,16 +83,9 @@ class _LoginPageState extends State<LoginPage>
       );
     } on Exception catch (e) {
       if (!mounted) return;
-
-      setState(() {
-        _error = e.toString();
-      });
+      setState(() => _error = e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -111,16 +103,9 @@ class _LoginPageState extends State<LoginPage>
       await _authService.loginWithGoogle();
     } on Exception catch (e) {
       if (!mounted) return;
-
-      setState(() {
-        _error = e.toString();
-      });
+      setState(() => _error = e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isGoogleLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -138,16 +123,9 @@ class _LoginPageState extends State<LoginPage>
       await _authService.loginWithOutlook();
     } on Exception catch (e) {
       if (!mounted) return;
-
-      setState(() {
-        _error = e.toString();
-      });
+      setState(() => _error = e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isOutlookLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isOutlookLoading = false);
     }
   }
 
@@ -172,33 +150,45 @@ class _LoginPageState extends State<LoginPage>
               vertical: 32,
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 400,
-              ),
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Groter en netter logo
                   Container(
-                    width: 76,
-                    height: 76,
+                    width: 120,
+                    height: 120,
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: card,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: gold.withOpacity(0.5),
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: gold.withOpacity(0.18),
-                          blurRadius: 16,
-                          spreadRadius: 4,
+                          color: gold.withOpacity(0.15),
+                          blurRadius: 24,
+                          spreadRadius: 3,
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.sports_bar,
-                      color: gold,
-                      size: 34,
+                    child: ClipOval(
+                      child: Image.network(
+                        _logoImage,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.sports_bar,
+                            color: gold,
+                            size: 50,
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
                     'Bierkompas',
                     style: GoogleFonts.playfairDisplay(
@@ -233,20 +223,11 @@ class _LoginPageState extends State<LoginPage>
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildEmailField(
-                            field,
-                            cream,
-                            muted,
-                          ),
+                          _buildEmailField(field, cream, muted),
                           const SizedBox(height: 14),
-                          _buildPasswordField(
-                            field,
-                            cream,
-                            muted,
-                          ),
+                          _buildPasswordField(field, cream, muted),
                           if (_error != null) ...[
                             const SizedBox(height: 14),
                             _buildError(_error!),
@@ -265,16 +246,14 @@ class _LoginPageState extends State<LoginPage>
                                 foregroundColor: background,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
                                       height: 20,
                                       width: 20,
-                                      child:
-                                          CircularProgressIndicator(
+                                      child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: background,
                                       ),
@@ -305,8 +284,7 @@ class _LoginPageState extends State<LoginPage>
                         : () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const RegisterPage(),
+                                builder: (_) => const RegisterPage(),
                               ),
                             );
                           },
@@ -341,9 +319,7 @@ class _LoginPageState extends State<LoginPage>
             : _googleLogin,
         style: OutlinedButton.styleFrom(
           backgroundColor: field,
-          side: BorderSide(
-            color: muted.withOpacity(0.3),
-          ),
+          side: BorderSide(color: muted.withOpacity(0.3)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(13),
           ),
@@ -389,9 +365,7 @@ class _LoginPageState extends State<LoginPage>
             : _outlookLogin,
         style: OutlinedButton.styleFrom(
           backgroundColor: field,
-          side: BorderSide(
-            color: muted.withOpacity(0.3),
-          ),
+          side: BorderSide(color: muted.withOpacity(0.3)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(13),
           ),
@@ -457,11 +431,7 @@ class _LoginPageState extends State<LoginPage>
   Widget _buildDivider(Color muted) {
     return Row(
       children: [
-        Expanded(
-          child: Divider(
-            color: muted.withOpacity(0.3),
-          ),
-        ),
+        Expanded(child: Divider(color: muted.withOpacity(0.3))),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
@@ -473,11 +443,7 @@ class _LoginPageState extends State<LoginPage>
             ),
           ),
         ),
-        Expanded(
-          child: Divider(
-            color: muted.withOpacity(0.3),
-          ),
-        ),
+        Expanded(child: Divider(color: muted.withOpacity(0.3))),
       ],
     );
   }
@@ -512,14 +478,11 @@ class _LoginPageState extends State<LoginPage>
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
-      style: GoogleFonts.inter(
-        color: cream,
-      ),
+      style: GoogleFonts.inter(color: cream),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
           return 'Vul je e-mailadres in.';
         }
-
         return null;
       },
       decoration: InputDecoration(
@@ -529,9 +492,7 @@ class _LoginPageState extends State<LoginPage>
           color: muted,
           size: 20,
         ),
-        labelStyle: GoogleFonts.inter(
-          color: muted,
-        ),
+        labelStyle: GoogleFonts.inter(color: muted),
         filled: true,
         fillColor: field,
         border: OutlineInputBorder(
@@ -556,14 +517,11 @@ class _LoginPageState extends State<LoginPage>
       obscureText: _obscurePassword,
       textInputAction: TextInputAction.done,
       onFieldSubmitted: (_) => _submit(),
-      style: GoogleFonts.inter(
-        color: cream,
-      ),
+      style: GoogleFonts.inter(color: cream),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Vul je wachtwoord in.';
         }
-
         return null;
       },
       decoration: InputDecoration(
@@ -587,9 +545,7 @@ class _LoginPageState extends State<LoginPage>
             });
           },
         ),
-        labelStyle: GoogleFonts.inter(
-          color: muted,
-        ),
+        labelStyle: GoogleFonts.inter(color: muted),
         filled: true,
         fillColor: field,
         border: OutlineInputBorder(
