@@ -154,47 +154,25 @@ class _LoginPageState extends State<LoginPage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Groter en netter logo
-                  Container(
-                    width: 120,
-                    height: 120,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: card,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: gold.withOpacity(0.5),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: gold.withOpacity(0.15),
-                          blurRadius: 24,
-                          spreadRadius: 3,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.network(
-                        _logoImage,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.sports_bar,
-                            color: gold,
-                            size: 50,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Bierkompas',
-                    style: GoogleFonts.playfairDisplay(
-                      color: cream,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
+                  // Logo in plaats van cirkel + titel.
+                  SizedBox(
+                    width: double.infinity,
+                    height: 90,
+                    child: Image.network(
+                      _logoImage,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Text(
+                            'Bierkompas',
+                            style: GoogleFonts.playfairDisplay(
+                              color: cream,
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 4),
