@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppUser {
@@ -53,6 +55,13 @@ const String privacyVersion = '1.0';
 class AuthService {
   SupabaseClient get _client => Supabase.instance.client;
 
+  // Waar Google/Outlook na het inloggen naar terugstuurt. In de app is dat de
+  // deeplink bierkompas://; in de browser kan dat schema niet geopend worden
+  // (de login bleef dan eindeloos laden), dus daar terug naar de webapp zelf.
+  // Beide adressen moeten in Supabase onder Authentication -> URL
+  // Configuration -> Redirect URLs staan.
+  String get _oauthRedirect => kIsWeb ? '${Uri.base.origin}${Uri.base.path}' : 'bierkompas://login-callback';
+
   Future<AppUser> login({
     required String email,
     required String password,
@@ -79,7 +88,7 @@ class AuthService {
     try {
       await _client.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'bierkompas://login-callback',
+        redirectTo: _oauthRedirect,
       );
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
@@ -93,7 +102,7 @@ class AuthService {
       await _client.auth.signInWithOAuth(
         OAuthProvider.azure,
         scopes: 'email',
-        redirectTo: 'bierkompas://login-callback',
+        redirectTo: _oauthRedirect,
       );
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
