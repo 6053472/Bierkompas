@@ -1511,7 +1511,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 20))),
                     )
-                  : const Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 20))),
+                  : brewery.logoUrl != null
+                      ? _BreweryLogo(url: brewery.logoUrl!, emojiSize: 20)
+                      : const Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 20))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1780,6 +1782,32 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 }
 
 /// Bottomsheet met brouwerij-details, geopend vanaf een pin of lijstrij.
+/// Logo van de brouwerij-website op een lichte achtergrond, zodat ook donkere
+/// logo's leesbaar zijn. Google stuurt geen CORS-headers mee, dus op het web
+/// wordt het als gewoon <img>-element getoond.
+class _BreweryLogo extends StatelessWidget {
+  const _BreweryLogo({required this.url, required this.emojiSize});
+
+  final String url;
+  final double emojiSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFFF5EFE8),
+      child: Padding(
+        padding: EdgeInsets.all(emojiSize / 4),
+        child: Image.network(
+          url,
+          fit: BoxFit.contain,
+          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+          errorBuilder: (_, __, ___) => Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: emojiSize))),
+        ),
+      ),
+    );
+  }
+}
+
 class _BreweryDetailSheet extends StatelessWidget {
   const _BreweryDetailSheet({required this.brewery, required this.isFavorite, required this.onFavoriteTap});
 
@@ -1812,7 +1840,20 @@ class _BreweryDetailSheet extends StatelessWidget {
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 48))),
                           )
-                        : const ColoredBox(color: Color(0xFF3E312A), child: Center(child: Text('\u{1F37A}', style: TextStyle(fontSize: 48)))),
+                        : ColoredBox(
+                            color: const Color(0xFF3E312A),
+                            child: Center(
+                              child: brewery.logoUrl != null
+                                  ? Container(
+                                      width: 104,
+                                      height: 104,
+                                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: _BreweryLogo(url: brewery.logoUrl!, emojiSize: 48),
+                                    )
+                                  : const Text('\u{1F37A}', style: TextStyle(fontSize: 48)),
+                            ),
+                          ),
                   ),
                 ),
                 Positioned(

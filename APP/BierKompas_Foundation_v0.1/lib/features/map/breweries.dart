@@ -32,6 +32,21 @@ class Brewery {
     this.founded,
     this.imageUrl,
   });
+
+  /// Logo (favicon) van de website van de brouwerij, via dezelfde Google-dienst
+  /// als de formule in de aangeleverde lijsten "nederlandse/belgische
+  /// brouwerijen met logo.xlsx". Null als er geen website bekend is.
+  String? get logoUrl {
+    for (final fact in facts) {
+      if (!fact.startsWith('Website:')) continue;
+      var website = fact.substring('Website:'.length).trim();
+      if (!website.contains('://')) website = 'https://$website';
+      final host = Uri.tryParse(website)?.host ?? '';
+      if (host.isEmpty) return null;
+      return 'https://www.google.com/s2/favicons?domain=$host&sz=128';
+    }
+    return null;
+  }
 }
 
 // Brouwerijen uit de aangeleverde lijsten van de klant (Nederland en
