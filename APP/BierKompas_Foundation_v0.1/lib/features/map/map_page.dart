@@ -16,6 +16,7 @@ import '../auth/auth_service.dart';
 import '../profile/cheers_service.dart';
 import '../profile/settings_page.dart';
 import 'breweries.dart';
+import 'brewery_fact_text.dart';
 import 'brewery_submission_page.dart';
 import 'brewery_submission_service.dart';
 import 'event_map_service.dart';
@@ -1919,7 +1920,7 @@ class _BreweryDetailSheet extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text('• ', style: TextStyle(color: _primary)),
-                            Expanded(child: Text(fact, style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4))),
+                            Expanded(child: BreweryFactText(fact: fact, style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4), linkColor: _primary)),
                           ],
                         ),
                       ),

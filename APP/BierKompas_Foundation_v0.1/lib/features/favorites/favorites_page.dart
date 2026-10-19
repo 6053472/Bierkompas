@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../feed/feed_card.dart';
 import '../feed/feed_service.dart';
 import '../map/breweries.dart';
+import '../map/brewery_fact_text.dart';
 import '../scan/beer_scan_page.dart';
 import 'beers.dart';
 import 'favorites_service.dart';
@@ -499,7 +500,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
           Text('•', style: GoogleFonts.openSans(color: _primary, fontSize: 14, height: 1.5)),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5)),
+            child: BreweryFactText(fact: text, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5), linkColor: _primary),
           ),
         ],
       ),

@@ -37,16 +37,29 @@ class Brewery {
   /// als de formule in de aangeleverde lijsten "nederlandse/belgische
   /// brouwerijen met logo.xlsx". Null als er geen website bekend is.
   String? get logoUrl {
+    final host = websiteUri?.host ?? '';
+    if (host.isEmpty) return null;
+    return 'https://www.google.com/s2/favicons?domain=$host&sz=128';
+  }
+
+  /// De website uit de weetjes ("Website: ..."), of null als die er niet is.
+  Uri? get websiteUri {
     for (final fact in facts) {
-      if (!fact.startsWith('Website:')) continue;
-      var website = fact.substring('Website:'.length).trim();
-      if (!website.contains('://')) website = 'https://$website';
-      final host = Uri.tryParse(website)?.host ?? '';
-      if (host.isEmpty) return null;
-      return 'https://www.google.com/s2/favicons?domain=$host&sz=128';
+      final uri = websiteUriFromFact(fact);
+      if (uri != null) return uri;
     }
     return null;
   }
+}
+
+/// Haalt de link uit een weetje van de vorm "Website: ...", anders null.
+Uri? websiteUriFromFact(String fact) {
+  if (!fact.startsWith('Website:')) return null;
+  var website = fact.substring('Website:'.length).trim();
+  if (website.isEmpty) return null;
+  if (!website.contains('://')) website = 'https://$website';
+  final uri = Uri.tryParse(website);
+  return uri == null || uri.host.isEmpty ? null : uri;
 }
 
 // Brouwerijen uit de aangeleverde lijsten van de klant (Nederland en
