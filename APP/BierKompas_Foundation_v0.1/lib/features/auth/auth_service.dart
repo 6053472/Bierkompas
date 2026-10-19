@@ -62,10 +62,16 @@ class AuthService {
   // Configuration -> Redirect URLs staan.
   String get _oauthRedirect => kIsWeb ? '${Uri.base.origin}${Uri.base.path}' : 'bierkompas://login-callback';
 
+  /// True zolang een Google/Outlook-login loopt. In de app komt de gebruiker via
+  /// de deeplink terug in de draaiende app (geen herstart), dus app.dart
+  /// stuurt dan zelf door naar de AuthGate zodra de sessie binnen is.
+  static bool oauthPending = false;
+
   Future<AppUser> login({
     required String email,
     required String password,
   }) async {
+    oauthPending = false;
     try {
       final response = await _client.auth.signInWithPassword(
         email: email,
@@ -85,19 +91,23 @@ class AuthService {
   }
 
   Future<void> loginWithGoogle() async {
+    oauthPending = true;
     try {
       await _client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: _oauthRedirect,
       );
     } on AuthApiException catch (e) {
+      oauthPending = false;
       throw AuthException(_translateAuthError(e));
     } catch (e) {
+      oauthPending = false;
       throw AuthException('Google-login mislukt.');
     }
   }
 
   Future<void> loginWithOutlook() async {
+    oauthPending = true;
     try {
       await _client.auth.signInWithOAuth(
         OAuthProvider.azure,
@@ -105,8 +115,10 @@ class AuthService {
         redirectTo: _oauthRedirect,
       );
     } on AuthApiException catch (e) {
+      oauthPending = false;
       throw AuthException(_translateAuthError(e));
     } catch (e) {
+      oauthPending = false;
       throw AuthException('Outlook-login mislukt.');
     }
   }
@@ -116,6 +128,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    oauthPending = false;
     try {
       final response = await _client.auth.signUp(
         email: email,
