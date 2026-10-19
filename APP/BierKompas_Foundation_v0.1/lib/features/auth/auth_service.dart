@@ -96,6 +96,9 @@ class AuthService {
       await _client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: _oauthRedirect,
+        // Altijd de accountkeuze tonen i.p.v. stil het laatst gebruikte
+        // Google-account te pakken.
+        queryParams: const {'prompt': 'select_account'},
       );
     } on AuthApiException catch (e) {
       oauthPending = false;
@@ -113,6 +116,7 @@ class AuthService {
         OAuthProvider.azure,
         scopes: 'email',
         redirectTo: _oauthRedirect,
+        queryParams: const {'prompt': 'select_account'},
       );
     } on AuthApiException catch (e) {
       oauthPending = false;
