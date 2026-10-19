@@ -1,0 +1,7 @@
+# Zorg dat browsers na een nieuwe upload direct de nieuwe versie van de app laden
+# in plaats van een oude kopie uit de cache.
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|main\.dart\.js|flutter_bootstrap\.js|flutter_service_worker\.js|flutter\.js|version\.json|manifest\.json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

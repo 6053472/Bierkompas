@@ -365,9 +365,21 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   Widget _buildBreweryFavorite(Brewery brewery) {
     final founded = brewery.founded;
+    final logoUrl = brewery.imageUrl ?? brewery.logoUrl;
     return _expandableFavorite(
       key: ValueKey('brewery-${brewery.id}'),
-      leading: _iconTile(Icons.factory_outlined),
+      leading: logoUrl == null
+          ? _iconTile(Icons.factory_outlined)
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 48,
+                height: 48,
+                color: brewery.imageUrl == null ? const Color(0xFFF5EFE8) : null,
+                padding: brewery.imageUrl == null ? const EdgeInsets.all(6) : null,
+                child: _networkImage(logoUrl),
+              ),
+            ),
       title: brewery.title,
       subtitle: '${brewery.location} • ★ ${brewery.rating}',
       onRemove: () => _removeId(_breweryIds, breweryItemType, brewery.id),
