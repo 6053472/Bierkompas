@@ -44,6 +44,10 @@ class _HomePageState extends State<HomePage> {
   final _friendsService = FriendsService();
 
   int _currentIndex = 0;
+
+  /// Evenement dat de Agenda moet openen, gezet als je op Ontdek op een
+  /// evenement tikt.
+  int? _openEventId;
   int _currentStreak = 0;
   String? _avatarUrl;
 
@@ -174,6 +178,13 @@ class _HomePageState extends State<HomePage> {
     _loadStreak();
   }
 
+  void _openEvent(int eventId) {
+    setState(() {
+      _openEventId = eventId;
+      _currentIndex = _tabAgenda;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final goToProfile = () => _goToTab(_tabProfile);
@@ -181,6 +192,7 @@ class _HomePageState extends State<HomePage> {
     final pages = [
       DiscoveryContentPage(
         onNavigate: _goToTab,
+        onOpenEvent: _openEvent,
         avatarUrl: _avatarUrl,
         streak: _currentStreak,
         onActivityRecorded: _loadStreak,
@@ -189,6 +201,8 @@ class _HomePageState extends State<HomePage> {
         avatarUrl: _avatarUrl,
         onProfileTap: goToProfile,
         streak: _currentStreak,
+        openEventId: _openEventId,
+        onEventOpened: () => _openEventId = null,
       ),
       FavoritesPage(
         avatarUrl: _avatarUrl,
@@ -271,12 +285,16 @@ class DiscoveryContentPage extends StatefulWidget {
   final int streak;
   final String? avatarUrl;
   final ValueChanged<int>? onNavigate;
+
+  /// Opent een evenement (id uit de tabel `events`) in de Agenda.
+  final ValueChanged<int>? onOpenEvent;
   final VoidCallback? onActivityRecorded;
 
   const DiscoveryContentPage({
     super.key,
     this.streak = 0,
     this.onNavigate,
+    this.onOpenEvent,
     this.avatarUrl,
     this.onActivityRecorded,
   });
@@ -527,8 +545,14 @@ class _DiscoveryContentPageState
           child: FeedCard(
             item: item,
             onTap: switch (item.type) {
-              FeedItemType.evenement =>
-                () => _goTo(_tabAgenda),
+              FeedItemType.evenement => () {
+                  final eventId = int.tryParse(item.key.substring(item.key.indexOf('-') + 1));
+                  if (eventId != null && widget.onOpenEvent != null) {
+                    widget.onOpenEvent!(eventId);
+                  } else {
+                    _goTo(_tabAgenda);
+                  }
+                },
               FeedItemType.brouwerij =>
                 () => _goTo(_tabMap),
               _ => null,

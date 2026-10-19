@@ -18,11 +18,20 @@ class EventsPage extends StatefulWidget {
     this.avatarUrl,
     this.onProfileTap,
     this.streak = 0,
+    this.openEventId,
+    this.onEventOpened,
   });
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
   final int streak;
+
+  /// Evenement dat direct geopend moet worden (bijv. na een tik op Ontdek).
+  final int? openEventId;
+
+  /// Wordt aangeroepen zodra [openEventId] is geopend, zodat het niet bij elke
+  /// rebuild opnieuw opent.
+  final VoidCallback? onEventOpened;
 
   @override
   State<EventsPage> createState() => _EventsPageState();
@@ -57,6 +66,45 @@ class _EventsPageState extends State<EventsPage> {
   void initState() {
     super.initState();
     _checkAdmin();
+    _openRequestedEvent();
+  }
+
+  @override
+  void didUpdateWidget(EventsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.openEventId != oldWidget.openEventId) _openRequestedEvent();
+  }
+
+  /// Springt in de kalender naar de dag van [EventsPage.openEventId] en opent
+  /// de details van dat evenement.
+  Future<void> _openRequestedEvent() async {
+    final eventId = widget.openEventId;
+    if (eventId == null) return;
+    widget.onEventOpened?.call();
+
+    try {
+      final event = await _supabase
+          .from('events')
+          .select()
+          .eq('id', eventId)
+          .maybeSingle();
+
+      if (!mounted || event == null) return;
+
+      final date = _getEventDate(event);
+      if (date != null) {
+        setState(() {
+          _selectedMonth = DateTime(date.year, date.month);
+          _selectedDate = DateTime(date.year, date.month, date.day);
+        });
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showEventDetails(event);
+      });
+    } catch (e) {
+      debugPrint('Evenement openen mislukt: $e');
+    }
   }
 
   Future<void> _checkAdmin() async {
