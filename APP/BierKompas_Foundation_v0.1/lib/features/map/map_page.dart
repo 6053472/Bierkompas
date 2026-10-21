@@ -268,7 +268,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadEvents() async {
-    final events = await _eventMapService.fetchApprovedWithCoordinates();
+    final events = await _eventMapService.fetchApprovedWithCoordinates(
+      onProgress: (partial) {
+        if (mounted) setState(() => _events = partial);
+      },
+    );
     if (!mounted) return;
     setState(() => _events = events);
   }
@@ -2043,9 +2047,10 @@ class _EventDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prices = <String>[
-      if (event.ticketRegular != null) 'Regulier €${event.ticketRegular!.toStringAsFixed(2)}',
-      if (event.ticketBeer != null) 'Bierpakket €${event.ticketBeer!.toStringAsFixed(2)}',
-      if (event.ticketVip != null) 'VIP €${event.ticketVip!.toStringAsFixed(2)}',
+      if (event.price > 0) 'Vanaf €${event.price.toStringAsFixed(2)}',
+      if (event.ticketRegular) 'Regulier ticket',
+      if (event.ticketBeer) 'Bier-ticket',
+      if (event.ticketVip) 'VIP-ticket',
     ];
 
     return SafeArea(

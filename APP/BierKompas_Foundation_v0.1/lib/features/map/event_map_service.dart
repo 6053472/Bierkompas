@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/postal_code_utils.dart';
@@ -15,9 +16,12 @@ class EventPin {
   final String? locationName;
   final String? city;
   final String? description;
-  final double? ticketRegular;
-  final double? ticketBeer;
-  final double? ticketVip;
+
+  /// Welke tickets er zijn (kolommen ticket_regular/_beer/_vip zijn
+  /// ja/nee-velden, geen bedragen).
+  final bool ticketRegular;
+  final bool ticketBeer;
+  final bool ticketVip;
   final double price;
   final double latitude;
   final double longitude;
@@ -32,63 +36,110 @@ class EventPin {
     this.locationName,
     this.city,
     this.description,
-    this.ticketRegular,
-    this.ticketBeer,
-    this.ticketVip,
+    this.ticketRegular = false,
+    this.ticketBeer = false,
+    this.ticketVip = false,
     this.price = 0,
   });
 }
 
 /// Haalt goedgekeurde evenementen op en bepaalt hun positie op de kaart.
 /// Heeft een evenement opgeslagen coördinaten (kolommen latitude/longitude),
-/// dan worden die gebruikt; anders wordt het adres per evenement omgezet via dezelfde gratis Nominatim-dienst (OpenStreetMap)
-/// die ook bij het aanmelden van een brouwerij gebruikt wordt. Evenementen
-/// waarvan het adres niet gevonden kan worden, worden overgeslagen (komen
-/// gewoon niet als pin op de kaart, maar blijven wel gewoon in de Agenda-lijst
-/// staan -- deze service raakt die lijst niet aan).
+/// dan worden die gebruikt; anders wordt het adres omgezet via dezelfde
+/// gratis Nominatim-dienst (OpenStreetMap) die ook bij het aanmelden van een
+/// brouwerij gebruikt wordt. Opgezochte adressen worden op het toestel
+/// onthouden, zodat dat maar één keer per adres hoeft. Evenementen waarvan
+/// het adres niet gevonden kan worden, komen niet als pin op de kaart, maar
+/// blijven wel gewoon in de Agenda-lijst staan.
 class EventMapService {
   SupabaseClient get _client => Supabase.instance.client;
 
-  Future<List<EventPin>> fetchApprovedWithCoordinates() async {
+  static const _cacheKey = 'event_geocode_cache_v1';
+
+  /// Geeft de evenementen terug. [onProgress] wordt direct aangeroepen met de
+  /// evenementen waarvan de positie al bekend is (opgeslagen coördinaten of
+  /// eerder opgezocht), en daarna telkens opnieuw als er opgezochte adressen
+  /// bij zijn gekomen -- zo staan de pins er meteen i.p.v. pas als alles
+  /// (één adres per seconde) is opgezocht.
+  Future<List<EventPin>> fetchApprovedWithCoordinates({void Function(List<EventPin>)? onProgress}) async {
+    final List rows;
     try {
-      final rows = await _client.from('events').select().eq('status', 'approved');
-      final events = <EventPin>[];
-
-      for (final row in (rows as List)) {
-        // Opgeslagen coördinaten (bijv. uit de evenementenlijst van de klant)
-        // gaan voor; anders het adres opzoeken.
-        final lat = (row['latitude'] as num?)?.toDouble();
-        final lon = (row['longitude'] as num?)?.toDouble();
-        (double, double)? coords = lat != null && lon != null ? (lat, lon) : null;
-        if (coords == null) {
-          final address = _buildAddress(row);
-          if (address == null) continue;
-          coords = await _geocode(address);
-          if (coords == null) continue;
-        }
-
-        events.add(EventPin(
-          id: row['id'] as int,
-          name: row['name'] as String? ?? 'Naamloos evenement',
-          eventType: row['event_type'] as String? ?? 'Festival',
-          startDate: DateTime.tryParse(row['start_date'] as String? ?? '') ?? DateTime.now(),
-          locationName: row['location_name'] as String?,
-          city: row['city'] as String?,
-          description: row['description'] as String?,
-          ticketRegular: (row['ticket_regular'] as num?)?.toDouble(),
-          ticketBeer: (row['ticket_beer'] as num?)?.toDouble(),
-          ticketVip: (row['ticket_vip'] as num?)?.toDouble(),
-          price: (row['price'] as num?)?.toDouble() ?? 0,
-          latitude: coords.$1,
-          longitude: coords.$2,
-        ));
-      }
-
-      return events;
+      rows = await _client.from('events').select().eq('status', 'approved') as List;
     } catch (_) {
       // Geen verbinding, of onverwachte tabelstructuur -- kaart blijft
       // gewoon werken zonder evenement-pins.
       return const [];
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final cache = <String, List<dynamic>>{};
+    try {
+      final raw = prefs.getString(_cacheKey);
+      if (raw != null) {
+        (jsonDecode(raw) as Map<String, dynamic>).forEach((k, v) => cache[k] = v as List<dynamic>);
+      }
+    } catch (_) {}
+
+    final events = <EventPin>[];
+    final toGeocode = <(Map<String, dynamic>, String)>[];
+    for (final row in rows.cast<Map<String, dynamic>>()) {
+      final lat = (row['latitude'] as num?)?.toDouble();
+      final lon = (row['longitude'] as num?)?.toDouble();
+      if (lat != null && lon != null) {
+        _addPin(events, row, lat, lon);
+        continue;
+      }
+      final address = _buildAddress(row);
+      if (address == null) continue;
+      final cached = cache[address];
+      if (cached != null && cached.length == 2) {
+        _addPin(events, row, (cached[0] as num).toDouble(), (cached[1] as num).toDouble());
+      } else {
+        toGeocode.add((row, address));
+      }
+    }
+    onProgress?.call(List.of(events));
+
+    // Nominatim staat ongeveer één aanvraag per seconde toe.
+    var changed = false;
+    for (var i = 0; i < toGeocode.length; i++) {
+      final (row, address) = toGeocode[i];
+      final coords = await _geocode(address);
+      if (coords != null) {
+        cache[address] = [coords.$1, coords.$2];
+        _addPin(events, row, coords.$1, coords.$2);
+        changed = true;
+      }
+      if (changed && (i % 5 == 4 || i == toGeocode.length - 1)) {
+        onProgress?.call(List.of(events));
+        await prefs.setString(_cacheKey, jsonEncode(cache));
+        changed = false;
+      }
+      await Future.delayed(const Duration(milliseconds: 1100));
+    }
+
+    return events;
+  }
+
+  void _addPin(List<EventPin> events, Map<String, dynamic> row, double lat, double lon) {
+    try {
+      events.add(EventPin(
+        id: row['id'] as int,
+        name: row['name'] as String? ?? 'Naamloos evenement',
+        eventType: row['event_type'] as String? ?? 'Festival',
+        startDate: DateTime.tryParse(row['start_date'] as String? ?? '') ?? DateTime.now(),
+        locationName: row['location_name'] as String?,
+        city: row['city'] as String?,
+        description: row['description'] as String?,
+        ticketRegular: row['ticket_regular'] == true,
+        ticketBeer: row['ticket_beer'] == true,
+        ticketVip: row['ticket_vip'] == true,
+        price: (row['price'] as num?)?.toDouble() ?? 0,
+        latitude: lat,
+        longitude: lon,
+      ));
+    } catch (_) {
+      // Eén onvolledig evenement mag de andere pins niet tegenhouden.
     }
   }
 
