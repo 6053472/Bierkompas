@@ -35,11 +35,15 @@ class MapPage extends StatefulWidget {
     this.avatarUrl,
     this.onProfileTap,
     this.streak = 0,
+    this.onOpenEvent,
   });
 
   final String? avatarUrl;
   final VoidCallback? onProfileTap;
   final int streak;
+
+  /// Opent een evenement (id uit de tabel `events`) in de Agenda.
+  final ValueChanged<int>? onOpenEvent;
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -301,6 +305,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _openEventDetail(EventPin event) async {
+    // Doorverwijzen naar het evenement in de Agenda (details, aanmelden,
+    // delen en route staan daar); alleen zonder Agenda de korte pop-up.
+    if (widget.onOpenEvent != null) {
+      widget.onOpenEvent!(event.id);
+      return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF2C221C),

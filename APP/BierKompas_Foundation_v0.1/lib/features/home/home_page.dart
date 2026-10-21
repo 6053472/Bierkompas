@@ -213,6 +213,7 @@ class _HomePageState extends State<HomePage> {
         avatarUrl: _avatarUrl,
         onProfileTap: goToProfile,
         streak: _currentStreak,
+        onOpenEvent: _openEvent,
       ),
       const ProfilePage(),
     ];
