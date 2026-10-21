@@ -3214,7 +3214,13 @@
       key: "events", title: "Agenda-evenementen", file: "data/events_import.json", table: "events", conflict: "bron,bron_id,start_date",
       source: "Stichting Erfgoed Nederlandse Biercultuur (evenementenkalender, alleen Nederland en België)",
       note: "Datums en locaties, zonder starttijden (de app toont dan 'Tijd niet bekend'). Staan direct in de agenda.",
-      countFilter: (q) => q.not("bron", "is", null),
+      countFilter: (q) => q.eq("bron", "nederlandsebiercultuur"),
+    },
+    {
+      key: "events_klant", title: "Evenementenlijst klant (met coördinaten)", file: "data/events_klant_import.json", table: "events", conflict: "bron,bron_id,start_date",
+      source: "Aangeleverde Excel 'evenementen met logo's en coördinaten' (okt 2026)",
+      note: "Evenementen met vaste datum, zonder starttijden en zonder straatadres; de pin op de kaart komt uit de meegeleverde coördinaten. Vereist supabase/add_aanscherpen_okt2026.sql. Staan direct in de agenda.",
+      countFilter: (q) => q.eq("bron", "klant_evenementenlijst"),
     },
     {
       key: "news", title: "Nieuws", file: "data/news_import.json", table: "news_articles", conflict: "bron_url",
@@ -3272,7 +3278,7 @@
       if (!res.ok) throw new Error(`${imp.file} niet gevonden`);
       let rows = await res.json();
 
-      if (imp.key === "events") {
+      if (imp.table === "events") {
         const adminId = await currentAdminId();
         if (!adminId) throw new Error("Je bent niet meer ingelogd. Log opnieuw in.");
         const now = new Date().toISOString();
@@ -3290,7 +3296,7 @@
       }
       statusEl.className = "imp-status text-sm text-success";
       statusEl.textContent = `Klaar: ${rows.length} regels geïmporteerd.`;
-      if (imp.key === "events") loadPublishedEvents();
+      if (imp.table === "events") loadPublishedEvents();
       if (imp.key === "news") loadNews();
     } catch (e) {
       statusEl.className = "imp-status text-sm text-error";

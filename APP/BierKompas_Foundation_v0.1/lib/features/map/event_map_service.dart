@@ -40,8 +40,8 @@ class EventPin {
 }
 
 /// Haalt goedgekeurde evenementen op en bepaalt hun positie op de kaart.
-/// Evenementen hebben (nog) geen opgeslagen coördinaten, dus wordt het adres
-/// per evenement omgezet via dezelfde gratis Nominatim-dienst (OpenStreetMap)
+/// Heeft een evenement opgeslagen coördinaten (kolommen latitude/longitude),
+/// dan worden die gebruikt; anders wordt het adres per evenement omgezet via dezelfde gratis Nominatim-dienst (OpenStreetMap)
 /// die ook bij het aanmelden van een brouwerij gebruikt wordt. Evenementen
 /// waarvan het adres niet gevonden kan worden, worden overgeslagen (komen
 /// gewoon niet als pin op de kaart, maar blijven wel gewoon in de Agenda-lijst
@@ -55,10 +55,17 @@ class EventMapService {
       final events = <EventPin>[];
 
       for (final row in (rows as List)) {
-        final address = _buildAddress(row);
-        if (address == null) continue;
-        final coords = await _geocode(address);
-        if (coords == null) continue;
+        // Opgeslagen coördinaten (bijv. uit de evenementenlijst van de klant)
+        // gaan voor; anders het adres opzoeken.
+        final lat = (row['latitude'] as num?)?.toDouble();
+        final lon = (row['longitude'] as num?)?.toDouble();
+        (double, double)? coords = lat != null && lon != null ? (lat, lon) : null;
+        if (coords == null) {
+          final address = _buildAddress(row);
+          if (address == null) continue;
+          coords = await _geocode(address);
+          if (coords == null) continue;
+        }
 
         events.add(EventPin(
           id: row['id'] as int,

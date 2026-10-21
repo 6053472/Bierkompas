@@ -2502,10 +2502,13 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                           ),
                         if (street.isNotEmpty ||
                             location.isNotEmpty ||
-                            city.isNotEmpty)
+                            city.isNotEmpty ||
+                            event['latitude'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4, bottom: 16),
                             child: RouteButton(
+                              latitude: (event['latitude'] as num?)?.toDouble(),
+                              longitude: (event['longitude'] as num?)?.toDouble(),
                               address: street.isNotEmpty
                                   ? '$street $houseNumber, $postalCode $city'
                                   : '$location $city',
