@@ -1,8 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,6 +8,8 @@ import '../profile/friends_service.dart';
 import 'admin_events_page.dart';
 import 'event_create.dart';
 import '../../shared/profile_avatar_button.dart';
+import '../../shared/route_launcher.dart';
+import '../../shared/share_sheet.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({
@@ -37,7 +36,7 @@ class EventsPage extends StatefulWidget {
   State<EventsPage> createState() => _EventsPageState();
 }
 
-class _EventsPageState extends State<EventsPage> {
+class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
   final SupabaseClient _supabase = Supabase.instance.client;
   final ChatService _chatService = ChatService();
   final FriendsService _friendsService = FriendsService();
@@ -62,11 +61,51 @@ class _EventsPageState extends State<EventsPage> {
     DateTime.now().day,
   );
 
+  /// Luistert naar statuswijzigingen van de eigen evenementen (goedkeuren /
+  /// afwijzen door een beheerder), zodat "In afwachting" direct verdwijnt.
+  RealtimeChannel? _myEventsChannel;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkAdmin();
     _openRequestedEvent();
+    _listenToMyEvents();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _myEventsChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Terug in de app: opnieuw ophalen, de status kan intussen veranderd zijn.
+    if (state == AppLifecycleState.resumed && mounted) setState(() {});
+  }
+
+  void _listenToMyEvents() {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    _myEventsChannel = _supabase
+        .channel('my_events_${user.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'events',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: user.id,
+          ),
+          callback: (_) {
+            if (mounted) setState(() {});
+          },
+        )
+        .subscribe();
   }
 
   @override
@@ -535,191 +574,44 @@ class _EventsPageState extends State<EventsPage> {
         event['location_name']?.toString() ?? '';
     final city = event['city']?.toString() ?? '';
 
-    return 'Kom je ook naar "$name"'
+    final date = _getEventDate(event);
+    const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    final dateText = date == null
+        ? ''
+        : ' op ${date.day} ${months[date.month - 1]} ${date.year}'
+            ' om ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    // De link wordt door showAppShareSheet toegevoegd.
+    return 'Kom je ook naar "$name"$dateText'
         '${location.isNotEmpty ? ' bij $location' : ''}'
         '${city.isNotEmpty ? ' in $city' : ''}? '
         'Bekijk het in BierKompas! 🍻';
   }
 
-  Future<void> _shareViaUrl(String url) async {
-    final uri = Uri.parse(url);
-
-    final opened = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
-
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Kon geen deelvenster openen.',
-          ),
-        ),
-      );
-    }
-  }
-
   void _openShareSheet(
     Map<String, dynamic> event,
   ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
+    showAppShareSheet(
+      context,
+      shareText: _shareText(event),
+      subject: event['name']?.toString(),
+      title: 'Evenement delen',
+      extraOption: (sheetContext) => ListTile(
+        leading: const Icon(
+          Icons.person_outline,
+          color: beigeColor,
         ),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              12,
-              12,
-              12,
-              20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: secondaryTextColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Evenement delen',
-                  style: GoogleFonts.playfairDisplay(
-                    color: textColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ListTile(
-                  leading: const Icon(
-                    Icons.person_outline,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Deel met een Biervriend',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _shareWithFriend(event);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.ios_share,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Meer opties',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-
-                    Share.share(
-                      _shareText(event),
-                      subject: event['name']?.toString(),
-                    );
-                  },
-                ),
-                if (kIsWeb) ...[
-                  ListTile(
-                    leading: const Icon(
-                      Icons.chat,
-                      color: Color(0xFF25D366),
-                    ),
-                    title: Text(
-                      'WhatsApp',
-                      style: GoogleFonts.inter(
-                        color: textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-
-                      _shareViaUrl(
-                        'https://wa.me/?text='
-                        '${Uri.encodeComponent(_shareText(event))}',
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.facebook,
-                      color: Color(0xFF1877F2),
-                    ),
-                    title: Text(
-                      'Facebook',
-                      style: GoogleFonts.inter(
-                        color: textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-
-                      _shareViaUrl(
-                        'https://www.facebook.com/sharer/sharer.php?quote='
-                        '${Uri.encodeComponent(_shareText(event))}',
-                      );
-                    },
-                  ),
-                ],
-                ListTile(
-                  leading: const Icon(
-                    Icons.copy_all_outlined,
-                    color: beigeColor,
-                  ),
-                  title: Text(
-                    'Tekst kopiëren',
-                    style: GoogleFonts.inter(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-
-                    await Clipboard.setData(
-                      ClipboardData(
-                        text: _shareText(event),
-                      ),
-                    );
-
-                    if (!mounted) return;
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Tekst gekopieerd.',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+        title: Text(
+          'Deel met een Biervriend',
+          style: GoogleFonts.inter(
+            color: textColor,
+            fontWeight: FontWeight.w600,
           ),
-        );
-      },
+        ),
+        onTap: () {
+          Navigator.pop(sheetContext);
+          _shareWithFriend(event);
+        },
+      ),
     );
   }
 
@@ -1155,7 +1047,9 @@ class _EventsPageState extends State<EventsPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Deze evenementen wachten nog op goedkeuring.',
+          stillPendingCount > 0
+              ? 'Deze evenementen wachten nog op goedkeuring.'
+              : 'Deze evenementen zijn afgewezen door de beheerder.',
           style: GoogleFonts.inter(
             color: secondaryTextColor,
             fontSize: 12,
@@ -2605,6 +2499,18 @@ class _EventsPageState extends State<EventsPage> {
                             'Adres',
                             '$street $houseNumber\n'
                                 '$postalCode $city',
+                          ),
+                        if (street.isNotEmpty ||
+                            location.isNotEmpty ||
+                            city.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 16),
+                            child: RouteButton(
+                              address: street.isNotEmpty
+                                  ? '$street $houseNumber, $postalCode $city'
+                                  : '$location $city',
+                              color: beigeColor,
+                            ),
                           ),
                         if (description
                             .isNotEmpty) ...[

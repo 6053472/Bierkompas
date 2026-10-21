@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/image_utils.dart';
+import '../../shared/postal_code_utils.dart';
 import 'horeca_submission_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -192,7 +193,12 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
             children: [
               Expanded(child: _field(controller: _huisnummerController, label: 'Huisnummer', hint: '12')),
               const SizedBox(width: 12),
-              Expanded(child: _field(controller: _postcodeController, label: 'Postcode', hint: '1234 AB')),
+              Expanded(child: _field(
+                controller: _postcodeController,
+                label: 'Postcode',
+                hint: '1234 AB / 2000',
+                validator: (value) => isValidPostalCode(value ?? '') ? null : 'Ongeldige postcode',
+              )),
             ],
           ),
           const SizedBox(height: 14),
@@ -267,6 +273,7 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
     required String label,
     required String hint,
     int maxLines = 1,
+    FormFieldValidator<String>? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,7 +283,7 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
-          validator: (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : null,
+          validator: (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : validator?.call(value),
           style: GoogleFonts.openSans(color: _onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,

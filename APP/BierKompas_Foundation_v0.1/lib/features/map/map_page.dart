@@ -9,7 +9,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../favorites/favorites_service.dart';
 import '../auth/auth_service.dart';
@@ -25,6 +24,7 @@ import 'horeca.dart';
 import 'horeca_submission_page.dart';
 import 'horeca_submission_service.dart';
 import '../../shared/profile_avatar_button.dart';
+import '../../shared/route_launcher.dart';
 
 /// De weergaven van de kaart: alles samen, of per soort.
 enum _MapTab { all, breweries, horeca, events, nearby }
@@ -1882,7 +1882,12 @@ class _BreweryDetailSheet extends StatelessWidget {
                     children: [
                       const Icon(Icons.location_on_outlined, color: _onSurfaceVariant, size: 16),
                       const SizedBox(width: 6),
-                      Expanded(child: Text(brewery.location, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13))),
+                      Expanded(
+                        child: Text(
+                          [brewery.location, if (brewery.country != null) brewery.country!].where((s) => s.isNotEmpty).join(', '),
+                          style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13),
+                        ),
+                      ),
                       if (brewery.founded != null) ...[
                         const SizedBox(width: 12),
                         const Icon(Icons.history_edu_outlined, color: _onSurfaceVariant, size: 16),
@@ -1891,6 +1896,8 @@ class _BreweryDetailSheet extends StatelessWidget {
                       ],
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  RouteButton(latitude: brewery.latitude, longitude: brewery.longitude),
                   if (brewery.about.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(brewery.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
@@ -2001,6 +2008,8 @@ class _HorecaDetailSheet extends StatelessWidget {
                       ],
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  RouteButton(latitude: venue.latitude, longitude: venue.longitude),
                   if (venue.about.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(venue.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
@@ -2024,11 +2033,6 @@ class _EventDetailSheet extends StatelessWidget {
   static const _primary = Color(0xFFD4B28C);
   static const _onSurface = Color(0xFFEFE6DD);
   static const _onSurfaceVariant = Color(0xFF9E8A7D);
-
-  Future<void> _openRoute() async {
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
 
   String _formatDate(DateTime date) {
     const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
@@ -2083,19 +2087,7 @@ class _EventDetailSheet extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _openRoute,
-                icon: const Icon(Icons.directions, color: _primary, size: 18),
-                label: Text('Route (Google)', style: GoogleFonts.inter(color: _primary, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _primary),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
+            RouteButton(latitude: event.latitude, longitude: event.longitude),
           ],
         ),
       ),

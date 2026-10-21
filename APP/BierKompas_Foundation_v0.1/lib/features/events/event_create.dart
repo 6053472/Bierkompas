@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/geocoding_service.dart';
+import '../../shared/postal_code_utils.dart';
 
 class EventCreatePage extends StatefulWidget {
   const EventCreatePage({super.key});
@@ -77,8 +78,9 @@ class _EventCreatePageState extends State<EventCreatePage> {
   Future<void> _lookupPostcode(String value) async {
     final postcode = value.replaceAll(' ', '').toUpperCase();
 
-    // Nederlandse postcode: vier cijfers en twee letters.
-    if (!RegExp(r'^\d{4}[A-Z]{2}$').hasMatch(postcode)) return;
+    // Alleen Nederlandse postcodes (vier cijfers en twee letters) staan in
+    // PDOK; bij een Belgische postcode vullen we niets automatisch in.
+    if (!isDutchPostalCode(postcode)) return;
 
 
     try {
@@ -315,7 +317,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
     // Adres moet écht bestaan, anders verschijnt het evenement straks nooit
     // als pin op de kaart -- controleer dit vóórdat we iets opslaan.
-    final geocode = await geocodeDutchAddress(
+    final geocode = await geocodeAddress(
       street: _streetController.text.trim(),
       houseNumber: _houseNumberController.text.trim(),
       postalCode: _postalCodeController.text.trim(),
@@ -663,7 +665,10 @@ class _EventCreatePageState extends State<EventCreatePage> {
                                 _buildTextField(
                                   controller:
                                       _postalCodeController,
-                                  hintText: '1234 AB',
+                                  hintText: '1234 AB / 2000',
+                                  validator: (value) => isValidPostalCode(value ?? '')
+                                      ? null
+                                      : 'Ongeldige postcode',
                                   inputFormatters: [
                                     FilteringTextInputFormatter.allow(
                                       RegExp(r'[a-zA-Z0-9 ]'),
@@ -996,6 +1001,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
     IconData? icon,
     ValueChanged<String>? onChanged,
     List<TextInputFormatter>? inputFormatters,
+    FormFieldValidator<String>? validator,
   }) {
     return TextFormField(
       controller: controller,
@@ -1006,7 +1012,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
           return 'Dit veld is verplicht';
         }
 
-        return null;
+        return validator?.call(value);
       },
       style: GoogleFonts.inter(
         color: textColor,

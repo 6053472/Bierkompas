@@ -4,6 +4,11 @@ import 'books.dart';
 
 bool _customBooksLoaded = false;
 
+String? _nonEmpty(Object? value) {
+  final text = (value as String?)?.trim();
+  return text == null || text.isEmpty ? null : text;
+}
+
 /// Haalt de boeken op uit de tabel `library_books` en zet ze in de gedeelde
 /// [books]-lijst. Wordt één keer aangeroepen bij het opstarten van de app
 /// (main.dart).
@@ -28,6 +33,8 @@ Future<void> loadCustomBooks() async {
           subtitle: row['subtitle'] as String?,
           coverAsset: (row['cover_asset'] as String?) ?? '',
           coverUrl: row['cover_url'] as String?,
+          caption: _nonEmpty(row['caption']),
+          externalUrl: _nonEmpty(row['external_url']),
         ));
     final databaseIsLeading = rows.any((row) => row['builtin_key'] != null);
     if (databaseIsLeading) books.clear();

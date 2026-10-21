@@ -33,6 +33,21 @@ class Brewery {
     this.imageUrl,
   });
 
+  /// Land van de brouwerij, leesbaar gemaakt uit de tag 'NEDERLAND'/'BELGIË'.
+  /// Null als geen van beide tags aanwezig is.
+  String? get country {
+    for (final tag in tags) {
+      switch (tag.toUpperCase()) {
+        case 'NEDERLAND':
+          return 'Nederland';
+        case 'BELGIË':
+        case 'BELGIE':
+          return 'België';
+      }
+    }
+    return null;
+  }
+
   /// Logo (favicon) van de website van de brouwerij, via dezelfde Google-dienst
   /// als de formule in de aangeleverde lijsten "nederlandse/belgische
   /// brouwerijen met logo.xlsx". Null als er geen website bekend is.

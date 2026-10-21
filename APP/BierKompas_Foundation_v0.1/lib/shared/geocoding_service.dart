@@ -29,21 +29,21 @@ class GeocodeResult {
   factory GeocodeResult.serviceUnavailable() => const GeocodeResult._(GeocodeOutcome.serviceUnavailable, null, null);
 }
 
-/// Zoekt de coördinaten van een Nederlands adres via de gratis Nominatim-
+/// Zoekt de coördinaten van een Nederlands of Belgisch adres via de gratis Nominatim-
 /// dienst (OpenStreetMap).
 ///
 /// Gebruikt door zowel het evenementenformulier als "Brouwerij toevoegen" om
 /// vóór het versturen te controleren dat een adres echt bestaat -- zonder
 /// geldige coördinaten verschijnt een evenement/brouwerij namelijk nooit op
 /// de kaart, ook al is de aanmelding verder prima ingevuld.
-Future<GeocodeResult> geocodeDutchAddress({
+Future<GeocodeResult> geocodeAddress({
   required String street,
   required String houseNumber,
   required String postalCode,
   required String city,
 }) async {
   final address =
-      '$street $houseNumber, ${normalizeDutchPostalCode(postalCode)} $city, Nederland';
+      '$street $houseNumber, ${normalizeDutchPostalCode(postalCode)} $city, ${countryForPostalCode(postalCode)}';
   try {
     final uri = Uri.parse(
       'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${Uri.encodeQueryComponent(address)}',

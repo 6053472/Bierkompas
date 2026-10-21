@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../shared/cover_image.dart';
 import '../../shared/share_sheet.dart';
@@ -214,6 +215,10 @@ class _BooksPageState extends State<BooksPage> {
                   Text(book.title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text('Door ${book.author}', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13)),
+                  if (book.caption != null) ...[
+                    const SizedBox(height: 6),
+                    Text(book.caption!, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12, fontStyle: FontStyle.italic)),
+                  ],
                 ],
               ),
             ),
@@ -360,6 +365,10 @@ class _BookSheetState extends State<_BookSheet> {
             Text(book.title, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text('Door ${book.author}', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14)),
+            if (book.caption != null) ...[
+              const SizedBox(height: 8),
+              Text(book.caption!, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13, fontStyle: FontStyle.italic, height: 1.4)),
+            ],
             if (book.subtitle != null) ...[
               const SizedBox(height: 12),
               Text(book.subtitle!, style: GoogleFonts.openSans(color: _onSurface, fontSize: 14, height: 1.5)),
@@ -394,6 +403,26 @@ class _BookSheetState extends State<_BookSheet> {
               ],
             ),
             const SizedBox(height: 24),
+            if (book.externalUrl != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final website = book.externalUrl!.contains('://') ? book.externalUrl! : 'https://${book.externalUrl!}';
+                    final uri = Uri.tryParse(website);
+                    if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.open_in_new, color: _onPrimary, size: 18),
+                  label: Text('Bekijk / Kopen', style: GoogleFonts.openSans(color: _onPrimary, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(

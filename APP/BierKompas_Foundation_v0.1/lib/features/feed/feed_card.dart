@@ -248,7 +248,13 @@ class FeedCard extends StatelessWidget {
 
   String _buildShareText() {
     final authorSuffix = item.author != null ? ' — ${item.author}' : '';
-    return '${item.title}$authorSuffix\n\n${item.body}\n\nBekijk het in Bierkompas! 🍻';
+    final when = [
+      if (item.eventStart != null) _formatDate(item.eventStart!),
+      if (item.eventLocation != null) item.eventLocation!,
+    ].join(' • ');
+    final whenLine = when.isEmpty ? '' : '\n$when';
+    // De link wordt door showAppShareSheet toegevoegd.
+    return '${item.title}$authorSuffix$whenLine\n\n${item.body}\n\nBekijk het in Bierkompas! 🍻';
   }
 
   static String _formatDate(DateTime date) {

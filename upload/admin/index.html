@@ -67,12 +67,18 @@
     .only-desktop-flex { display: flex; }
     .only-mobile { display: none; }
   }
-  /* Standaard invoerveld voor de nieuwere beheerformulieren. */
-  .fi {
-    width: 100%; background: #251911; border: 1px solid rgba(81,68,58,0.3); color: #f6ded1;
+  /* Standaard invoerveld voor de nieuwere beheerformulieren. De element-selector
+     (input.fi i.p.v. .fi) is nodig: de Tailwind-formulierplugin zet op
+     [type='text'] e.d. een witte achtergrond, waardoor de lichte tekst
+     onleesbaar werd. */
+  input.fi, textarea.fi, select.fi {
+    width: 100%; background-color: #251911; border: 1px solid rgba(214,195,181,0.35); color: #f6ded1;
     padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; outline: none;
   }
-  .fi:focus { border-color: #fbb97b; box-shadow: 0 0 0 1px #fbb97b; }
+  input.fi:focus, textarea.fi:focus, select.fi:focus { border-color: #fbb97b; box-shadow: 0 0 0 1px #fbb97b; }
+  select.fi option { background-color: #251911; color: #f6ded1; }
+  /* Placeholders duidelijk leesbaar op de donkere velden (contrast > 4.5:1). */
+  body input::placeholder, body textarea::placeholder { color: #a99486; opacity: 1; }
   .nav-item.active { background-color: #d4975c22; color: #fbb97b; font-weight: 600; }
   .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -598,7 +604,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div>
             <h2 class="font-display text-2xl text-on-surface mb-1">Video's</h2>
-            <p class="text-on-surface-variant text-sm">Korte video's (brouwerijtours, proeverijen) die als "Brouwerij Highlights" in de app verschijnen.</p>
+            <p class="text-on-surface-variant text-sm">Korte video's (brouwerijtours, proeverijen) die als "SchuimKraag TV" in de app verschijnen.</p>
           </div>
           <button id="video-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe video
@@ -810,6 +816,8 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Titel*</span><input id="books-new-title" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Auteur*</span><input id="books-new-author" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Ondertitel (optioneel)</span><input id="books-new-subtitle" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Bijschrift (optioneel)</span><input id="books-new-caption" type="text" placeholder="Bijv. Tip van de redactie" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Link "Bekijk / Kopen" (optioneel)</span><input id="books-new-external" type="text" placeholder="https://www.bol.com/..." class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Cover-URL*</span><input id="books-new-cover" type="text" placeholder="https://.../cover.jpg" class="fi"/>
               <span class="text-xs text-on-surface-variant/70">Rechtstreekse link naar een afbeeldingsbestand. Bij een vast boek leeg laten = de meegeleverde cover blijft.</span></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Volgorde</span><input id="books-new-sort" type="number" value="0" class="fi"/></label>
@@ -2079,7 +2087,10 @@
   }
   videoKindEl.addEventListener("change", syncVideoKind);
 
-  videoNewToggle.addEventListener("click", () => videoNewForm.classList.toggle("hidden"));
+  videoNewToggle.addEventListener("click", () => {
+    clearVideoNewForm();
+    videoNewForm.classList.toggle("hidden");
+  });
   document.getElementById("video-new-cancel").addEventListener("click", () => {
     videoNewForm.classList.add("hidden");
     clearVideoNewForm();
@@ -2093,6 +2104,25 @@
     videoKindEl.value = "link";
     syncVideoKind();
     videoNewError.classList.add("hidden");
+    editingVideo = null;
+  }
+
+  // Video die nu in het formulier wordt bewerkt (null = nieuwe video).
+  let editingVideo = null;
+
+  function editVideo(video) {
+    clearVideoNewForm();
+    editingVideo = video;
+    const hosted = (video.source || "hosted") === "hosted";
+    document.getElementById("video-new-title").value = video.title || "";
+    document.getElementById("video-new-category").value = video.category || "";
+    document.getElementById("video-new-thumbnail").value = video.thumbnail_url || "";
+    document.getElementById("video-new-sort").value = video.sort_order ?? 0;
+    videoKindEl.value = hosted ? "hosted" : "link";
+    document.getElementById(hosted ? "video-new-url" : "video-new-link").value = video.video_url || "";
+    syncVideoKind();
+    videoNewForm.classList.remove("hidden");
+    videoNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   // Herkent een gewone YouTube-, TikTok- of Instagram-link en haalt het video-ID eruit.
@@ -2185,7 +2215,7 @@
     }
 
     videoNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
-    const { error } = await client.from("videos").insert({
+    const values = {
       title,
       category: document.getElementById("video-new-category").value.trim() || "Tasting",
       thumbnail_url: thumbnailUrl,
@@ -2193,7 +2223,10 @@
       source,
       external_id: externalId,
       sort_order: Number(document.getElementById("video-new-sort").value) || 0,
-    });
+    };
+    const { error } = editingVideo
+      ? await client.from("videos").update(values).eq("id", editingVideo.id)
+      : await client.from("videos").insert(values);
     resetBtn();
     if (error) return videoSaveError(error.message);
 
@@ -2238,10 +2271,17 @@
         <div class="p-3">
           <p class="font-display text-base text-on-surface truncate">${escapeHtml(video.title)}</p>
           <p class="text-on-surface-variant text-xs mb-2">${escapeHtml(video.category)} &middot; ${escapeHtml(VIDEO_SOURCE_LABELS[source] || source)}</p>
-          <button class="delete-btn w-full px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center justify-center gap-1">
-            <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
-          </button>
+          <div class="flex gap-2">
+            <button class="edit-btn flex-1 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs flex items-center justify-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">edit</span> Bewerken
+            </button>
+            <button class="delete-btn flex-1 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center justify-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">delete</span> Verwijderen
+            </button>
+          </div>
         </div>`;
+
+      card.querySelector(".edit-btn").addEventListener("click", () => editVideo(video));
 
       card.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${video.title}" verwijderen?`)) return;
@@ -2721,7 +2761,7 @@
   let editingBook = null;
 
   function clearBooksForm() {
-    ["title", "author", "subtitle", "cover"].forEach((f) => (document.getElementById(`books-new-${f}`).value = ""));
+    ["title", "author", "subtitle", "caption", "external", "cover"].forEach((f) => (document.getElementById(`books-new-${f}`).value = ""));
     document.getElementById("books-new-sort").value = "0";
     booksNewError.classList.add("hidden");
     editingBook = null;
@@ -2732,6 +2772,8 @@
     document.getElementById("books-new-title").value = row.title || "";
     document.getElementById("books-new-author").value = row.author || "";
     document.getElementById("books-new-subtitle").value = row.subtitle || "";
+    document.getElementById("books-new-caption").value = row.caption || "";
+    document.getElementById("books-new-external").value = row.external_url || "";
     document.getElementById("books-new-cover").value = row.cover_url || "";
     document.getElementById("books-new-sort").value = row.sort_order ?? 0;
     booksNewForm.classList.remove("hidden");
@@ -2770,6 +2812,8 @@
       title,
       author,
       subtitle: document.getElementById("books-new-subtitle").value.trim() || null,
+      caption: document.getElementById("books-new-caption").value.trim() || null,
+      external_url: document.getElementById("books-new-external").value.trim() || null,
       cover_url: cover || null,
       sort_order: Number(document.getElementById("books-new-sort").value) || 0,
     };
@@ -2792,7 +2836,7 @@
       return;
     }
     renderSimpleList(booksListEl, data, "library_books", loadBooksAdmin,
-      (r) => ({ image: coverSrc(r), title: r.title, subtitle: r.builtin_key ? `${r.author} · vast boek` : r.author }),
+      (r) => ({ image: coverSrc(r), title: r.title, subtitle: [r.builtin_key ? `${r.author} · vast boek` : r.author, r.caption, r.external_url ? "link: " + r.external_url : null].filter(Boolean).join(" · ") }),
       "Nog geen boeken in de database. Voer supabase/add_builtin_content.sql uit om de vaste boeken hier te beheren.",
       editBook);
   }

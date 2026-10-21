@@ -26,6 +26,12 @@ class Book {
   /// supabase/add_admin_content_management.sql); de vaste boeken gebruiken [coverAsset].
   final String? coverUrl;
 
+  /// Bijschrift dat een beheerder bij het boek kan zetten.
+  final String? caption;
+
+  /// Link naar een webwinkel of meer info ("Bekijk / Kopen").
+  final String? externalUrl;
+
   const Book({
     required this.id,
     required this.title,
@@ -33,6 +39,8 @@ class Book {
     required this.coverAsset,
     this.subtitle,
     this.coverUrl,
+    this.caption,
+    this.externalUrl,
   });
 }
 

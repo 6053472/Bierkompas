@@ -13,7 +13,7 @@ const _primary = Color(0xFFD4B28C);
 const _onSurface = Color(0xFFEFE6DD);
 const _onSurfaceVariant = Color(0xFF9E8A7D);
 
-/// "Brouwerij Highlights" als verticale reel: omhoog/omlaag swipen naar de
+/// "SchuimKraag TV" (voorheen "Brouwerij Highlights") als verticale reel: omhoog/omlaag swipen naar de
 /// volgende video, met nieuwe video's die in blokken bijgeladen worden zodra je
 /// bijna onderaan bent. Eigen video's worden native afgespeeld en de volgende
 /// video wordt alvast voorbereid; YouTube, TikTok en Instagram gaan via de

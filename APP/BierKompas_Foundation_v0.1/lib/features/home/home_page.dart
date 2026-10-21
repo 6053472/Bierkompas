@@ -1374,7 +1374,7 @@ class _DiscoveryContentPageState
       _buildActionTile(
         Icons.play_circle_outline,
         Icons.movie_creation_outlined,
-        'Brouwerij Highlights',
+        'SchuimKraag TV',
         'VIDEO\'S BEKIJKEN',
         () => Navigator.of(context).push(
           MaterialPageRoute(

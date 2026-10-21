@@ -40,7 +40,7 @@ class BrewerySubmissionService {
     required String city,
     String? photoUrl,
   }) async {
-    final geocode = await geocodeDutchAddress(
+    final geocode = await geocodeAddress(
       street: street,
       houseNumber: houseNumber,
       postalCode: postalCode,

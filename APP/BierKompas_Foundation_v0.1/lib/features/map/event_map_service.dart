@@ -91,7 +91,7 @@ class EventMapService {
     if ((street == null || street.isEmpty) && (city == null || city.isEmpty)) return null;
     final houseNumber = row['house_number'] as String? ?? '';
     final postalCode = normalizeDutchPostalCode(row['postal_code'] as String? ?? '');
-    return '${street ?? ''} $houseNumber, $postalCode ${city ?? ''}, Nederland';
+    return '${street ?? ''} $houseNumber, $postalCode ${city ?? ''}, ${countryForPostalCode(postalCode)}';
   }
 
   Future<(double, double)?> _geocode(String address) async {
