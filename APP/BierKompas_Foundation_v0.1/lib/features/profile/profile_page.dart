@@ -777,142 +777,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 24),
 
                   // Sectie: Mijn Bier-vrienden
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Mijn Bier-vrienden',
-                        style: GoogleFonts.playfairDisplay(
-                          color: const Color(0xFFEFE6DD),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                      GestureDetector(
-                        onTap: () => showMyFriendQr(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3C3028),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.qr_code_2, color: Color(0xFFD4B28C), size: 14),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Mijn QR',
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFFD4B28C),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: _openAddFriend,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3C3028),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.person_add_alt_1, color: Color(0xFFD4B28C), size: 14),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Toevoegen',
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFFD4B28C),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_friends == null || _incomingRequests == null)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
-                        child: CircularProgressIndicator(color: Color(0xFFD4B28C)),
-                      ),
-                    )
-                  else if (_friends!.isEmpty && _incomingRequests!.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2C221C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Je hebt nog geen Bier-vrienden.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF9E8A7D),
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tik op "Toevoegen" om iemand te zoeken.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF9E8A7D),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.5,
-                      children: [
-                        for (final request in _incomingRequests!)
-                          _FriendRequestTile(
-                            name: request.name,
-                            avatarUrl: request.avatarUrl,
-                            busy: _pendingRequestActions.contains(request.requesterId),
-                            onAccept: () => _respondToRequest(request, true),
-                            onDecline: () => _respondToRequest(request, false),
-                          ),
-                        for (final friend in _friends!)
-                          _BeerFriend(
-                            name: friend.name,
-                            avatarUrl: friend.avatarUrl,
-                            online: friend.online,
-                            sending: _sendingCheerIds.contains(friend.id),
-                            onProost: () => _sendCheer(friend),
-                            onTap: () => _openChat(friend),
-                          ),
-                      ],
-                    ),
+                  _buildFriendsSection(),
                   const SizedBox(height: 30),
                 ],
               ),
@@ -1189,16 +1054,252 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+
+  Widget _buildFriendsSection() {
+    final friends = _friends == null
+        ? null
+        : ([..._friends!]..sort((a, b) {
+            if (a.online != b.online) return a.online ? -1 : 1;
+            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          }));
+    final requests = _incomingRequests;
+    final onlineCount = friends?.where((f) => f.online).length ?? 0;
+
+    Widget card(List<Widget> rows, {bool highlight = false}) => Container(
+          decoration: BoxDecoration(
+            color: _friendsCard,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: highlight ? _friendsPrimary.withOpacity(0.45) : _friendsDivider),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) const Divider(height: 1, thickness: 1, color: _friendsDivider, indent: 70),
+                rows[i],
+              ],
+            ],
+          ),
+        );
+
+    Widget label(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 8, left: 2),
+          child: Text(text, style: GoogleFonts.inter(color: _friendsPrimary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Text(
+                'Mijn Bier-vrienden',
+                style: GoogleFonts.playfairDisplay(color: _friendsOnSurface, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            if (friends != null && friends.isNotEmpty)
+              Text(
+                '${friends.length} ${friends.length == 1 ? 'vriend' : 'vrienden'}'
+                '${onlineCount > 0 ? ' · $onlineCount online' : ''}',
+                style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _FriendsActionButton(
+                icon: Icons.person_add_alt_1,
+                label: 'Vriend toevoegen',
+                filled: true,
+                onTap: _openAddFriend,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _FriendsActionButton(
+                icon: Icons.qr_code_2,
+                label: 'Mijn QR-code',
+                onTap: () => showMyFriendQr(context),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (friends == null || requests == null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator(color: _friendsPrimary)),
+          )
+        else ...[
+          if (requests.isNotEmpty) ...[
+            label('VRIENDSCHAPSVERZOEKEN (${requests.length})'),
+            card(
+              [
+                for (final request in requests)
+                  _FriendRequestRow(
+                    name: request.name,
+                    avatarUrl: request.avatarUrl,
+                    busy: _pendingRequestActions.contains(request.requesterId),
+                    onAccept: () => _respondToRequest(request, true),
+                    onDecline: () => _respondToRequest(request, false),
+                  ),
+              ],
+              highlight: true,
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (friends.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              decoration: BoxDecoration(
+                color: _friendsCard,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _friendsDivider),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(color: _friendsPrimary.withOpacity(0.12), shape: BoxShape.circle),
+                    child: const Icon(Icons.group_outlined, color: _friendsPrimary, size: 26),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Nog geen Bier-vrienden', style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Zoek vrienden op naam of laat ze je QR-code scannen.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12, height: 1.4),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            label('VRIENDEN'),
+            card([
+              for (final friend in friends)
+                _FriendRow(
+                  name: friend.name,
+                  avatarUrl: friend.avatarUrl,
+                  online: friend.online,
+                  sending: _sendingCheerIds.contains(friend.id),
+                  onProost: () => _sendCheer(friend),
+                  onTap: () => _openChat(friend),
+                ),
+            ]),
+          ],
+        ],
+      ],
+    );
+  }
 }
 
-class _FriendRequestTile extends StatelessWidget {
-  final String name;
-  final String? avatarUrl;
-  final bool busy;
-  final VoidCallback onAccept;
-  final VoidCallback onDecline;
+// ---------- Mijn Bier-vrienden ----------
 
-  const _FriendRequestTile({
+const _friendsCard = Color(0xFF2C221C);
+const _friendsDivider = Color(0xFF3C3028);
+const _friendsPrimary = Color(0xFFD4B28C);
+const _friendsOnSurface = Color(0xFFEFE6DD);
+const _friendsMuted = Color(0xFF9E8A7D);
+const _friendsOnline = Color(0xFF4CAF50);
+
+/// Ronde profielfoto met (optioneel) een groen online-bolletje.
+class _FriendAvatar extends StatelessWidget {
+  const _FriendAvatar({this.avatarUrl, this.online = false, this.size = 44});
+
+  final String? avatarUrl;
+  final bool online;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _friendsDivider,
+            image: avatarUrl != null ? DecorationImage(image: NetworkImage(avatarUrl!), fit: BoxFit.cover) : null,
+          ),
+          child: avatarUrl == null ? Icon(Icons.person, color: _friendsMuted, size: size * 0.5) : null,
+        ),
+        if (online)
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              width: 13,
+              height: 13,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _friendsOnline,
+                border: Border.all(color: _friendsCard, width: 2),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Knop over de halve breedte boven de vriendenlijst ("Vriend toevoegen",
+/// "Mijn QR-code").
+class _FriendsActionButton extends StatelessWidget {
+  const _FriendsActionButton({required this.icon, required this.label, required this.onTap, this.filled = false});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = filled ? const Color(0xFF1E1712) : _friendsPrimary;
+    return Material(
+      color: filled ? _friendsPrimary : _friendsCard,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: filled ? null : Border.all(color: _friendsPrimary.withOpacity(0.5)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: foreground, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(color: foreground, fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Binnengekomen vriendschapsverzoek met Accepteren/Weigeren.
+class _FriendRequestRow extends StatelessWidget {
+  const _FriendRequestRow({
     required this.name,
     this.avatarUrl,
     required this.onAccept,
@@ -1206,208 +1307,130 @@ class _FriendRequestTile extends StatelessWidget {
     this.busy = false,
   });
 
+  final String name;
+  final String? avatarUrl;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  final bool busy;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C221C),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD4B28C).withOpacity(0.4)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF3C3028),
-              image: avatarUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(avatarUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: avatarUrl == null
-                ? const Center(
-                    child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 20),
-                  )
-                : null,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              color: const Color(0xFFEFE6DD),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          _FriendAvatar(avatarUrl: avatarUrl, size: 42),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text('Wil Bier-vrienden worden', style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12)),
+              ],
             ),
           ),
-          Text(
-            'Vriendschapsverzoek',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              color: const Color(0xFF9E8A7D),
-              fontSize: 9,
+          if (busy)
+            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _friendsPrimary))
+          else ...[
+            IconButton(
+              onPressed: onDecline,
+              tooltip: 'Weigeren',
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(backgroundColor: _friendsDivider),
+              icon: const Icon(Icons.close, size: 18, color: _friendsMuted),
             ),
-          ),
-          const SizedBox(height: 6),
-          busy
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: onAccept,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFD4B28C),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.check, size: 14, color: Color(0xFF1E1712)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTap: onDecline,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF3C3028),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close, size: 14, color: Color(0xFF9E8A7D)),
-                      ),
-                    ),
-                  ],
+            const SizedBox(width: 6),
+            SizedBox(
+              height: 34,
+              child: ElevatedButton(
+                onPressed: onAccept,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _friendsPrimary,
+                  foregroundColor: const Color(0xFF1E1712),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
+                child: Text('Accepteren', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _BeerFriend extends StatelessWidget {
-  final String name;
-  final String? avatarUrl;
-  final bool online;
-  final VoidCallback? onProost;
-  final VoidCallback? onTap;
-  final bool sending;
-
-  const _BeerFriend({
+/// Eén Bier-vriend: tik om te chatten, "Proost!" om te proosten.
+class _FriendRow extends StatelessWidget {
+  const _FriendRow({
     required this.name,
     this.avatarUrl,
     this.online = false,
-    this.onProost,
     this.onTap,
+    this.onProost,
     this.sending = false,
   });
 
+  final String name;
+  final String? avatarUrl;
+  final bool online;
+  final VoidCallback? onTap;
+  final VoidCallback? onProost;
+  final bool sending;
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C221C),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF3C3028),
-                  image: avatarUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(avatarUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: avatarUrl == null
-                    ? const Center(
-                        child: Icon(Icons.person, color: Color(0xFF9E8A7D), size: 24),
-                      )
-                    : null,
-              ),
-              if (online)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF4CAF50),
-                      border: Border.all(color: const Color(0xFF2C221C), width: 2),
-                    ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            _FriendAvatar(avatarUrl: avatarUrl, online: online),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    online ? 'Online' : 'Offline',
+                    style: GoogleFonts.inter(color: online ? _friendsOnline : _friendsMuted, fontSize: 12),
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            style: GoogleFonts.inter(
-              color: const Color(0xFFEFE6DD),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: 90,
-            height: 28,
-            child: ElevatedButton(
-              onPressed: sending ? null : onProost,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4B28C),
-                foregroundColor: const Color(0xFF1E1712),
-                disabledBackgroundColor: const Color(0xFF3C3028),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
+                ],
               ),
-              child: sending
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4B28C)),
-                    )
-                  : Text(
-                      'Proost!',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
             ),
-          ),
-        ],
-      ),
+            IconButton(
+              onPressed: onTap,
+              tooltip: 'Chatten',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.chat_bubble_outline, size: 20, color: _friendsMuted),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(
+              height: 34,
+              child: ElevatedButton.icon(
+                onPressed: sending ? null : onProost,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _friendsPrimary,
+                  foregroundColor: const Color(0xFF1E1712),
+                  disabledBackgroundColor: _friendsDivider,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: sending
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _friendsPrimary))
+                    : const Icon(Icons.sports_bar, size: 16),
+                label: Text('Proost!', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
