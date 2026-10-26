@@ -99,53 +99,60 @@ class FriendsService {
     final userId = _client.auth.currentUser?.id;
     try {
       final rows = await _client.rpc('search_profiles', params: {'p_query': trimmed});
-
-      var friendIds = const <String>{};
-      var sentIds = const <String>{};
-      var receivedIds = const <String>{};
-      if (userId != null) {
-        final requestRows = await _client
-            .from('friend_requests')
-            .select('requester_id, addressee_id, status')
-            .or('requester_id.eq.$userId,addressee_id.eq.$userId');
-        final friends = <String>{};
-        final sent = <String>{};
-        final received = <String>{};
-        for (final row in requestRows as List) {
-          final isRequester = row['requester_id'] == userId;
-          final otherId = (isRequester ? row['addressee_id'] : row['requester_id']) as String;
-          if (row['status'] == 'accepted') {
-            friends.add(otherId);
-          } else if (isRequester) {
-            sent.add(otherId);
-          } else {
-            received.add(otherId);
-          }
-        }
-        friendIds = friends;
-        sentIds = sent;
-        receivedIds = received;
-      }
+      final statuses = await _friendStatuses(userId);
 
       return (rows as List).map((row) {
         final id = row['id'] as String;
-        final status = friendIds.contains(id)
-            ? FriendStatus.friends
-            : receivedIds.contains(id)
-                ? FriendStatus.requestReceived
-                : sentIds.contains(id)
-                    ? FriendStatus.requestSent
-                    : FriendStatus.none;
         return FriendSearchResult(
           id: id,
           name: row['name'] as String? ?? 'Onbekend',
           avatarUrl: row['avatar_url'] as String?,
-          status: status,
+          status: statuses[id] ?? FriendStatus.none,
         );
       }).toList();
     } on PostgrestException catch (e) {
       throw FriendsException(e.message);
     }
+  }
+
+  /// Profiel van één gebruiker (bijv. na het scannen van zijn QR-code), met
+  /// de vriendschapsstatus. Null als de gebruiker niet bestaat.
+  Future<FriendSearchResult?> getProfile(String id) async {
+    try {
+      final rows = await _client.rpc('get_profile_by_id', params: {'p_user_id': id}) as List;
+      if (rows.isEmpty) return null;
+      final row = rows.first;
+      final statuses = await _friendStatuses(_client.auth.currentUser?.id);
+      return FriendSearchResult(
+        id: row['id'] as String,
+        name: row['name'] as String? ?? 'Onbekend',
+        avatarUrl: row['avatar_url'] as String?,
+        status: statuses[id] ?? FriendStatus.none,
+      );
+    } on PostgrestException catch (e) {
+      throw FriendsException(e.message);
+    }
+  }
+
+  /// Vriendschapsstatus per andere gebruiker, op basis van mijn
+  /// `friend_requests`-rijen.
+  Future<Map<String, FriendStatus>> _friendStatuses(String? userId) async {
+    if (userId == null) return const {};
+    final requestRows = await _client
+        .from('friend_requests')
+        .select('requester_id, addressee_id, status')
+        .or('requester_id.eq.$userId,addressee_id.eq.$userId');
+    final statuses = <String, FriendStatus>{};
+    for (final row in requestRows as List) {
+      final isRequester = row['requester_id'] == userId;
+      final otherId = (isRequester ? row['addressee_id'] : row['requester_id']) as String;
+      if (row['status'] == 'accepted') {
+        statuses[otherId] = FriendStatus.friends;
+      } else if (statuses[otherId] != FriendStatus.friends) {
+        statuses[otherId] = isRequester ? FriendStatus.requestSent : FriendStatus.requestReceived;
+      }
+    }
+    return statuses;
   }
 
   Future<void> sendRequest(String addresseeId) async {

@@ -14,6 +14,7 @@ import 'chat_page.dart';
 import 'cheers_service.dart';
 import 'create_tasting_note_page.dart';
 import 'friends_service.dart';
+import 'friend_qr.dart';
 import 'notifications_page.dart';
 import 'notifications_service.dart';
 import 'profile_edit_page.dart';
@@ -787,6 +788,35 @@ class _ProfilePageState extends State<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                      GestureDetector(
+                        onTap: () => showMyFriendQr(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3028),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.qr_code_2, color: Color(0xFFD4B28C), size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Mijn QR',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFFD4B28C),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _openAddFriend,
                         child: Container(
@@ -811,6 +841,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             ],
                           ),
                         ),
+                      ),
+                        ],
                       ),
                     ],
                   ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'friend_qr.dart';
 import 'friends_service.dart';
 
 /// Zoek- en toevoegscherm voor Bier-vrienden, geopend via de knop op het profiel.
@@ -94,6 +95,15 @@ class _AddFriendPageState extends State<AddFriendPage> {
     }
   }
 
+  /// Scant de QR-code uit het profiel van een ander en toont dat profiel.
+  Future<void> _scanQr() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ScanFriendQrPage()),
+    );
+    // Er kan een verzoek verstuurd zijn; het profiel ververst dan bij terugkeer.
+    _friendsAdded = true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -135,7 +145,24 @@ class _AddFriendPageState extends State<AddFriendPage> {
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _scanQr,
+                    icon: const Icon(Icons.qr_code_scanner, color: Color(0xFFD4B28C), size: 18),
+                    label: Text(
+                      'Scan QR-code',
+                      style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFD4B28C)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   height: 50,
@@ -152,7 +179,6 @@ class _AddFriendPageState extends State<AddFriendPage> {
                         child: TextField(
                           controller: _searchController,
                           onChanged: _onQueryChanged,
-                          autofocus: true,
                           style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                           cursorColor: const Color(0xFFD4B28C),
                           decoration: InputDecoration(
