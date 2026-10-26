@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/geocoding_service.dart';
+import '../../shared/supabase_insert.dart';
 import 'breweries.dart';
 
 class BrewerySubmissionException implements Exception {
@@ -38,6 +39,7 @@ class BrewerySubmissionService {
     required String houseNumber,
     required String postalCode,
     required String city,
+    String? province,
     String? photoUrl,
   }) async {
     final geocode = await geocodeAddress(
@@ -59,7 +61,7 @@ class BrewerySubmissionService {
     }
 
     try {
-      await _client.from('brewery_submissions').insert({
+      await insertWithOptionalColumns('brewery_submissions', {
         'user_id': userId,
         'naam': naam,
         'beschrijving': beschrijving,
@@ -67,10 +69,11 @@ class BrewerySubmissionService {
         'house_number': houseNumber,
         'postal_code': postalCode,
         'city': city,
+        'province': (province == null || province.trim().isEmpty) ? null : province.trim(),
         'latitude': geocode.latitude,
         'longitude': geocode.longitude,
         'photo_url': photoUrl,
-      });
+      }, optionalColumns: const ['province']);
     } catch (e) {
       throw const BrewerySubmissionException('Aanmelden mislukt. Probeer het later opnieuw.');
     }

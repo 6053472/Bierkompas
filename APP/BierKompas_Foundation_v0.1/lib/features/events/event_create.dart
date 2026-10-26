@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shared/geocoding_service.dart';
 import '../../shared/postal_code_utils.dart';
 import '../../shared/postcode_lookup.dart';
+import '../../shared/supabase_insert.dart';
 
 class EventCreatePage extends StatefulWidget {
   const EventCreatePage({super.key});
@@ -27,6 +28,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
   final TextEditingController _postalCodeController =
       TextEditingController();
   final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _provinceController = TextEditingController();
   final TextEditingController _locationNameController =
       TextEditingController();
   final TextEditingController _descriptionController =
@@ -69,6 +71,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
     _houseNumberController.dispose();
     _postalCodeController.dispose();
     _cityController.dispose();
+    _provinceController.dispose();
     _locationNameController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -76,6 +79,16 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
   Future<void> _lookupPostcode(String value) async {
     final postcode = value.replaceAll(' ', '').toUpperCase();
+    final belgianProvince = belgianProvinceForPostcode(postcode);
+    if (belgianProvince != null) {
+      setState(() => _provinceController.text = belgianProvince);
+      return;
+    }
+    // Tijdens het typen van een NL-postcode is "1234" kort een geldige
+    // BE-postcode geweest; die automatisch ingevulde provincie weer wissen.
+    if (postcode.length >= 4 && _provinceController.text == belgianProvinceForPostcode(postcode.substring(0, 4))) {
+      _provinceController.text = '';
+    }
     final address = await lookupDutchPostcode(postcode);
     if (address == null || !mounted) return;
     // Intussen een andere postcode getypt: dit resultaat negeren.
@@ -83,6 +96,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
     setState(() {
       if (address.city.isNotEmpty) _cityController.text = address.city;
+      if (address.province.isNotEmpty) _provinceController.text = address.province;
       if (_streetController.text.trim().isEmpty && address.street.isNotEmpty) {
         _streetController.text = address.street;
       }
@@ -362,7 +376,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
           '${_selectedEndTime!.hour.toString().padLeft(2, '0')}:'
           '${_selectedEndTime!.minute.toString().padLeft(2, '0')}';
 
-      await supabase.from('events').insert({
+      await insertWithOptionalColumns('events', {
         'user_id': user.id,
         'name': _nameController.text.trim(),
         'event_type': _selectedEventType,
@@ -377,6 +391,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'latitude': geocode.latitude,
         'longitude': geocode.longitude,
         'city': _cityController.text.trim(),
+        'province': _provinceController.text.trim().isEmpty ? null : _provinceController.text.trim(),
         'location_name': _locationNameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'image_asset': imageUrl,
@@ -387,7 +402,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'price_incl_btw': true,
         'price_excl_btw': false,
         'status': 'pending',
-      });
+      }, optionalColumns: const ['province']);
 
       if (!mounted) return;
 
@@ -648,7 +663,8 @@ class _EventCreatePageState extends State<EventCreatePage> {
                                     ),
                                   ],
                                   onChanged: (value) {
-                                    if (value.replaceAll(' ', '').length == 6) {
+                                    final length = value.replaceAll(' ', '').length;
+                                    if (length == 4 || length == 6) {
                                       _lookupPostcode(value);
                                     }
                                   },
@@ -670,6 +686,15 @@ class _EventCreatePageState extends State<EventCreatePage> {
                             RegExp(r"[a-zA-ZÀ-ÿ '\-]"),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 18),
+                      _buildLabel('Provincie (optioneel)'),
+                      const SizedBox(height: 7),
+                      _buildTextField(
+                        controller: _provinceController,
+                        hintText: 'Wordt ingevuld via de postcode',
+                        icon: Icons.map_outlined,
+                        required: false,
                       ),
                     ],
                   ),
@@ -968,12 +993,14 @@ class _EventCreatePageState extends State<EventCreatePage> {
     ValueChanged<String>? onChanged,
     List<TextInputFormatter>? inputFormatters,
     FormFieldValidator<String>? validator,
+    bool required = true,
   }) {
     return TextFormField(
       controller: controller,
       onChanged: onChanged,
       inputFormatters: inputFormatters,
       validator: (value) {
+        if (!required) return null;
         if (value == null || value.trim().isEmpty) {
           return 'Dit veld is verplicht';
         }

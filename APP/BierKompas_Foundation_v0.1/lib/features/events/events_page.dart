@@ -2498,7 +2498,8 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                             Icons.home_outlined,
                             'Adres',
                             '$street $houseNumber\n'
-                                '$postalCode $city',
+                                '$postalCode $city'
+                                '${(event['province']?.toString() ?? '').isNotEmpty ? ' (${event['province']})' : ''}',
                           ),
                         if (street.isNotEmpty ||
                             location.isNotEmpty ||

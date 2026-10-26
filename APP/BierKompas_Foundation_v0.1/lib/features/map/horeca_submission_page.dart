@@ -40,6 +40,7 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
   final _huisnummerController = TextEditingController();
   final _postcodeController = TextEditingController();
   final _stadController = TextEditingController();
+  final _provincieController = TextEditingController();
 
   Uint8List? _photoBytes;
   bool _submitting = false;
@@ -54,6 +55,7 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
     _huisnummerController.dispose();
     _postcodeController.dispose();
     _stadController.dispose();
+    _provincieController.dispose();
     super.dispose();
   }
 
@@ -62,11 +64,22 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
   /// blijven handmatig in te vullen.
   Future<void> _lookupPostcode(String value) async {
     final postcode = value.replaceAll(' ', '').toUpperCase();
+    final belgianProvince = belgianProvinceForPostcode(postcode);
+    if (belgianProvince != null) {
+      setState(() => _provincieController.text = belgianProvince);
+      return;
+    }
+    // Tijdens het typen van een NL-postcode is "1234" kort een geldige
+    // BE-postcode geweest; die automatisch ingevulde provincie weer wissen.
+    if (postcode.length >= 4 && _provincieController.text == belgianProvinceForPostcode(postcode.substring(0, 4))) {
+      _provincieController.text = '';
+    }
     final address = await lookupDutchPostcode(postcode);
     if (address == null || !mounted) return;
     if (_postcodeController.text.replaceAll(' ', '').toUpperCase() != postcode) return;
     setState(() {
       if (address.city.isNotEmpty) _stadController.text = address.city;
+      if (address.province.isNotEmpty) _provincieController.text = address.province;
       if (_straatController.text.trim().isEmpty && address.street.isNotEmpty) {
         _straatController.text = address.street;
       }
@@ -110,6 +123,7 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
         houseNumber: _huisnummerController.text.trim(),
         postalCode: _postcodeController.text.trim(),
         city: _stadController.text.trim(),
+        province: _provincieController.text.trim(),
         photoUrl: photoUrl,
       );
 
@@ -216,13 +230,16 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
                 hint: '1234 AB / 2000',
                 validator: (value) => isValidPostalCode(value ?? '') ? null : 'Ongeldige postcode',
                 onChanged: (value) {
-                  if (value.replaceAll(' ', '').length == 6) _lookupPostcode(value);
+                  final length = value.replaceAll(' ', '').length;
+                  if (length == 4 || length == 6) _lookupPostcode(value);
                 },
               )),
             ],
           ),
           const SizedBox(height: 14),
           _field(controller: _stadController, label: 'Plaats', hint: 'Bijv. Utrecht'),
+          const SizedBox(height: 14),
+          _field(controller: _provincieController, label: 'Provincie (optioneel)', hint: 'Wordt ingevuld via de postcode', optional: true),
           if (_error != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -295,6 +312,7 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
     int maxLines = 1,
     FormFieldValidator<String>? validator,
     ValueChanged<String>? onChanged,
+    bool optional = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,7 +323,9 @@ class _HorecaSubmissionPageState extends State<HorecaSubmissionPage> {
           controller: controller,
           maxLines: maxLines,
           onChanged: onChanged,
-          validator: (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : validator?.call(value),
+          validator: optional
+              ? null
+              : (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : validator?.call(value),
           style: GoogleFonts.openSans(color: _onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,

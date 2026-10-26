@@ -1237,7 +1237,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 text-sm">
           <div>
             <span class="text-primary uppercase tracking-widest text-xs font-label">Locatie</span>
-            <p class="text-on-surface mt-1">${escapeHtml(event.street || "")} ${escapeHtml(event.house_number || "")}, ${escapeHtml(event.postal_code || "")} ${escapeHtml(event.city || "")}</p>
+            <p class="text-on-surface mt-1">${escapeHtml(event.street || "")} ${escapeHtml(event.house_number || "")}, ${escapeHtml(event.postal_code || "")} ${escapeHtml(event.city || "")}${event.province ? ` (${escapeHtml(event.province)})` : ""}</p>
             <p class="text-on-surface-variant mt-1">${escapeHtml(event.location_name || "")}</p>
           </div>
           <div>
@@ -1625,7 +1625,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 text-sm">
           <div>
             <span class="text-primary uppercase tracking-widest text-xs font-label">Adres</span>
-            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}</p>
+            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}${sub.province ? ` (${escapeHtml(sub.province)})` : ""}</p>
           </div>
           <div>
             <span class="text-primary uppercase tracking-widest text-xs font-label">Positie op kaart</span>
@@ -1740,7 +1740,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 text-sm">
           <div>
             <span class="text-primary uppercase tracking-widest text-xs font-label">Adres</span>
-            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}</p>
+            <p class="text-on-surface mt-1">${escapeHtml(sub.street || "")} ${escapeHtml(sub.house_number || "")}, ${escapeHtml(sub.postal_code || "")} ${escapeHtml(sub.city || "")}${sub.province ? ` (${escapeHtml(sub.province)})` : ""}</p>
           </div>
           <div>
             <span class="text-primary uppercase tracking-widest text-xs font-label">Positie op kaart</span>

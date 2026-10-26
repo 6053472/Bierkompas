@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/geocoding_service.dart';
+import '../../shared/supabase_insert.dart';
 import 'horeca.dart';
 
 class HorecaSubmissionException implements Exception {
@@ -39,6 +40,7 @@ class HorecaSubmissionService {
     required String houseNumber,
     required String postalCode,
     required String city,
+    String? province,
     String? photoUrl,
   }) async {
     final geocode = await geocodeAddress(
@@ -60,7 +62,7 @@ class HorecaSubmissionService {
     }
 
     try {
-      await _client.from('horeca_submissions').insert({
+      await insertWithOptionalColumns('horeca_submissions', {
         'user_id': userId,
         'naam': naam,
         'beschrijving': beschrijving,
@@ -68,10 +70,11 @@ class HorecaSubmissionService {
         'house_number': houseNumber,
         'postal_code': postalCode,
         'city': city,
+        'province': (province == null || province.trim().isEmpty) ? null : province.trim(),
         'latitude': geocode.latitude,
         'longitude': geocode.longitude,
         'photo_url': photoUrl,
-      });
+      }, optionalColumns: const ['province']);
     } catch (e) {
       throw const HorecaSubmissionException('Aanmelden mislukt. Probeer het later opnieuw.');
     }

@@ -5,12 +5,35 @@ import 'package:http/http.dart' as http;
 
 import 'postal_code_utils.dart';
 
-/// Straat en plaats bij een Nederlandse postcode.
+/// Straat, plaats en provincie bij een Nederlandse postcode.
 class PostcodeAddress {
   final String street;
   final String city;
+  final String province;
 
-  const PostcodeAddress({required this.street, required this.city});
+  const PostcodeAddress({required this.street, required this.city, this.province = ''});
+}
+
+/// Provincie bij een Belgische postcode. De eerste cijfers van een Belgische
+/// postcode bepalen de provincie, dus hiervoor is geen externe dienst nodig.
+/// Postcodes 1000-1299 horen bij het Brussels Hoofdstedelijk Gewest (geen
+/// provincie). Null bij een ongeldige postcode.
+String? belgianProvinceForPostcode(String postcode) {
+  if (!isBelgianPostalCode(postcode)) return null;
+  final code = int.parse(postcode.trim());
+  if (code < 1300) return 'Brussel';
+  if (code < 1500) return 'Waals-Brabant';
+  if (code < 2000) return 'Vlaams-Brabant';
+  if (code < 3000) return 'Antwerpen';
+  if (code < 3500) return 'Vlaams-Brabant';
+  if (code < 4000) return 'Limburg';
+  if (code < 5000) return 'Luik';
+  if (code < 6000) return 'Namen';
+  if (code < 6600) return 'Henegouwen';
+  if (code < 7000) return 'Luxemburg';
+  if (code < 8000) return 'Henegouwen';
+  if (code < 9000) return 'West-Vlaanderen';
+  return 'Oost-Vlaanderen';
 }
 
 /// Zoekt straat en plaats op bij een Nederlandse postcode via de gratis
@@ -42,6 +65,7 @@ Future<PostcodeAddress?> lookupDutchPostcode(String postcode) async {
     return PostcodeAddress(
       street: first['straatnaam']?.toString() ?? '',
       city: first['woonplaatsnaam']?.toString() ?? '',
+      province: first['provincienaam']?.toString() ?? '',
     );
   } catch (e) {
     debugPrint('Postcode opzoeken mislukt: $e');
