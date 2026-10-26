@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/image_utils.dart';
 import '../../shared/postal_code_utils.dart';
+import '../../shared/postcode_lookup.dart';
 import 'brewery_submission_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -53,6 +54,22 @@ class _BrewerySubmissionPageState extends State<BrewerySubmissionPage> {
     _postcodeController.dispose();
     _stadController.dispose();
     super.dispose();
+  }
+
+  /// Nederlandse postcode: straat (als die nog leeg is) en plaats automatisch
+  /// invullen via PDOK. Bij een Belgische postcode gebeurt niets; alle velden
+  /// blijven handmatig in te vullen.
+  Future<void> _lookupPostcode(String value) async {
+    final postcode = value.replaceAll(' ', '').toUpperCase();
+    final address = await lookupDutchPostcode(postcode);
+    if (address == null || !mounted) return;
+    if (_postcodeController.text.replaceAll(' ', '').toUpperCase() != postcode) return;
+    setState(() {
+      if (address.city.isNotEmpty) _stadController.text = address.city;
+      if (_straatController.text.trim().isEmpty && address.street.isNotEmpty) {
+        _straatController.text = address.street;
+      }
+    });
   }
 
   Future<void> _pickPhoto() async {
@@ -197,6 +214,9 @@ class _BrewerySubmissionPageState extends State<BrewerySubmissionPage> {
                 label: 'Postcode',
                 hint: '1234 AB / 2000',
                 validator: (value) => isValidPostalCode(value ?? '') ? null : 'Ongeldige postcode',
+                onChanged: (value) {
+                  if (value.replaceAll(' ', '').length == 6) _lookupPostcode(value);
+                },
               )),
             ],
           ),
@@ -273,6 +293,7 @@ class _BrewerySubmissionPageState extends State<BrewerySubmissionPage> {
     required String hint,
     int maxLines = 1,
     FormFieldValidator<String>? validator,
+    ValueChanged<String>? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,6 +303,7 @@ class _BrewerySubmissionPageState extends State<BrewerySubmissionPage> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          onChanged: onChanged,
           validator: (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : validator?.call(value),
           style: GoogleFonts.openSans(color: _onSurface, fontSize: 14),
           decoration: InputDecoration(

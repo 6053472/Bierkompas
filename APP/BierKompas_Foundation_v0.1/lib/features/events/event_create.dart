@@ -1,7 +1,5 @@
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/geocoding_service.dart';
 import '../../shared/postal_code_utils.dart';
+import '../../shared/postcode_lookup.dart';
 
 class EventCreatePage extends StatefulWidget {
   const EventCreatePage({super.key});
@@ -77,54 +76,17 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
   Future<void> _lookupPostcode(String value) async {
     final postcode = value.replaceAll(' ', '').toUpperCase();
+    final address = await lookupDutchPostcode(postcode);
+    if (address == null || !mounted) return;
+    // Intussen een andere postcode getypt: dit resultaat negeren.
+    if (_postalCodeController.text.replaceAll(' ', '').toUpperCase() != postcode) return;
 
-    // Alleen Nederlandse postcodes (vier cijfers en twee letters) staan in
-    // PDOK; bij een Belgische postcode vullen we niets automatisch in.
-    if (!isDutchPostalCode(postcode)) return;
-
-
-    try {
-      final uri = Uri.https(
-        'api.pdok.nl',
-        '/bzk/locatieserver/search/v3_1/free',
-        {
-          'q': 'postcode:$postcode',
-          'fq': 'type:adres',
-          'rows': '1',
-        },
-      );
-
-      final response = await http.get(uri).timeout(
-        const Duration(seconds: 8),
-      );
-
-      if (response.statusCode != 200 ||
-          _postalCodeController.text.replaceAll(' ', '').toUpperCase() != postcode) {
-        return;
+    setState(() {
+      if (address.city.isNotEmpty) _cityController.text = address.city;
+      if (_streetController.text.trim().isEmpty && address.street.isNotEmpty) {
+        _streetController.text = address.street;
       }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final responseData = data['response'] as Map<String, dynamic>?;
-      final docs = responseData?['docs'] as List<dynamic>?;
-
-      if (docs == null || docs.isEmpty) return;
-
-      final first = docs.first as Map<String, dynamic>;
-      final city = first['woonplaatsnaam']?.toString() ?? '';
-      final street = first['straatnaam']?.toString() ?? '';
-
-      if (!mounted) return;
-
-      setState(() {
-        if (city.isNotEmpty) _cityController.text = city;
-        if (_streetController.text.trim().isEmpty && street.isNotEmpty) {
-          _streetController.text = street;
-        }
-      });
-    } catch (e) {
-      debugPrint('Postcode opzoeken mislukt: $e');
-    } finally {
-    }
+    });
   }
 
   Future<void> _pickImage() async {
