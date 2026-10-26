@@ -344,6 +344,16 @@
           </button>
         </div>
 
+        <!-- Door gebruikers aangemelde onbekende bieren (zie supabase/add_bier_aanmelden.sql) -->
+        <div id="beer-subs-wrap" class="hidden mt-4 mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-display text-lg text-on-surface">Aangemelde bieren <span id="beer-subs-count" class="text-on-surface-variant text-sm"></span></h3>
+            <button id="beer-subs-refresh" class="text-on-surface-variant hover:text-primary text-xs flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">refresh</span> Vernieuwen</button>
+          </div>
+          <p class="text-on-surface-variant text-sm mb-3">Bieren die gebruikers hebben aangemeld omdat ze ze niet konden vinden. Controleer of het bier niet al bestaat, verbeter zo nodig de gegevens en keur goed; pas dan staat het bier voor iedereen in de app.</p>
+          <div id="beer-subs-list" class="flex flex-col gap-3"></div>
+        </div>
+
         <!-- Nieuw bier toevoegen (ingeklapt totdat je op de knop klikt) -->
         <div id="bier-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 fade-in">
           <h3 class="font-display text-lg text-on-surface mb-4">Nieuw bier toevoegen</h3>
@@ -1393,6 +1403,74 @@
   bierenSearchEl.addEventListener("input", renderBieren);
   bierenFilterMissingEl.addEventListener("change", renderBieren);
 
+  // ---------- Aangemelde bieren (gebruikers) ----------
+  const beerSubsWrap = document.getElementById("beer-subs-wrap");
+  const beerSubsList = document.getElementById("beer-subs-list");
+  const beerSubsCount = document.getElementById("beer-subs-count");
+  document.getElementById("beer-subs-refresh").addEventListener("click", loadBeerSubmissions);
+
+  async function loadBeerSubmissions() {
+    const { data, error } = await client.from("beer_submissions").select("*").eq("status", "pending").order("created_at");
+    if (error) {
+      // Migratie (supabase/add_bier_aanmelden.sql) nog niet uitgevoerd: blok verbergen.
+      beerSubsWrap.classList.add("hidden");
+      return;
+    }
+    beerSubsWrap.classList.toggle("hidden", data.length === 0);
+    beerSubsCount.textContent = data.length ? `(${data.length})` : "";
+    beerSubsList.innerHTML = "";
+    data.forEach((sub) => {
+      const existing = (allBieren || []).filter((b) => b.naam && b.naam.toLowerCase().includes(sub.naam.toLowerCase().slice(0, 6)));
+      const card = document.createElement("div");
+      card.className = "bg-surface-container rounded-xl border border-primary/30 p-4 flex flex-col md:flex-row gap-4 fade-in";
+      card.innerHTML = `
+        ${sub.photo_url
+          ? `<img src="${escapeHtml(sub.photo_url)}" class="w-full md:w-32 h-32 object-cover rounded-lg shrink-0" alt=""/>`
+          : '<div class="w-full md:w-32 h-32 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-surface-variant">sports_bar</span></div>'}
+        <div class="flex-1 min-w-0">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input data-f="naam" type="text" class="fi" value="${escapeHtml(sub.naam)}"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Brouwerij*</span><input data-f="brouwerij" type="text" class="fi" value="${escapeHtml(sub.brouwerij || "")}"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Stijl</span><input data-f="stijl" type="text" class="fi" value="${escapeHtml(sub.stijl || "")}"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Alcohol</span><input data-f="abv" type="text" class="fi" value="${escapeHtml(sub.abv || "")}"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Barcode</span><input data-f="barcode" type="text" class="fi" value="${escapeHtml(sub.barcode || "")}"/></label>
+          </div>
+          ${sub.beschrijving ? `<p class="text-on-surface-variant text-sm mt-3">${escapeHtml(sub.beschrijving)}</p>` : ""}
+          ${existing.length ? `<p class="text-error text-xs mt-3">Lijkt op bestaand bier: ${existing.slice(0, 3).map((b) => escapeHtml(b.naam)).join(", ")}</p>` : ""}
+          <p class="sub-error hidden text-error text-sm mt-3"></p>
+          <div class="flex gap-3 mt-4">
+            <button class="reject-btn px-4 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs uppercase tracking-widest font-label">Afwijzen</button>
+            <button class="approve-btn px-5 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">Goedkeuren</button>
+          </div>
+        </div>`;
+      const val = (f) => card.querySelector(`[data-f="${f}"]`).value.trim();
+      const errEl = card.querySelector(".sub-error");
+      const showErr = (m) => { errEl.textContent = m; errEl.classList.remove("hidden"); };
+      card.querySelector(".approve-btn").addEventListener("click", async (e) => {
+        if (!val("naam") || !val("brouwerij")) return showErr("Naam en brouwerij zijn verplicht.");
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const { error: rpcError } = await client.rpc("approve_beer_submission", {
+          p_submission_id: sub.id, p_naam: val("naam"), p_brouwerij: val("brouwerij"),
+          p_stijl: val("stijl") || null, p_abv: val("abv") || null, p_barcode: val("barcode") || null,
+        });
+        if (rpcError) { btn.disabled = false; return showErr(`Goedkeuren mislukt: ${rpcError.message}`); }
+        loadBeerSubmissions();
+        loadBieren();
+      });
+      card.querySelector(".reject-btn").addEventListener("click", async (e) => {
+        const reason = prompt(`Reden voor afwijzen van "${sub.naam}" (optioneel, de gebruiker krijgt dit te zien):`);
+        if (reason === null) return;
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const { error: rpcError } = await client.rpc("reject_beer_submission", { p_submission_id: sub.id, p_reason: reason || null });
+        if (rpcError) { btn.disabled = false; return showErr(`Afwijzen mislukt: ${rpcError.message}`); }
+        loadBeerSubmissions();
+      });
+      beerSubsList.appendChild(card);
+    });
+  }
+
   async function loadBieren() {
     bierenListEl.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant text-sm py-4"><span class="spinner"></span> Laden...</div>';
     const { data, error } = await client.from("bieren").select("*").order("naam");
@@ -1403,6 +1481,7 @@
     }
 
     allBieren = data;
+    loadBeerSubmissions();
     const missingCount = data.filter((b) => !b.barcode).length;
     setBadge(bierenCountBadge, missingCount, "bg-error-container");
     if (missingCount === 0) bierenCountBadge.classList.add("hidden");

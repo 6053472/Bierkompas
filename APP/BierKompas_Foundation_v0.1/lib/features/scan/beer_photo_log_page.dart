@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shared/image_utils.dart';
 import '../favorites/beers.dart';
 import 'beer_scan_service.dart';
+import 'beer_submission_page.dart';
 
 const _background = Color(0xFF1E1712);
 const _cardColor = Color(0xFF2C221C);
@@ -183,6 +184,15 @@ class _BeerPhotoLogPageState extends State<BeerPhotoLogPage> {
     );
   }
 
+  /// Onbekend bier aanmelden ter goedkeuring. Kiest de gebruiker daar toch
+  /// een bestaand bier, dan wordt dat hier geselecteerd.
+  Future<void> _registerUnknownBeer() async {
+    final existing = await Navigator.of(context).push<Beer>(
+      MaterialPageRoute(builder: (_) => BeerSubmissionPage(initialName: _searchController.text.trim())),
+    );
+    if (existing != null && mounted) setState(() => _selectedBeer = existing);
+  }
+
   Widget _buildForm() {
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -222,6 +232,18 @@ class _BeerPhotoLogPageState extends State<BeerPhotoLogPage> {
         ),
         const SizedBox(height: 12),
         ..._filteredBeers.take(20).map(_buildBeerOption),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _registerUnknownBeer,
+            icon: const Icon(Icons.add_circle_outline, color: _primary, size: 18),
+            label: Text(
+              'Staat je bier er niet tussen? Meld het aan',
+              style: GoogleFonts.openSans(color: _primary, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
         if (_error != null) ...[
           const SizedBox(height: 16),
           Container(

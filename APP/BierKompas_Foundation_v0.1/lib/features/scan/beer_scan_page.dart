@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../favorites/beers.dart';
 import 'beer_scan_service.dart';
+import 'beer_submission_page.dart';
 import 'web_camera_cleanup.dart';
 
 // Zelfde kleurenpalet als de rest van de app (Profiel, Kaart, Agenda, Ontdek, ...).
@@ -77,7 +78,7 @@ class _BeerScanPageState extends State<BeerScanPage> {
     final beer = await _scanService.findBeerByBarcode(code);
     if (!mounted) return;
     if (beer == null) {
-      _showNotABeerSheet();
+      _showNotABeerSheet(code);
     } else {
       _showBeerFoundSheet(beer);
     }
@@ -89,21 +90,41 @@ class _BeerScanPageState extends State<BeerScanPage> {
     _controller.start();
   }
 
-  Future<void> _showNotABeerSheet() async {
+  Future<void> _showNotABeerSheet(String code) async {
+    var register = false;
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: _cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => _ResultSheet(
         icon: Icons.no_drinks_outlined,
-        title: 'Geen bier uit Bierkompas',
+        title: 'Onbekend bier',
         message:
-            'Deze barcode hoort niet bij een bier dat we kennen in Bierkompas. We herkennen alleen bieren, geen andere producten.',
-        primaryLabel: 'Opnieuw scannen',
-        onPrimary: () => Navigator.of(context).pop(),
+            'Deze barcode kennen we nog niet in Bierkompas. Is het een bier? Meld het aan, dan voegt een beheerder het toe.',
+        primaryLabel: 'Bier aanmelden',
+        onPrimary: () {
+          register = true;
+          Navigator.of(context).pop();
+        },
+        secondaryLabel: 'Opnieuw scannen',
+        onSecondary: () => Navigator.of(context).pop(),
       ),
     );
-    _resumeScanning();
+    if (!mounted) return;
+    if (!register) {
+      _resumeScanning();
+      return;
+    }
+    final existing = await Navigator.of(context).push<Beer>(
+      MaterialPageRoute(builder: (_) => BeerSubmissionPage(barcode: code)),
+    );
+    if (!mounted) return;
+    if (existing != null) {
+      // Toch een bestaand bier gekozen: dat loggen zoals bij een gewone scan.
+      _showBeerFoundSheet(existing);
+    } else {
+      _resumeScanning();
+    }
   }
 
   Future<void> _showBeerFoundSheet(Beer beer) async {
@@ -334,6 +355,8 @@ class _ResultSheet extends StatelessWidget {
     required this.message,
     required this.primaryLabel,
     required this.onPrimary,
+    this.secondaryLabel,
+    this.onSecondary,
   });
 
   final IconData icon;
@@ -341,6 +364,8 @@ class _ResultSheet extends StatelessWidget {
   final String message;
   final String primaryLabel;
   final VoidCallback onPrimary;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -381,6 +406,17 @@ class _ResultSheet extends StatelessWidget {
               child: Text(primaryLabel, style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
             ),
           ),
+          if (secondaryLabel != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: onSecondary,
+                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                child: Text(secondaryLabel!, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
         ],
       ),
     );

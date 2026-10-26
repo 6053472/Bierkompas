@@ -410,6 +410,10 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'street': _streetController.text.trim(),
         'house_number': _houseNumberController.text.trim(),
         'postal_code': _postalCodeController.text.trim(),
+        // Opgezochte positie bewaren, zodat de kaart het adres niet telkens
+        // opnieuw hoeft op te zoeken.
+        'latitude': geocode.latitude,
+        'longitude': geocode.longitude,
         'city': _cityController.text.trim(),
         'location_name': _locationNameController.text.trim(),
         'description': _descriptionController.text.trim(),
