@@ -76,6 +76,14 @@
     padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; outline: none;
   }
   input.fi:focus, textarea.fi:focus, select.fi:focus { border-color: #fbb97b; box-shadow: 0 0 0 1px #fbb97b; }
+  /* Handleiding: uitklapbare vragen. */
+  .help-item { background: #291d15; border: 1px solid rgba(214,195,181,0.15); border-radius: 0.75rem; margin-bottom: 0.5rem; }
+  .help-item summary { cursor: pointer; list-style: none; padding: 0.85rem 1rem; color: #f6ded1; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; gap: 1rem; }
+  .help-item summary::-webkit-details-marker { display: none; }
+  .help-item summary::after { content: "expand_more"; font-family: "Material Symbols Outlined"; color: #d6c3b5; font-size: 20px; line-height: 1; transition: transform .2s; }
+  .help-item[open] summary::after { transform: rotate(180deg); }
+  .help-item p { padding: 0 1rem 1rem; color: #d6c3b5; font-size: 0.875rem; line-height: 1.6; }
+  .help-item strong { color: #f6ded1; }
   select.fi option { background-color: #251911; color: #f6ded1; }
   /* Placeholders duidelijk leesbaar op de donkere velden (contrast > 4.5:1). */
   body input::placeholder, body textarea::placeholder { color: #a99486; opacity: 1; }
@@ -176,6 +184,7 @@
           <option value="locationbadges">Locatie-badges</option>
           <option value="messages">Berichten</option>
           <option value="imports">Data-imports</option>
+          <option value="help">Handleiding</option>
         </optgroup>
       </select>
     </div>
@@ -253,6 +262,10 @@
       <button data-panel="imports" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
         <span class="material-symbols-outlined">cloud_download</span>
         <span class="font-body text-sm only-desktop-inline">Data-imports</span>
+      </button>
+      <button data-panel="help" class="nav-item flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant transition-colors shrink-0">
+        <span class="material-symbols-outlined">help</span>
+        <span class="font-body text-sm only-desktop-inline">Handleiding</span>
       </button>
     </nav>
     <button id="logout-button" class="md:mt-auto shrink-0 flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-colors">
@@ -903,6 +916,123 @@
     </section>
 
     <!-- Data-imports panel -->
+    <!-- Handleiding voor beheerders -->
+    <section id="panel-help" class="panel p-6 md:p-10 hidden fade-in">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="font-display text-2xl text-on-surface mb-1">Handleiding</h2>
+        <p class="text-on-surface-variant text-sm mb-5">Hoe werkt het beheerpaneel? Zoek een vraag of klap een onderwerp open.</p>
+        <div class="relative mb-6">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+          <input id="help-search" type="text" placeholder="Zoek, bijv. &quot;evenement goedkeuren&quot; of &quot;barcode&quot;" class="fi" style="padding-left:2.5rem"/>
+        </div>
+        <p id="help-empty" class="hidden text-on-surface-variant text-sm py-6 text-center">Geen vragen gevonden. Probeer een ander woord.</p>
+
+        <div id="help-list" class="flex flex-col gap-6">
+
+          <div class="help-group">
+            <h3 class="font-label text-xs uppercase tracking-widest text-primary mb-2">Aan de slag</h3>
+            <details class="help-item">
+              <summary>Wie kan inloggen op het beheerpaneel?</summary>
+              <p>Alleen accounts die als beheerder zijn ingesteld. Je logt in met hetzelfde e-mailadres en wachtwoord als in de app. Een nieuwe beheerder toevoegen gebeurt in de database (Supabase, tabel <em>profiles</em>, veld <em>is_admin</em>); vraag dit aan de ontwikkelaar.</p>
+            </details>
+            <details class="help-item">
+              <summary>Wat betekenen de getallen naast de menu-items?</summary>
+              <p>Dat is het aantal items dat op jou wacht, bijvoorbeeld evenementen of aanmeldingen die nog goedgekeurd moeten worden. Bij "Bieren &amp; barcodes" is het het aantal bieren zonder barcode.</p>
+            </details>
+            <details class="help-item">
+              <summary>Ik heb iets aangepast, maar zie het nog niet in de app.</summary>
+              <p>De meeste wijzigingen zijn direct zichtbaar. Bieren, brouwerijen, muziek en boeken laadt de app bij het opstarten: sluit de app helemaal af en open hem opnieuw.</p>
+            </details>
+            <details class="help-item">
+              <summary>Ik krijg een melding als "Is supabase/... al uitgevoerd?"</summary>
+              <p>Dan mist er een database-update voor dat onderdeel. Geef de melding door aan de ontwikkelaar; die voert het genoemde bestand uit in Supabase.</p>
+            </details>
+          </div>
+
+          <div class="help-group">
+            <h3 class="font-label text-xs uppercase tracking-widest text-primary mb-2">Goedkeuren</h3>
+            <details class="help-item">
+              <summary>Hoe keur ik een evenement goed of af?</summary>
+              <p>Ga naar <strong>Evenementen</strong>. Links staan de evenementen die wachten; klik er een aan voor de details en kies <strong>Goedkeuren</strong> of <strong>Afwijzen</strong>. Na goedkeuren staat het evenement direct in de agenda en op de kaart. Bij afwijzen kun je een reden opgeven; de indiener krijgt een bericht in de app en ziet de reden bij "Mijn evenementen".</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe keur ik een aangemelde brouwerij of horecazaak goed?</summary>
+              <p>Ga naar <strong>Brouwerij-aanmeldingen</strong> of <strong>Horeca-aanmeldingen</strong>, klik op een aanmelding en kies Goedkeuren of Afwijzen. Let op "Positie op kaart": staat daar in rood dat de positie niet is gevonden, dan klopt het adres waarschijnlijk niet en verschijnt de locatie niet op de kaart.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe keur ik een door een gebruiker aangemeld bier goed?</summary>
+              <p>Aangemelde bieren staan bovenaan bij <strong>Bieren &amp; barcodes</strong> onder "Aangemelde bieren" (het blok verschijnt alleen als er aanmeldingen zijn). Controleer eerst of het bier al bestaat; een rode regel "Lijkt op bestaand bier" helpt daarbij. Verbeter zo nodig naam, brouwerij, stijl, alcohol of barcode en kies <strong>Goedkeuren</strong>. Het bier staat daarna voor iedereen in de app en de gebruiker krijgt een bericht. Is het een dubbel of onjuist bier, kies dan <strong>Afwijzen</strong> met een korte reden.</p>
+            </details>
+            <details class="help-item">
+              <summary>Waarom wordt de barcode soms niet overgenomen?</summary>
+              <p>Een barcode kan maar bij één bier horen. Hoort de barcode al bij een ander bier, dan wordt het nieuwe bier zonder barcode opgeslagen. Je kunt de barcode daarna zelf aanpassen in de lijst.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe keur ik reviews en posts van gebruikers goed?</summary>
+              <p>Ga naar <strong>Ontdek-feed</strong>. Posts van gebruikers die wachten op goedkeuring staan daar in een aparte lijst met een knop Goedkeuren. Pas daarna verschijnen ze op de Ontdek-pagina.</p>
+            </details>
+          </div>
+
+          <div class="help-group">
+            <h3 class="font-label text-xs uppercase tracking-widest text-primary mb-2">Inhoud beheren</h3>
+            <details class="help-item">
+              <summary>Kan ik zelf een evenement in de agenda zetten?</summary>
+              <p>Ja. Ga naar <strong>Evenementen</strong> en gebruik het formulier "Nieuw evenement". Kies <strong>Opslaan en publiceren</strong>: het evenement staat direct in de agenda, zonder goedkeuringsronde. Hier zie je ook de gepubliceerde evenementen en kun je ze verwijderen.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe voeg ik een bier toe of stel ik een barcode in?</summary>
+              <p>Ga naar <strong>Bieren &amp; barcodes</strong>. Met <strong>Nieuw bier</strong> maak je een bier aan. In de lijst vul je per bier de barcode (EAN-code op het flesje) in; daarna kunnen gebruikers het bier scannen. Laat het veld leeg om scannen voor dat bier uit te zetten. Met "alleen zonder barcode" zie je welke bieren nog een barcode missen.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe zet ik zelf een brouwerij of café op de kaart?</summary>
+              <p>Ga naar <strong>Locaties toevoegen</strong> en kies <strong>Nieuwe locatie</strong>. Vul het adres in; de positie op de kaart wordt automatisch bepaald en de locatie staat direct op de kaart. De vaste brouwerijen op de kaart bewerk je onderaan dezelfde pagina.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe voeg ik een video toe of pas ik er een aan?</summary>
+              <p>Ga naar <strong>Video's</strong> en kies <strong>Nieuwe video</strong>. Plak een gewone link van YouTube, TikTok of Instagram, of upload een eigen video (maximaal 50 MB). Bij een bestaande video kies je <strong>Bewerken</strong> om titel, categorie, thumbnail of link aan te passen. De video's verschijnen in de app onder "SchuimKraag TV".</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe voeg ik een boek toe met een link om het te kopen?</summary>
+              <p>Ga naar <strong>Boeken</strong> en kies <strong>Nieuw boek</strong>. Vul titel, auteur en een cover-URL in. Optioneel: een bijschrift (bijv. "Tip van de redactie") en een link naar een webwinkel. Met een link toont de app een knop "Bekijk / Kopen".</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe publiceer ik een nieuwsartikel?</summary>
+              <p>Ga naar <strong>Nieuws</strong> en kies <strong>Nieuw artikel</strong>. Vink <strong>Direct publiceren</strong> aan om het meteen in de app te zetten; zonder vinkje blijft het een concept dat alleen jij ziet tot je het publiceert.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe beheer ik feed-items, bier &amp; spijs, muziek en de FAQ voor gebruikers?</summary>
+              <p>Elk onderdeel heeft een eigen pagina in het menu: <strong>Ontdek-feed</strong> (biertips, weetjes, mini-reviews), <strong>Bier &amp; Spijs</strong> (combinaties voor de Foodpairing Hub), <strong>Muziek</strong> (Brouwers Beats) en <strong>Support &amp; FAQ</strong> (de vragen die gebruikers zien onder Profiel &gt; Help &amp; FAQ). Toevoegen gaat via de knop bovenaan, bewerken en verwijderen via de knoppen bij elk item.</p>
+            </details>
+            <details class="help-item">
+              <summary>Welke afbeeldingslink moet ik gebruiken?</summary>
+              <p>Een link die rechtstreeks naar het afbeeldingsbestand wijst (eindigt meestal op .jpg, .png of .webp), niet naar een webpagina. Klik met de rechtermuisknop op de foto en kies "Afbeeldingsadres kopiëren". Het paneel controleert de link bij het opslaan.</p>
+            </details>
+          </div>
+
+          <div class="help-group">
+            <h3 class="font-label text-xs uppercase tracking-widest text-primary mb-2">Gebruikers en gegevens</h3>
+            <details class="help-item">
+              <summary>Hoe stuur ik een bericht naar gebruikers?</summary>
+              <p>Ga naar <strong>Berichten</strong>. Kies de doelgroep: iedereen, gebruikers in een bepaalde woonplaats, of gebruikers die een bepaalde brouwerij of horecazaak als favoriet hebben. Het bericht verschijnt in de app onder Profiel &gt; Berichten (het is geen pushmelding op de telefoon).</p>
+            </details>
+            <details class="help-item">
+              <summary>Wat zijn locatie-badges?</summary>
+              <p>Bij <strong>Locatie-badges</strong> markeer je welke brouwerij een boerderijbrouwerij is of welke zaak een beer garden heeft. Gebruikers die zo'n locatie als favoriet hebben, krijgen de bijbehorende badge. Zonder markering blijft die badge voor iedereen op slot.</p>
+            </details>
+            <details class="help-item">
+              <summary>Waar zie ik hoeveel gebruikers er zijn?</summary>
+              <p>Bij <strong>Statistieken</strong>: actieve gebruikers en het aantal openstaande goedkeuringen. Klik op Vernieuwen voor de laatste cijfers.</p>
+            </details>
+            <details class="help-item">
+              <summary>Hoe werken de data-imports?</summary>
+              <p>Bij <strong>Data-imports</strong> laad je klaargezette gegevens (bierdatabase, agenda-evenementen, nieuws, de evenementenlijst met coördinaten) in de database met de knop Importeren. Je kunt een import veilig opnieuw draaien: bestaande regels worden bijgewerkt, niet dubbel aangemaakt. Geïmporteerde evenementen zijn direct goedgekeurd.</p>
+            </details>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
     <section id="panel-imports" class="panel p-6 md:p-10 hidden fade-in">
       <div class="max-w-3xl mx-auto">
         <div class="mb-6">
@@ -1145,6 +1275,7 @@
     locationbadges: document.getElementById("panel-locationbadges"),
     messages: document.getElementById("panel-messages"),
     imports: document.getElementById("panel-imports"),
+    help: document.getElementById("panel-help"),
   };
 
   const mobilePanelSelect = document.getElementById("mobile-panel-select");
@@ -1157,6 +1288,26 @@
   navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
   mobilePanelSelect.addEventListener("change", () => setActivePanel(mobilePanelSelect.value));
   setActivePanel("events");
+
+  // ---------- Handleiding: zoeken in de vragen ----------
+  const helpSearchEl = document.getElementById("help-search");
+  helpSearchEl.addEventListener("input", () => {
+    const q = helpSearchEl.value.trim().toLowerCase();
+    let shown = 0;
+    document.querySelectorAll("#help-list .help-group").forEach((group) => {
+      let groupShown = 0;
+      group.querySelectorAll(".help-item").forEach((item) => {
+        const match = !q || item.textContent.toLowerCase().includes(q);
+        item.classList.toggle("hidden", !match);
+        if (match) groupShown++;
+        if (q && match) item.open = true;
+        if (!q) item.open = false;
+      });
+      group.classList.toggle("hidden", groupShown === 0);
+      shown += groupShown;
+    });
+    document.getElementById("help-empty").classList.toggle("hidden", shown > 0);
+  });
 
   // ---------- Evenementen goedkeuren ----------
   const eventsListEl = document.getElementById("events-list");
