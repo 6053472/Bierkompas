@@ -3439,6 +3439,19 @@
       key: "beers", title: "Bierdatabase", file: "data/beers_import.json", table: "beer_catalog", conflict: "id",
       source: "Stichting Erfgoed Nederlandse Biercultuur (databank)",
       note: "Biernaam, brouwerij, bierstijl, alcoholpercentage, IBU, gisting en smaaktonen. Untappd-score en aantal beoordelingen staan niet in deze bron en blijven leeg.",
+      countFilter: (q) => q.eq("bron", "Stichting Erfgoed Nederlandse Biercultuur"),
+    },
+    {
+      key: "beers_bbf", title: "Bierdatabase: Belgian Beer Factory", file: "data/beers_belgian_beer_factory.json", table: "beer_catalog", conflict: "id",
+      source: "Belgian Beer Factory (aangeleverde lijst)",
+      note: "Biernaam, brouwerij, inhoud, alcoholpercentage, gisting, kleur en foto. Geschenkboxen en actiepakken zijn weggelaten. Vereist de kolommen image_url en kleur (supabase/add_external_content_imports.sql).",
+      countFilter: (q) => q.eq("bron", "Belgian Beer Factory"),
+    },
+    {
+      key: "beers_mitra", title: "Bierdatabase: Nederland bier (Mitra)", file: "data/beers_nederland_bier.json", table: "beer_catalog", conflict: "id",
+      source: "Mitra (aangeleverde lijst)",
+      note: "Biernaam, brouwerij, inhoud, bierstijl en foto. Dubbele regels, kratten en 6-packs zijn weggelaten; prijzen niet overgenomen. Vereist de kolom image_url (supabase/add_external_content_imports.sql).",
+      countFilter: (q) => q.eq("bron", "Mitra"),
     },
     {
       key: "events", title: "Agenda-evenementen", file: "data/events_import.json", table: "events", conflict: "bron,bron_id,start_date",

@@ -16,6 +16,8 @@ class CatalogBeer {
   final int? untappdAantal;
   final String bron;
   final String? bronUrl;
+  final String? imageUrl;
+  final String? kleur;
 
   const CatalogBeer({
     required this.id,
@@ -33,6 +35,8 @@ class CatalogBeer {
     this.untappdScore,
     this.untappdAantal,
     this.bronUrl,
+    this.imageUrl,
+    this.kleur,
   });
 
   factory CatalogBeer.fromJson(Map<String, dynamic> json) => CatalogBeer(
@@ -51,6 +55,8 @@ class CatalogBeer {
         untappdAantal: (json['untappd_aantal'] as num?)?.toInt(),
         bron: json['bron'] as String? ?? 'Stichting Erfgoed Nederlandse Biercultuur',
         bronUrl: json['bron_url'] as String?,
+        imageUrl: json['image_url'] as String?,
+        kleur: json['kleur'] as String?,
       );
 }
 

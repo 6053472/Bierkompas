@@ -246,6 +246,16 @@ class _BeerCatalogPageState extends State<BeerCatalogPage> {
   }
 }
 
+/// Productfoto uit de bierdatabase (Belgian Beer Factory en Mitra).
+Widget _beerImage(String url, BoxFit fit) => Image.network(
+      url,
+      fit: fit,
+      // Op web laden deze afbeeldingen via een <img>-element als CORS ze blokkeert.
+      webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+      errorBuilder: (context, error, stackTrace) =>
+          const Center(child: Icon(Icons.sports_bar_outlined, color: _onSurfaceVariant)),
+    );
+
 class _BeerCard extends StatelessWidget {
   final CatalogBeer beer;
   final VoidCallback onTap;
@@ -270,6 +280,18 @@ class _BeerCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+            if (beer.imageUrl != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  color: Colors.white,
+                  width: 56,
+                  height: 72,
+                  child: _beerImage(beer.imageUrl!, BoxFit.contain),
+                ),
+              ),
+              const SizedBox(width: 14),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,6 +336,7 @@ class _BeerDetailSheet extends StatelessWidget {
     final rows = <(String, String)>[
       if (beer.stijl != null && beer.stijl!.isNotEmpty) ('Bierstijl', beer.stijl!),
       if (beer.smaakcategorie != null && beer.smaakcategorie!.isNotEmpty) ('Smaakcategorie', beer.smaakcategorie!),
+      if (beer.kleur != null && beer.kleur!.isNotEmpty) ('Kleur', beer.kleur!),
       if (beer.land != null && beer.land!.isNotEmpty) ('Land', beer.land!),
       if (beer.alcohol != null) ('Alcoholpercentage', '${beer.alcohol!.toStringAsFixed(1)}%'),
       if (beer.ibu != null) ('IBU', '${beer.ibu}'),
@@ -335,6 +358,18 @@ class _BeerDetailSheet extends StatelessWidget {
               child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _outlineVariant, borderRadius: BorderRadius.circular(20))),
             ),
             const SizedBox(height: 18),
+            if (beer.imageUrl != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  color: Colors.white,
+                  width: double.infinity,
+                  height: 220,
+                  child: _beerImage(beer.imageUrl!, BoxFit.contain),
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
             Text(beer.naam, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 24, fontWeight: FontWeight.w700)),
             if (beer.brouwerij != null) ...[
               const SizedBox(height: 4),

@@ -4165,6 +4165,11 @@ create index if not exists beer_catalog_naam_idx on public.beer_catalog (lower(n
 create index if not exists beer_catalog_brouwerij_idx on public.beer_catalog (lower(brouwerij));
 create index if not exists beer_catalog_stijl_idx on public.beer_catalog (stijl);
 
+-- Foto en kleur, gevuld door de import van Belgian Beer Factory en Mitra
+-- (supabase/bierdatabase/bierdatabase_belgie_en_nederland.sql).
+alter table public.beer_catalog add column if not exists image_url text;
+alter table public.beer_catalog add column if not exists kleur text;
+
 alter table public.beer_catalog enable row level security;
 
 drop policy if exists "Bierdatabase: iedereen mag lezen" on public.beer_catalog;
