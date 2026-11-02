@@ -59,6 +59,16 @@
     </application>
 
     <queries>
+        <!-- Belknop bij een Biervriend in de chat (tel:-link) -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
+        <!-- "Contact opnemen" bij Bierkompas Support (mailto:-link) -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

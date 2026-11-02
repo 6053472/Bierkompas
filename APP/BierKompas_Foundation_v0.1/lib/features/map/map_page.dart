@@ -24,7 +24,10 @@ import 'horeca.dart';
 import 'horeca_submission_page.dart';
 import 'horeca_submission_service.dart';
 import '../../shared/profile_avatar_button.dart';
+import '../../shared/linkified_text.dart';
 import '../../shared/route_launcher.dart';
+import '../../shared/share_sheet.dart';
+import '../../shared/share_with_friend.dart';
 
 /// De weergaven van de kaart: alles samen, of per soort.
 enum _MapTab { all, breweries, horeca, events, nearby }
@@ -106,16 +109,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   _MapTab get _activeTab => _MapTab.values[_tabController.index];
 
   List<EventPin> _events = [];
-  // null = alle types tonen.
+  // null = alle types tonen; anders een van eventCategories.
   String? _selectedEventType;
-  static const _eventTypeFilters = [
-    'Festival',
-    'Proeverij',
-    'Brouwersmarkt',
-    'Lezing',
-    'Bokbiertocht',
-    'Bierwandeltocht',
-  ];
 
   final _mapController = MapController();
 
@@ -284,11 +279,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<EventPin> get _visibleEvents {
     return _selectedEventType == null
         ? _events
-        : _events.where((e) => e.eventType == _selectedEventType).toList();
+        : _events.where((e) => e.category == _selectedEventType).toList();
   }
 
   IconData _iconForEventType(String type) {
-    switch (type) {
+    switch (eventCategory(type)) {
       case 'Proeverij':
         return Icons.local_bar;
       case 'Brouwersmarkt':
@@ -299,8 +294,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'Bierwandeltocht':
         return Icons.directions_walk;
       case 'Festival':
-      default:
         return Icons.celebration;
+      default:
+        return Icons.event;
     }
   }
 
@@ -1256,7 +1252,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Widget _buildEventTypeFilters() {
-    final types = ['Alle types', ..._eventTypeFilters];
+    final types = ['Alle types', ...eventCategories];
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: SizedBox(
@@ -1823,6 +1819,36 @@ class _BreweryLogo extends StatelessWidget {
   }
 }
 
+/// Deelmenu voor een brouwerij of horecazaak, met "Deel met een Biervriend"
+/// (stuurt een chatbericht met naam en plaats).
+void _shareLocation(BuildContext context, {required String name, required String place, String? kind}) {
+  final where = place.isNotEmpty ? ' in $place' : '';
+  showAppShareSheet(
+    context,
+    shareText: 'Ken je ${kind != null ? '$kind ' : ''}$name$where? Bekijk het in Bierkompas! \u{1F37B}',
+    subject: name,
+    title: 'Locatie delen',
+    onShared: recordBadgeShareAction,
+    extraOption: (sheetContext) => shareWithFriendOption(
+      sheetContext,
+      context: context,
+      body: '\u{1F4CD} $name$where. Zullen we hier een keer samen heen gaan?',
+    ),
+  );
+}
+
+/// Rond knopje rechtsboven op de foto van een detail-sheet (delen, favoriet).
+Widget _photoButton({required IconData icon, required Color color, required VoidCallback onTap}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+      child: Icon(icon, color: color, size: 18),
+    ),
+  );
+}
+
 class _BreweryDetailSheet extends StatelessWidget {
   const _BreweryDetailSheet({required this.brewery, required this.isFavorite, required this.onFavoriteTap});
 
@@ -1874,13 +1900,20 @@ class _BreweryDetailSheet extends StatelessWidget {
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: GestureDetector(
-                    onTap: onFavoriteTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? _primary : Colors.white, size: 18),
-                    ),
+                  child: Row(
+                    children: [
+                      _photoButton(
+                        icon: Icons.ios_share,
+                        color: Colors.white,
+                        onTap: () => _shareLocation(context, name: brewery.title, place: brewery.location, kind: 'brouwerij'),
+                      ),
+                      const SizedBox(width: 8),
+                      _photoButton(
+                        icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? _primary : Colors.white,
+                        onTap: onFavoriteTap,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1914,7 +1947,7 @@ class _BreweryDetailSheet extends StatelessWidget {
                   RouteButton(latitude: brewery.latitude, longitude: brewery.longitude),
                   if (brewery.about.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text(brewery.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                    LinkifiedText(brewery.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
                   ],
                   if (brewery.tags.isNotEmpty) ...[
                     const SizedBox(height: 16),
@@ -1995,13 +2028,20 @@ class _HorecaDetailSheet extends StatelessWidget {
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: GestureDetector(
-                    onTap: onFavoriteTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                      child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? _primary : Colors.white, size: 18),
-                    ),
+                  child: Row(
+                    children: [
+                      _photoButton(
+                        icon: Icons.ios_share,
+                        color: Colors.white,
+                        onTap: () => _shareLocation(context, name: venue.title, place: venue.location),
+                      ),
+                      const SizedBox(width: 8),
+                      _photoButton(
+                        icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? _primary : Colors.white,
+                        onTap: onFavoriteTap,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -2026,7 +2066,7 @@ class _HorecaDetailSheet extends StatelessWidget {
                   RouteButton(latitude: venue.latitude, longitude: venue.longitude),
                   if (venue.about.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text(venue.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                    LinkifiedText(venue.about, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
                   ],
                 ],
               ),
@@ -2085,7 +2125,7 @@ class _EventDetailSheet extends StatelessWidget {
             ],
             if (event.description != null && event.description!.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text(event.description!, maxLines: 4, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.4)),
+              LinkifiedText(event.description!, maxLines: 4, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.4)),
             ],
             if (prices.isNotEmpty) ...[
               const SizedBox(height: 12),

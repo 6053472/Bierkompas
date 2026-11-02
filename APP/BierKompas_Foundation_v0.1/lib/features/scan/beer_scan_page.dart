@@ -5,6 +5,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../favorites/beers.dart';
+import '../profile/chat_service.dart';
+import '../../shared/share_sheet.dart';
+import '../../shared/share_with_friend.dart';
 import 'beer_scan_service.dart';
 import 'beer_submission_page.dart';
 import 'web_camera_cleanup.dart';
@@ -439,6 +442,29 @@ class _BeerFoundSheet extends StatelessWidget {
   final String? error;
   final bool loggedIn;
 
+  void _share(BuildContext context) {
+    showAppShareSheet(
+      context,
+      shareText: 'Ken je ${beer.name} (${beer.style})? Bekijk het in Bierkompas! \u{1F37A}',
+      subject: beer.name,
+      title: 'Bier delen',
+      onShared: recordBadgeShareAction,
+      extraOption: (sheetContext) => shareWithFriendOption(
+        sheetContext,
+        context: context,
+        body: 'Heb je deze al eens geprobeerd?',
+        type: MessageType.beerShare,
+        metadata: {
+          'id': beer.id,
+          'name': beer.name,
+          'style': beer.style,
+          'abv': beer.abv,
+          'image_url': beer.imageUrl,
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -489,6 +515,11 @@ class _BeerFoundSheet extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Delen',
+                  icon: const Icon(Icons.ios_share, color: _primary, size: 20),
+                  onPressed: () => _share(context),
                 ),
               ],
             ),

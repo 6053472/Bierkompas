@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../favorites/beers.dart';
 import '../../shared/image_utils.dart';
 import 'chat_service.dart';
+import 'friend_phone_service.dart';
 import 'friends_service.dart';
 
 const _bg = Color(0xFF1E1712);
@@ -131,6 +133,32 @@ class _ChatPageState extends State<ChatPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature komt binnenkort beschikbaar.')),
     );
+  }
+
+  /// Opent de telefoon-app met het nummer van de vriend, als die zijn
+  /// nummer deelt (Profiel bewerken -> "Biervrienden mogen mij bellen").
+  Future<void> _call() async {
+    String? phone;
+    try {
+      phone = await FriendPhoneService().friendPhone(widget.friend.id);
+    } on FriendPhoneException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!mounted) return;
+    if (phone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${widget.friend.name} deelt (nog) geen telefoonnummer.')),
+      );
+      return;
+    }
+    final opened = await launchUrl(Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'[^0-9+]'), '')));
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kon de telefoon-app niet openen.')),
+      );
+    }
   }
 
   Future<void> _pickAndSendPhoto() async {
@@ -395,7 +423,8 @@ class _ChatPageState extends State<ChatPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.call_outlined, color: _gold),
-            onPressed: () => _comingSoon('Bellen'),
+            tooltip: 'Bellen',
+            onPressed: _call,
           ),
           IconButton(
             icon: const Icon(Icons.more_vert, color: _cream),

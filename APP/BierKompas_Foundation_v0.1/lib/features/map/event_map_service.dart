@@ -26,6 +26,9 @@ class EventPin {
   final double latitude;
   final double longitude;
 
+  /// De filtercategorie op de kaart (zie [eventCategory]).
+  String get category => eventCategory(eventType);
+
   const EventPin({
     required this.id,
     required this.name,
@@ -41,6 +44,34 @@ class EventPin {
     this.ticketVip = false,
     this.price = 0,
   });
+}
+
+/// De filtercategorieën op de kaart, gelijk aan de types bij "Evenement
+/// aanmaken". Geïmporteerde evenementen hebben vrijere types ("Bierproeverij",
+/// "Tap Takeover", ...); [eventCategory] deelt die in.
+const eventCategories = [
+  'Festival',
+  'Proeverij',
+  'Brouwersmarkt',
+  'Lezing',
+  'Bokbiertocht',
+  'Bierwandeltocht',
+  'Overig',
+];
+
+/// Deelt een event_type in bij een van de [eventCategories].
+String eventCategory(String eventType) {
+  final type = eventType.toLowerCase();
+  bool has(List<String> words) => words.any(type.contains);
+
+  final isTour = has(['wandel', 'tocht', 'fiets', 'run']);
+  if (isTour && type.contains('bok')) return 'Bokbiertocht';
+  if (isTour) return 'Bierwandeltocht';
+  if (has(['festival', 'oktoberfest', 'bierweek'])) return 'Festival';
+  if (has(['proeverij', 'proef', 'tasting', 'takeover', 'bottleshare', 'diner', 'masterclass'])) return 'Proeverij';
+  if (has(['markt', 'beurs'])) return 'Brouwersmarkt';
+  if (has(['lezing', 'rondleiding', 'tentoonstelling', 'workshop'])) return 'Lezing';
+  return 'Overig';
 }
 
 /// Haalt goedgekeurde evenementen op en bepaalt hun positie op de kaart.

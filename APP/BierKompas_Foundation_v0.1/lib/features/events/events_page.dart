@@ -8,6 +8,7 @@ import '../profile/friends_service.dart';
 import 'admin_events_page.dart';
 import 'event_create.dart';
 import '../../shared/profile_avatar_button.dart';
+import '../../shared/linkified_text.dart';
 import '../../shared/route_launcher.dart';
 import '../../shared/share_sheet.dart';
 
@@ -2534,7 +2535,7 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                           const SizedBox(
                             height: 8,
                           ),
-                          Text(
+                          LinkifiedText(
                             description,
                             style:
                                 GoogleFonts.inter(

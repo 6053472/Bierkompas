@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'faq_service.dart';
+
+/// Adres waar "Contact opnemen" een mail naartoe opent.
+const supportEmail = 'joubierkompas@outlook.com';
 
 const _background = Color(0xFF1E1712);
 const _cardColor = Color(0xFF2C221C);
@@ -62,15 +66,17 @@ class _FaqPageState extends State<FaqPage> {
               return const Center(child: CircularProgressIndicator(color: _primary));
             }
             if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
+              return ListView(
+                padding: const EdgeInsets.all(32),
+                children: [
+                  Text(
                     'Kon de veelgestelde vragen niet laden: ${snapshot.error}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.openSans(color: _onSurfaceVariant),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  const _ContactCard(),
+                ],
               );
             }
 
@@ -116,6 +122,8 @@ class _FaqPageState extends State<FaqPage> {
                         items: visible.where((i) => i.category == key).toList(),
                         initiallyExpanded: _query.trim().isNotEmpty,
                       ),
+                const SizedBox(height: 8),
+                const _ContactCard(),
               ],
             );
           },
@@ -128,6 +136,67 @@ class _FaqPageState extends State<FaqPage> {
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: Text(text, textAlign: TextAlign.center, style: GoogleFonts.openSans(color: _onSurfaceVariant)),
       );
+}
+
+/// "Staat je vraag er niet tussen?" met een knop die een mail opent naar
+/// [supportEmail].
+class _ContactCard extends StatelessWidget {
+  const _ContactCard();
+
+  Future<void> _mail(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: supportEmail,
+      query: 'subject=${Uri.encodeComponent('Vraag over de Bierkompas-app')}',
+    );
+    final opened = await launchUrl(uri);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geen mail-app gevonden. Mail ons op $supportEmail.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant.withOpacity(0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Staat je vraag er niet tussen?',
+              style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 17, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text('Stuur ons een mail, we helpen je graag verder.',
+              style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 13)),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _mail(context),
+              icon: const Icon(Icons.mail_outline, size: 18),
+              label: Text('Contact opnemen', style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: _background,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: SelectableText(supportEmail, style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CategoryCard extends StatelessWidget {

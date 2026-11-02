@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../shared/image_utils.dart';
 import '../auth/auth_service.dart';
+import 'friend_phone_service.dart';
 
 class ProfileEditPage extends StatefulWidget {
   final AppUser? user;
@@ -20,6 +21,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late final TextEditingController _emailController;
   final _cityController = TextEditingController();
   String? _originalCity;
+  final _phoneService = FriendPhoneService();
+  final _phoneController = TextEditingController();
+  OwnPhone? _originalPhone;
+  bool _sharePhone = false;
   bool _isLoading = false;
   bool _isUploadingAvatar = false;
   String? _error;
@@ -39,6 +44,18 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _emailController = TextEditingController(text: widget.user?.email ?? '');
     _avatarUrl = widget.user?.avatarUrl;
     _loadCity();
+    _loadPhone();
+  }
+
+  Future<void> _loadPhone() async {
+    if (widget.user == null) return;
+    final phone = await _phoneService.fetchOwn(widget.user!.id);
+    if (!mounted) return;
+    setState(() {
+      _originalPhone = phone;
+      _phoneController.text = phone?.phone ?? '';
+      _sharePhone = phone?.shareWithFriends ?? false;
+    });
   }
 
   Future<void> _loadCity() async {
@@ -87,6 +104,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _nameController.dispose();
     _emailController.dispose();
     _cityController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -111,9 +129,19 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           city: city.isEmpty ? null : city,
         );
       }
+      final phone = _phoneController.text.trim();
+      if (phone != (_originalPhone?.phone ?? '') || _sharePhone != (_originalPhone?.shareWithFriends ?? false)) {
+        await _phoneService.saveOwn(
+          userId: widget.user!.id,
+          phone: phone,
+          shareWithFriends: _sharePhone,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(updated.copyWith(avatarUrl: _avatarUrl));
     } on AuthException catch (e) {
+      setState(() => _error = e.message);
+    } on FriendPhoneException catch (e) {
       setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -252,6 +280,35 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                       Text(
                         'Dan ontvang je berichten over bierevenementen en nieuws in jouw regio.',
                         style: GoogleFonts.inter(color: _muted, fontSize: 11.5),
+                      ),
+                      const SizedBox(height: 14),
+                      _buildTextField(
+                        controller: _phoneController,
+                        label: 'Telefoonnummer (optioneel)',
+                        icon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        validator: (v) {
+                          final digits = (v ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+                          if ((v ?? '').trim().isEmpty) return null;
+                          if (digits.length < 9 || !RegExp(r'^\+?[0-9 ()-]+$').hasMatch(v!.trim())) {
+                            return 'Vul een geldig telefoonnummer in.';
+                          }
+                          return null;
+                        },
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _sharePhone,
+                        onChanged: (value) => setState(() => _sharePhone = value),
+                        activeColor: _gold,
+                        title: Text(
+                          'Biervrienden mogen mij bellen',
+                          style: GoogleFonts.inter(color: _cream, fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          'Alleen bevestigde vrienden zien je nummer, via de belknop in de chat.',
+                          style: GoogleFonts.inter(color: _muted, fontSize: 11.5),
+                        ),
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 14),

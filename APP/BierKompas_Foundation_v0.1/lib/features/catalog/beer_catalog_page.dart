@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../profile/chat_service.dart';
+import '../../shared/share_sheet.dart';
+import '../../shared/share_with_friend.dart';
 import 'beer_catalog_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -331,6 +334,33 @@ class _BeerDetailSheet extends StatelessWidget {
 
   const _BeerDetailSheet({required this.beer});
 
+  void _share(BuildContext context) {
+    final details = [
+      beer.naam,
+      if (beer.brouwerij != null && beer.brouwerij!.isNotEmpty) 'van ${beer.brouwerij}',
+      if (beer.stijl != null && beer.stijl!.isNotEmpty) '(${beer.stijl})',
+    ].join(' ');
+    showAppShareSheet(
+      context,
+      shareText: 'Ken je $details? Bekijk het in Bierkompas! \u{1F37A}',
+      subject: beer.naam,
+      title: 'Bier delen',
+      onShared: recordBadgeShareAction,
+      extraOption: (sheetContext) => shareWithFriendOption(
+        sheetContext,
+        context: context,
+        body: 'Heb je deze al eens geprobeerd?',
+        type: MessageType.beerShare,
+        metadata: {
+          'id': beer.id,
+          'name': beer.naam,
+          'style': beer.stijl ?? '',
+          'abv': beer.alcohol != null ? '${beer.alcohol!.toStringAsFixed(1)}%' : '',
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final rows = <(String, String)>[
@@ -370,7 +400,19 @@ class _BeerDetailSheet extends StatelessWidget {
               ),
               const SizedBox(height: 18),
             ],
-            Text(beer.naam, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 24, fontWeight: FontWeight.w700)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(beer.naam, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 24, fontWeight: FontWeight.w700)),
+                ),
+                IconButton(
+                  tooltip: 'Delen',
+                  icon: const Icon(Icons.ios_share, color: _primary, size: 20),
+                  onPressed: () => _share(context),
+                ),
+              ],
+            ),
             if (beer.brouwerij != null) ...[
               const SizedBox(height: 4),
               Text(beer.brouwerij!, style: GoogleFonts.openSans(color: _primary, fontSize: 14)),

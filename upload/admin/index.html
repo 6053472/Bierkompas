@@ -868,6 +868,7 @@
           </button>
         </div>
         <div id="loc-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
+          <h3 id="loc-form-title" class="font-display text-lg text-on-surface mb-4">Nieuwe locatie</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
               <select id="loc-new-type" class="fi"><option value="brewery">Brouwerij</option><option value="horeca">Proeflokaal / biergelegenheid (horeca)</option></select></label>
@@ -2537,18 +2538,38 @@
   const newsNewSaveBtn = document.getElementById("news-new-save");
   const newsNewSaveLabel = document.getElementById("news-new-save-label");
 
-  newsNewToggle.addEventListener("click", () => newsNewForm.classList.toggle("hidden"));
+  newsNewToggle.addEventListener("click", () => {
+    // Na "Bewerken" opent de knop weer een leeg formulier voor een nieuw artikel.
+    if (editingNews) clearNewsNewForm();
+    newsNewForm.classList.toggle("hidden");
+  });
   document.getElementById("news-new-cancel").addEventListener("click", () => {
     newsNewForm.classList.add("hidden");
     clearNewsNewForm();
   });
+
+  let editingNews = null;
 
   function clearNewsNewForm() {
     ["titel", "samenvatting", "inhoud", "foto"].forEach((field) => {
       document.getElementById(`news-new-${field}`).value = "";
     });
     document.getElementById("news-new-published").checked = false;
+    document.getElementById("news-form-title").textContent = "Nieuw artikel";
     newsNewError.classList.add("hidden");
+    editingNews = null;
+  }
+  function editNews(article) {
+    clearNewsNewForm();
+    editingNews = article;
+    document.getElementById("news-form-title").textContent = "Artikel bewerken";
+    document.getElementById("news-new-titel").value = article.titel || "";
+    document.getElementById("news-new-samenvatting").value = article.samenvatting || "";
+    document.getElementById("news-new-inhoud").value = article.inhoud || "";
+    document.getElementById("news-new-foto").value = article.foto_url || "";
+    document.getElementById("news-new-published").checked = article.status === "gepubliceerd";
+    newsNewForm.classList.remove("hidden");
+    newsNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   newsNewSaveBtn.addEventListener("click", async () => {
@@ -2578,14 +2599,18 @@
     newsNewSaveLabel.innerHTML = '<span class="spinner"></span> Opslaan...';
 
     const published = document.getElementById("news-new-published").checked;
-    const { error } = await client.from("news_articles").insert({
+    const values = {
       titel,
       samenvatting,
       inhoud,
       foto_url: fotoUrl,
       status: published ? "gepubliceerd" : "concept",
-      gepubliceerd_op: new Date().toISOString(),
-    });
+    };
+    // Bij bewerken blijft de oorspronkelijke publicatiedatum (en dus de
+    // volgorde in de app) staan.
+    const { error } = editingNews
+      ? await client.from("news_articles").update(values).eq("id", editingNews.id)
+      : await client.from("news_articles").insert({ ...values, gepubliceerd_op: new Date().toISOString() });
 
     newsNewSaveBtn.disabled = false;
     newsNewSaveLabel.textContent = "Opslaan";
@@ -2641,6 +2666,9 @@
           <button class="toggle-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs">
             ${published ? "Terug naar concept" : "Publiceren"}
           </button>
+          <button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs flex items-center gap-1" title="Bewerken">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+          </button>
           <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs flex items-center gap-1">
             <span class="material-symbols-outlined text-[16px]">delete</span>
           </button>
@@ -2657,6 +2685,8 @@
         }
         loadNews();
       });
+
+      row.querySelector(".edit-btn").addEventListener("click", () => editNews(article));
 
       row.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${article.titel}" verwijderen?`)) return;
@@ -3195,11 +3225,44 @@
   const locListEl = document.getElementById("loc-list");
   const LOC_TABLES = { brewery: "brewery_submissions", horeca: "horeca_submissions" };
 
+  let editingLoc = null;
+
   function clearLocForm() {
     ["naam", "street", "number", "postal", "city", "desc", "photo"].forEach((f) => (document.getElementById(`loc-new-${f}`).value = ""));
+    document.getElementById("loc-new-type").disabled = false;
+    document.getElementById("loc-form-title").textContent = "Nieuwe locatie";
     locNewError.classList.add("hidden");
+    editingLoc = null;
   }
-  document.getElementById("loc-new-toggle").addEventListener("click", () => locNewForm.classList.toggle("hidden"));
+  async function editLocation(row) {
+    const { data, error } = await client.from(LOC_TABLES[row.type]).select("*").eq("id", row.id).single();
+    if (error) {
+      alert(`Locatie ophalen mislukt: ${error.message}`);
+      return;
+    }
+    clearLocForm();
+    editingLoc = { ...data, type: row.type };
+    document.getElementById("loc-form-title").textContent = "Locatie bewerken";
+    // Soort wisselen zou de locatie naar een andere tabel verplaatsen; daarvoor
+    // verwijder je hem en voeg je hem opnieuw toe.
+    const typeSelect = document.getElementById("loc-new-type");
+    typeSelect.value = row.type;
+    typeSelect.disabled = true;
+    document.getElementById("loc-new-naam").value = data.naam || "";
+    document.getElementById("loc-new-street").value = data.street || "";
+    document.getElementById("loc-new-number").value = data.house_number || "";
+    document.getElementById("loc-new-postal").value = data.postal_code || "";
+    document.getElementById("loc-new-city").value = data.city || "";
+    document.getElementById("loc-new-desc").value = data.beschrijving || "";
+    document.getElementById("loc-new-photo").value = data.photo_url || "";
+    locNewForm.classList.remove("hidden");
+    locNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.getElementById("loc-new-toggle").addEventListener("click", () => {
+    // Na "Bewerken" opent de knop weer een leeg formulier voor een nieuwe locatie.
+    if (editingLoc) clearLocForm();
+    locNewForm.classList.toggle("hidden");
+  });
   document.getElementById("loc-new-cancel").addEventListener("click", () => {
     locNewForm.classList.add("hidden");
     clearLocForm();
@@ -3229,7 +3292,14 @@
       resetBtn();
       return showFormError(locNewError, "De foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
     }
-    const coords = await geocodeAddress(street, number, postal, city);
+    // Bij bewerken met ongewijzigd adres de bestaande positie houden.
+    const sameAddress = editingLoc
+      && editingLoc.street === street && editingLoc.house_number === number
+      && editingLoc.postal_code === postal && editingLoc.city === city
+      && editingLoc.latitude != null && editingLoc.longitude != null;
+    const coords = sameAddress
+      ? { lat: editingLoc.latitude, lng: editingLoc.longitude }
+      : await geocodeAddress(street, number, postal, city);
     if (!coords) {
       resetBtn();
       return showFormError(locNewError, "Dit adres is niet gevonden op de kaart. Controleer straat, huisnummer, postcode en plaats. Zonder positie kan de locatie niet op de kaart staan.");
@@ -3240,8 +3310,7 @@
       return showFormError(locNewError, "Je bent niet meer ingelogd. Log opnieuw in.");
     }
 
-    const { error } = await client.from(LOC_TABLES[type]).insert({
-      user_id: adminId,
+    const values = {
       naam,
       beschrijving: document.getElementById("loc-new-desc").value.trim() || null,
       street,
@@ -3251,10 +3320,16 @@
       latitude: coords.lat,
       longitude: coords.lng,
       photo_url: photo,
-      status: "approved",
-      approved_at: new Date().toISOString(),
-      approved_by: adminId,
-    });
+    };
+    const { error } = editingLoc
+      ? await client.from(LOC_TABLES[editingLoc.type]).update(values).eq("id", editingLoc.id)
+      : await client.from(LOC_TABLES[type]).insert({
+          ...values,
+          user_id: adminId,
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          approved_by: adminId,
+        });
     resetBtn();
     if (error) return showFormError(locNewError, `Opslaan mislukt: ${error.message}`);
 
@@ -3295,9 +3370,13 @@
           <p class="text-on-surface text-sm truncate">${escapeHtml(row.naam)}</p>
           <p class="text-on-surface-variant text-xs truncate">${typeLabel} &middot; ${escapeHtml(row.city || "")}</p>
         </div>
+        <button class="edit-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs shrink-0" title="Bewerken">
+          <span class="material-symbols-outlined text-[16px]">edit</span>
+        </button>
         <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0">
           <span class="material-symbols-outlined text-[16px]">delete</span>
         </button>`;
+      item.querySelector(".edit-btn").addEventListener("click", () => editLocation(row));
       item.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${row.naam}" verwijderen? Dit haalt de locatie van de kaart.`)) return;
         const { error } = await client.from(LOC_TABLES[row.type]).delete().eq("id", row.id);
