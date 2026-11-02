@@ -101,6 +101,7 @@ class HorecaSubmissionService {
           latitude: row['latitude'] as double,
           longitude: row['longitude'] as double,
           imageUrl: row['photo_url'] as String?,
+          website: row['website'] as String?,
         );
       }).toList();
     } catch (_) {

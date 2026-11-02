@@ -12,6 +12,18 @@ class HorecaVenue {
   final double longitude;
   final String? imageUrl;
 
+  /// Website van de zaak (uit de horecalijst van de klant), of null.
+  final String? website;
+
+  /// Logo (favicon) van de website, via dezelfde Google-dienst als bij de
+  /// brouwerijen. Null zonder website.
+  String? get logoUrl {
+    final site = website;
+    if (site == null || site.isEmpty) return null;
+    final host = Uri.tryParse(site.contains('://') ? site : 'https://$site')?.host ?? '';
+    return host.isEmpty ? null : 'https://www.google.com/s2/favicons?domain=$host&sz=128';
+  }
+
   const HorecaVenue({
     required this.id,
     required this.title,
@@ -20,5 +32,6 @@ class HorecaVenue {
     required this.latitude,
     required this.longitude,
     this.imageUrl,
+    this.website,
   });
 }

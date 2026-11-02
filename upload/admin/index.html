@@ -3545,6 +3545,12 @@
       countFilter: (q) => q.eq("bron", "klant_evenementenlijst"),
     },
     {
+      key: "horeca_klant", title: "Horecalijst klant (met coördinaten)", file: "data/horeca_klant_import.json", table: "horeca_submissions", conflict: "bron,bron_id",
+      source: "Aangeleverde Excel 'speciaalbier horeca' (NL en BE, nov 2026)",
+      note: "80 gecontroleerde zaken (de eerste 40 per lijst): coördinaten liggen in de juiste stad. De overige regels uit de lijsten zijn niet geïmporteerd omdat adres en website niet klopten. Vereist supabase/add_horeca_import.sql. Staan direct op de kaart.",
+      countFilter: (q) => q.eq("bron", "klant_horecalijst"),
+    },
+    {
       key: "news", title: "Nieuws", file: "data/news_import.json", table: "news_articles", conflict: "bron_url",
       source: "Stichting Erfgoed Nederlandse Biercultuur (nieuws, persberichten en 'in het nieuws')",
       note: "Titel, korte samenvatting en een link naar de bron; de volledige tekst blijft bij de bron. Direct gepubliceerd; je kunt ze onder Nieuws terug naar concept zetten.",
@@ -3608,6 +3614,13 @@
           ...r, user_id: adminId, status: "approved", approved_at: now, approved_by: adminId,
           ticket_regular: false, ticket_beer: false, ticket_vip: false, price: 0, price_incl_btw: true, price_excl_btw: false,
         }));
+      }
+
+      if (imp.table === "horeca_submissions") {
+        const adminId = await currentAdminId();
+        if (!adminId) throw new Error("Je bent niet meer ingelogd. Log opnieuw in.");
+        const now = new Date().toISOString();
+        rows = rows.map((r) => ({ ...r, user_id: adminId, status: "approved", approved_at: now, approved_by: adminId }));
       }
 
       const BATCH = 300;
