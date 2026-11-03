@@ -4328,6 +4328,26 @@ where not exists (
 
 -- 1. Brouwerijen op de kaart. De id's zijn dezelfde als in de app, zodat
 -- favorieten en feed-posts die naar een brouwerij verwijzen blijven kloppen.
+
+-- Er kan al een tabel "breweries" bestaan met een ander (ouder) ontwerp,
+-- zonder kolom "title". Dan slaat "create table if not exists" hem over en
+-- mislukt de insert hieronder. Zo'n tabel wordt eerst opgeruimd: is hij leeg,
+-- dan verwijderd; staan er toch gegevens in, dan hernoemd naar
+-- breweries_oud_schema zodat er niets verloren gaat.
+do $mig$
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'breweries')
+       and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'breweries' and column_name = 'title') then
+        if exists (select 1 from public.breweries) then
+            alter table public.breweries rename to breweries_oud_schema;
+            alter index if exists public.breweries_pkey rename to breweries_oud_schema_pkey;
+        else
+            drop table public.breweries cascade;
+        end if;
+    end if;
+end;
+$mig$;
+
 create table if not exists public.breweries (
     id integer primary key,
     title text not null,
