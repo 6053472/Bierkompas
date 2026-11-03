@@ -340,6 +340,7 @@
         </div>
 
         <h3 class="font-display text-lg text-on-surface mt-10 mb-3">Gepubliceerde evenementen</h3>
+        <input type="text" data-filter-list="events-published-list" placeholder="Zoek op naam of plaats..." class="fi mb-3"/>
         <div id="events-published-list" class="flex flex-col gap-2"></div>
       </div>
     </section>
@@ -878,6 +879,8 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Postcode*</span><input id="loc-new-postal" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="loc-new-city" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Beschrijving (optioneel)</span><textarea id="loc-new-desc" rows="3" class="fi"></textarea></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Website (optioneel)</span><input id="loc-new-website" type="text" placeholder="https://www.voorbeeld.nl" class="fi"/>
+              <span class="text-xs text-on-surface-variant/70">Wordt in de app een klikbare link; het logo wordt via de website opgehaald.</span></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="loc-new-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
           </div>
           <p id="loc-new-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
@@ -887,6 +890,7 @@
           </div>
         </div>
         <h3 class="font-display text-lg text-on-surface mt-6 mb-3">Gepubliceerde locaties</h3>
+        <input type="text" data-filter-list="loc-list" placeholder="Zoek op naam of plaats..." class="fi mb-3"/>
         <div id="loc-list" class="flex flex-col gap-2"></div>
 
         <h3 class="font-display text-lg text-on-surface mt-10 mb-1">Vaste brouwerijen op de kaart</h3>
@@ -1289,6 +1293,19 @@
   navItems.forEach((btn) => btn.addEventListener("click", () => setActivePanel(btn.dataset.panel)));
   mobilePanelSelect.addEventListener("change", () => setActivePanel(mobilePanelSelect.value));
   setActivePanel("events");
+
+  // ---------- Zoekveld boven lange beheerlijsten ----------
+  document.querySelectorAll("input[data-filter-list]").forEach((input) => {
+    const list = document.getElementById(input.dataset.filterList);
+    const apply = () => {
+      const q = input.value.trim().toLowerCase();
+      Array.from(list.children).forEach((row) => {
+        row.classList.toggle("hidden", !!q && !row.textContent.toLowerCase().includes(q));
+      });
+    };
+    input.addEventListener("input", apply);
+    new MutationObserver(apply).observe(list, { childList: true });
+  });
 
   // ---------- Handleiding: zoeken in de vragen ----------
   const helpSearchEl = document.getElementById("help-search");
@@ -3223,12 +3240,19 @@
   const locNewForm = document.getElementById("loc-new-form");
   const locNewError = document.getElementById("loc-new-error");
   const locListEl = document.getElementById("loc-list");
+  // "www.x.nl" of "x.nl" -> "https://www.x.nl"; leeg -> null.
+  function normalizeWebsite(raw) {
+    const v = (raw || "").trim();
+    if (!v) return null;
+    return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  }
+
   const LOC_TABLES = { brewery: "brewery_submissions", horeca: "horeca_submissions" };
 
   let editingLoc = null;
 
   function clearLocForm() {
-    ["naam", "street", "number", "postal", "city", "desc", "photo"].forEach((f) => (document.getElementById(`loc-new-${f}`).value = ""));
+    ["naam", "street", "number", "postal", "city", "desc", "photo", "website"].forEach((f) => (document.getElementById(`loc-new-${f}`).value = ""));
     document.getElementById("loc-new-type").disabled = false;
     document.getElementById("loc-form-title").textContent = "Nieuwe locatie";
     locNewError.classList.add("hidden");
@@ -3255,6 +3279,7 @@
     document.getElementById("loc-new-city").value = data.city || "";
     document.getElementById("loc-new-desc").value = data.beschrijving || "";
     document.getElementById("loc-new-photo").value = data.photo_url || "";
+    document.getElementById("loc-new-website").value = data.website || "";
     locNewForm.classList.remove("hidden");
     locNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3320,6 +3345,7 @@
       latitude: coords.lat,
       longitude: coords.lng,
       photo_url: photo,
+      website: normalizeWebsite(document.getElementById("loc-new-website").value),
     };
     const { error } = editingLoc
       ? await client.from(LOC_TABLES[editingLoc.type]).update(values).eq("id", editingLoc.id)
@@ -3341,7 +3367,7 @@
   async function loadLocationsAdmin() {
     const [breweries, horeca] = await Promise.all(
       Object.values(LOC_TABLES).map((table) =>
-        client.from(table).select("id, naam, city, photo_url, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(200)
+        client.from(table).select("id, naam, city, photo_url, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(1000)
       )
     );
     const failure = breweries.error || horeca.error;
@@ -3475,7 +3501,7 @@
       .select("id, name, city, start_date")
       .eq("status", "approved")
       .order("start_date", { ascending: false })
-      .limit(100);
+      .limit(1000);
     if (error) {
       eventsPublishedListEl.innerHTML = `<p class="text-error text-sm">Kon evenementen niet laden: ${escapeHtml(error.message)}</p>`;
       return;

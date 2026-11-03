@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../shared/cover_image.dart';
 import '../../shared/share_sheet.dart';
 import 'books.dart';
+import 'books_service.dart';
 
 const _background = Color(0xFF1E1712);
 const _cardColor = Color(0xFF2C221C);
@@ -37,6 +38,9 @@ class _BooksPageState extends State<BooksPage> {
   }
 
   Future<void> _load() async {
+    // Nieuwste boeken uit het beheer ophalen, zodat net toegevoegde boeken
+    // meteen zichtbaar zijn.
+    await loadCustomBooks();
     final statuses = await _store.load();
     if (!mounted) return;
     setState(() => _statuses = statuses);

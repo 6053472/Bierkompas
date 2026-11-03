@@ -103,7 +103,11 @@ class BrewerySubmissionService {
           tags: const ['COMMUNITY'],
           location: row['city'] as String? ?? '',
           about: row['beschrijving'] as String? ?? '',
-          facts: const [],
+          // Website als weetje: de app maakt er een klikbare link van en haalt
+          // er het logo mee op (zie Brewery.logoUrl).
+          facts: [
+            if ((row['website'] as String?)?.trim().isNotEmpty ?? false) 'Website: ${(row['website'] as String).trim()}',
+          ],
           latitude: row['latitude'] as double,
           longitude: row['longitude'] as double,
           imageUrl: row['photo_url'] as String?,

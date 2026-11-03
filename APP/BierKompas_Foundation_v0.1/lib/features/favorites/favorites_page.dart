@@ -6,6 +6,9 @@ import '../feed/feed_card.dart';
 import '../feed/feed_service.dart';
 import '../map/breweries.dart';
 import '../map/brewery_fact_text.dart';
+import '../map/brewery_submission_service.dart';
+import '../map/horeca.dart';
+import '../map/horeca_submission_service.dart';
 import '../scan/beer_scan_page.dart';
 import 'beers.dart';
 import 'favorites_service.dart';
@@ -39,6 +42,12 @@ class _FavoritesPageState extends State<FavoritesPage> {
   final _feedService = FeedService();
   final Set<int> _beerIds = {};
   final Set<int> _breweryIds = {};
+  final Set<int> _horecaIds = {};
+
+  /// Goedgekeurde aangemelde brouwerijen en horecazaken: die staan niet in de
+  /// vaste lijst, maar kunnen wel als favoriet bewaard zijn (op de kaart).
+  List<Brewery> _submittedBreweries = [];
+  List<HorecaVenue> _horecaVenues = [];
   List<FeedItem> _posts = [];
   bool _loading = true;
   String? _error;
@@ -58,6 +67,12 @@ class _FavoritesPageState extends State<FavoritesPage> {
           .whereType<String>()
           .toList();
       final posts = postKeys.isEmpty ? <FeedItem>[] : await _feedService.fetchByKeys(postKeys);
+      final hasHoreca = favorites.any((f) => f.itemType == horecaItemType);
+      final hasSubmittedBrewery = favorites.any((f) => f.itemType == breweryItemType && !breweries.any((b) => b.id == f.itemId));
+      final extra = await Future.wait([
+        hasSubmittedBrewery ? BrewerySubmissionService().fetchApproved() : Future.value(<Brewery>[]),
+        hasHoreca ? HorecaSubmissionService().fetchApproved() : Future.value(<HorecaVenue>[]),
+      ]);
       if (!mounted) return;
       setState(() {
         _beerIds
@@ -66,6 +81,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
         _breweryIds
           ..clear()
           ..addAll(_idsOfType(favorites, breweryItemType));
+        _horecaIds
+          ..clear()
+          ..addAll(_idsOfType(favorites, horecaItemType));
+        _submittedBreweries = extra[0] as List<Brewery>;
+        _horecaVenues = extra[1] as List<HorecaVenue>;
         _posts = posts;
         _loading = false;
       });
@@ -217,7 +237,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   Widget _buildFavorites() {
     final likedBeers = beers.where((b) => _beerIds.contains(b.id)).toList();
-    final likedBreweries = breweries.where((b) => _breweryIds.contains(b.id)).toList();
+    final likedBreweries = [...breweries, ..._submittedBreweries].where((b) => _breweryIds.contains(b.id)).toList();
+    final likedHoreca = _horecaVenues.where((v) => _horecaIds.contains(v.id)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -258,6 +279,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
             count: likedBreweries.length,
             emptyText: 'Nog geen brouwerijen. Like een brouwerij op de Kaart, op Ontdek of in de feed.',
             children: [for (final brewery in likedBreweries) _buildBreweryFavorite(brewery)],
+          ),
+          const SizedBox(height: 24),
+          _favoriteContainer(
+            icon: Icons.local_bar_outlined,
+            title: 'Horeca',
+            count: likedHoreca.length,
+            emptyText: 'Nog geen horeca. Tik op het hartje bij een café of proeflokaal op de Kaart.',
+            children: [for (final venue in likedHoreca) _buildHorecaFavorite(venue)],
           ),
           const SizedBox(height: 24),
           _favoriteContainer(
@@ -407,6 +436,37 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
+  Widget _buildHorecaFavorite(HorecaVenue venue) {
+    return _expandableFavorite(
+      key: ValueKey('horeca-${venue.id}'),
+      leading: venue.logoUrl == null
+          ? _iconTile(Icons.local_bar_outlined)
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 48,
+                height: 48,
+                color: const Color(0xFFF5EFE8),
+                padding: const EdgeInsets.all(6),
+                child: _networkImage(venue.logoUrl!),
+              ),
+            ),
+      title: venue.title,
+      subtitle: venue.location,
+      onRemove: () => _removeId(_horecaIds, horecaItemType, venue.id),
+      details: [
+        if (venue.about.isNotEmpty) _infoBlock('Over de plek', venue.about),
+        if (venue.location.isNotEmpty) _infoRow(Icons.location_on_outlined, venue.location),
+        if (venue.website != null && venue.website!.isNotEmpty)
+          BreweryFactText(
+            fact: 'Website: ${venue.website}',
+            style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14, height: 1.5),
+            linkColor: _primary,
+          ),
+      ],
+    );
+  }
+
   Widget _expandableFavorite({
     required Key key,
     required Widget leading,
@@ -431,6 +491,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         iconColor: _primary,
         collapsedIconColor: _onSurfaceVariant,
+        trailing: IconButton(
+          onPressed: onRemove,
+          tooltip: 'Verwijder uit favorieten',
+          icon: const Icon(Icons.favorite, color: _primary),
+        ),
         leading: leading,
         title: Text(
           title,
