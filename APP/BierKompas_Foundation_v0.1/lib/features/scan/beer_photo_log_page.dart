@@ -120,6 +120,10 @@ class _BeerPhotoLogPageState extends State<BeerPhotoLogPage> {
     } on BeerScanException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
+    } catch (_) {
+      // Bijv. uploaden van de foto mislukt of geen internetverbinding.
+      if (!mounted) return;
+      setState(() => _error = 'De foto kon niet worden geüpload. Controleer je verbinding en probeer het opnieuw.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

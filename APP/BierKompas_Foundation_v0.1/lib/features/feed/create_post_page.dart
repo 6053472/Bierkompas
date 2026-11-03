@@ -68,6 +68,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
         _imageBytes = bytes;
         _imageExt = 'jpg';
       });
+    } catch (_) {
+      // Bijv. geen toegang tot foto's of een bestand dat niet te lezen is.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Kon de foto niet laden. Controleer of de app toegang heeft tot je foto's.")),
+      );
     } finally {
       if (mounted) setState(() => _pickingImage = false);
     }

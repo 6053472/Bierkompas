@@ -170,14 +170,24 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
   }
 
   Future<List<Map<String, dynamic>>> _fetchApprovedEvents() async {
+    // Supabase geeft maximaal 1000 rijen per verzoek terug; met veel
+    // geïmporteerde evenementen halen we ze daarom in blokken op.
+    const pageSize = 1000;
     try {
-      final response = await _supabase
-          .from('events')
-          .select()
-          .inFilter('status', ['approved', 'cancelled'])
-          .order('start_date', ascending: true);
-
-      return List<Map<String, dynamic>>.from(response);
+      final all = <Map<String, dynamic>>[];
+      while (true) {
+        final response = await _supabase
+            .from('events')
+            .select()
+            .inFilter('status', ['approved', 'cancelled'])
+            .order('start_date', ascending: true)
+            .order('id', ascending: true)
+            .range(all.length, all.length + pageSize - 1);
+        final rows = List<Map<String, dynamic>>.from(response);
+        all.addAll(rows);
+        if (rows.length < pageSize) break;
+      }
+      return all;
     } catch (e) {
       debugPrint('Fout bij goedgekeurde evenementen: $e');
       throw Exception('Kon evenementen niet laden.');

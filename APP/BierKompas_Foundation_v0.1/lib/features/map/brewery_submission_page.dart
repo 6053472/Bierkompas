@@ -86,16 +86,24 @@ class _BrewerySubmissionPageState extends State<BrewerySubmissionPage> {
   }
 
   Future<void> _pickPhoto() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-    final bytes = normalizeToJpeg(await picked.readAsBytes());
-    if (!mounted) return;
-    setState(() => _photoBytes = bytes);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      final bytes = normalizeToJpeg(await picked.readAsBytes());
+      if (!mounted) return;
+      setState(() => _photoBytes = bytes);
+    } catch (_) {
+      // Bijv. geen toegang tot foto's of een bestand dat niet te lezen is.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Kon de foto niet laden. Controleer of de app toegang heeft tot je foto's.")),
+      );
+    }
   }
 
   Future<void> _submit() async {

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
+import '../legal/legal_page.dart';
 import '../map/friend_location_service.dart';
 import 'profile_edit_page.dart';
 
@@ -16,8 +17,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _pushNotifications = true;
-  bool _emailUpdates = false;
   bool _deletingAccount = false;
   bool _shareLocation = false;
   bool _locationLoading = false;
@@ -186,22 +185,6 @@ class _SettingsPageState extends State<SettingsPage> {
             _sectionTitle('Voorkeuren'),
             _sectionCard([
               _switchTile(
-                icon: Icons.notifications_none,
-                title: 'Pushmeldingen',
-                subtitle: 'Ontvang meldingen over nieuwe bieren en badges.',
-                value: _pushNotifications,
-                onChanged: (value) => setState(() => _pushNotifications = value),
-              ),
-              const Divider(color: _divider, height: 1),
-              _switchTile(
-                icon: Icons.mark_email_unread_outlined,
-                title: 'E-mailupdates',
-                subtitle: 'Ontvang nieuws en aanbevelingen per e-mail.',
-                value: _emailUpdates,
-                onChanged: (value) => setState(() => _emailUpdates = value),
-              ),
-              const Divider(color: _divider, height: 1),
-              _switchTile(
                 icon: Icons.location_on_outlined,
                 title: 'Deel mijn locatie met vrienden',
                 subtitle: 'Laat bevestigde vrienden je live locatie zien op de kaart ("Bierliefhebbers in de buurt").',
@@ -216,13 +199,13 @@ class _SettingsPageState extends State<SettingsPage> {
               _navTile(
                 icon: Icons.description_outlined,
                 title: 'Algemene Voorwaarden',
-                onTap: () {},
+                onTap: () => LegalPage.open(context, LegalDocument.terms),
               ),
               const Divider(color: _divider, height: 1),
               _navTile(
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privacybeleid',
-                onTap: () {},
+                onTap: () => LegalPage.open(context, LegalDocument.privacy),
               ),
               const Divider(color: _divider, height: 1),
               _navTile(

@@ -183,7 +183,7 @@ class AuthService {
     required String email,
   }) async {
     try {
-      final currentEmail = _client.auth.currentUser?.email;
+      final currentEmail = _client.auth.currentUser?.email ?? email;
 
       if (email != currentEmail) {
         await _client.auth.updateUser(
@@ -191,15 +191,17 @@ class AuthService {
         );
       }
 
+      // Een nieuw e-mailadres geldt pas na de bevestigingslink. Tot die tijd
+      // blijft het huidige adres staan; de database neemt het nieuwe adres
+      // over zodra het bevestigd is (trigger in setup_alles_in_een.sql).
       await _client.from('profiles').update({
         'name': name,
-        'email': email,
       }).eq('id', userId);
 
       return AppUser(
         id: userId,
         name: name,
-        email: email,
+        email: currentEmail,
       );
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));

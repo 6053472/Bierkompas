@@ -93,6 +93,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
       _showLoadError(e.message);
     } on FeedException catch (e) {
       _showLoadError(e.message);
+    } catch (_) {
+      _showLoadError('Geen verbinding. Probeer het opnieuw.');
     }
   }
 

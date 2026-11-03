@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../home/home_page.dart';
+import '../legal/legal_page.dart';
 import 'auth_service.dart';
 
 class ConsentPage extends StatefulWidget {
@@ -88,7 +89,23 @@ class _ConsentPageState extends State<ConsentPage> {
                     'Lees de voorwaarden en bevestig de afspraken voor jouw account.',
                     style: GoogleFonts.inter(color: muted, fontSize: 14),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => LegalPage.open(context, LegalDocument.terms),
+                        icon: const Icon(Icons.description_outlined, size: 18, color: gold),
+                        label: Text('Algemene Voorwaarden', style: GoogleFonts.inter(color: gold, fontWeight: FontWeight.w600)),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => LegalPage.open(context, LegalDocument.privacy),
+                        icon: const Icon(Icons.privacy_tip_outlined, size: 18, color: gold),
+                        label: Text('Privacybeleid', style: GoogleFonts.inter(color: gold, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -100,7 +117,7 @@ class _ConsentPageState extends State<ConsentPage> {
                         _check(
                           value: _mainApproval,
                           title: 'Ik ga akkoord en wil Bierkompas gebruiken.',
-                          subtitle: 'Ik heb de Algemene Voorwaarden, het Privacybeleid en de Communityrichtlijnen kunnen bekijken.',
+                          subtitle: 'Ik heb de Algemene Voorwaarden (met de Communityrichtlijnen) en het Privacybeleid gelezen.',
                           onChanged: (value) => setState(() => _mainApproval = value),
                           gold: gold,
                           cream: cream,

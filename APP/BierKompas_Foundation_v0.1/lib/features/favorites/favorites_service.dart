@@ -36,6 +36,9 @@ class FavoritesService {
           .toList();
     } on PostgrestException catch (e) {
       throw FavoritesException(e.message);
+    } catch (_) {
+      // Bijv. geen internetverbinding.
+      throw FavoritesException('Geen verbinding. Probeer het opnieuw.');
     }
   }
 
@@ -63,6 +66,9 @@ class FavoritesService {
       }
     } on PostgrestException catch (e) {
       throw FavoritesException(e.message);
+    } catch (_) {
+      // Bijv. geen internetverbinding.
+      throw FavoritesException('Geen verbinding. Probeer het opnieuw.');
     }
   }
 
@@ -76,6 +82,9 @@ class FavoritesService {
           .eq('item_id', itemId);
     } on PostgrestException catch (e) {
       throw FavoritesException(e.message);
+    } catch (_) {
+      // Bijv. geen internetverbinding.
+      throw FavoritesException('Geen verbinding. Probeer het opnieuw.');
     }
   }
 }
