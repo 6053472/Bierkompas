@@ -358,7 +358,7 @@
           </button>
         </div>
 
-        <!-- Door gebruikers aangemelde onbekende bieren (zie supabase/add_bier_aanmelden.sql) -->
+        <!-- Door gebruikers aangemelde onbekende bieren (zie supabase/setup_alles_in_een.sql) -->
         <div id="beer-subs-wrap" class="hidden mt-4 mb-6">
           <div class="flex items-center justify-between mb-3">
             <h3 class="font-display text-lg text-on-surface">Aangemelde bieren <span id="beer-subs-count" class="text-on-surface-variant text-sm"></span></h3>
@@ -797,7 +797,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div>
             <h2 class="font-display text-2xl text-on-surface mb-1">Muziek</h2>
-            <p class="text-on-surface-variant text-sm">Nummers voor "Brouwers Beats". Alle nummers in de app. Bewerk of verwijder ze hier, of voeg een nieuw nummer toe. (De vaste nummers verschijnen hier zodra supabase/add_builtin_content.sql is uitgevoerd.)</p>
+            <p class="text-on-surface-variant text-sm">Nummers voor "Brouwers Beats". Alle nummers in de app. Bewerk of verwijder ze hier, of voeg een nieuw nummer toe. (De vaste nummers verschijnen hier zodra supabase/setup_alles_in_een.sql is uitgevoerd.)</p>
           </div>
           <button id="music-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuw nummer
@@ -829,7 +829,7 @@
         <div class="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div>
             <h2 class="font-display text-2xl text-on-surface mb-1">Boeken</h2>
-            <p class="text-on-surface-variant text-sm">Boeken voor de Bierkompas-bibliotheek. Alle boeken in de app. Bewerk of verwijder ze hier, of voeg een nieuw boek toe. (De vaste boeken verschijnen hier zodra supabase/add_builtin_content.sql is uitgevoerd.)</p>
+            <p class="text-on-surface-variant text-sm">Boeken voor de Bierkompas-bibliotheek. Alle boeken in de app. Bewerk of verwijder ze hier, of voeg een nieuw boek toe. (De vaste boeken verschijnen hier zodra supabase/setup_alles_in_een.sql is uitgevoerd.)</p>
           </div>
           <button id="books-new-toggle" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuw boek
@@ -1581,7 +1581,7 @@
   async function loadBeerSubmissions() {
     const { data, error } = await client.from("beer_submissions").select("*").eq("status", "pending").order("created_at");
     if (error) {
-      // Migratie (supabase/add_bier_aanmelden.sql) nog niet uitgevoerd: blok verbergen.
+      // Migratie (supabase/setup_alles_in_een.sql) nog niet uitgevoerd: blok verbergen.
       beerSubsWrap.classList.add("hidden");
       return;
     }
@@ -2409,7 +2409,7 @@
 
   function videoSaveError(message) {
     const needsMigration = /column|bucket|source|external_id/i.test(message || "");
-    showFormError(videoNewError, `Opslaan mislukt: ${message}${needsMigration ? " Is supabase/add_video_reel.sql al uitgevoerd?" : ""}`);
+    showFormError(videoNewError, `Opslaan mislukt: ${message}${needsMigration ? " Is supabase/setup_alles_in_een.sql al uitgevoerd?" : ""}`);
   }
 
   videoNewSaveBtn.addEventListener("click", async () => {
@@ -2652,7 +2652,7 @@
     const { data, error } = await client.from("news_articles").select("*").order("gepubliceerd_op", { ascending: false });
 
     if (error) {
-      newsListEl.innerHTML = `<p class="text-error text-sm">Kon nieuws niet laden: ${escapeHtml(error.message)}. Is supabase/add_news_articles.sql al uitgevoerd?</p>`;
+      newsListEl.innerHTML = `<p class="text-error text-sm">Kon nieuws niet laden: ${escapeHtml(error.message)}. Is supabase/setup_alles_in_een.sql al uitgevoerd?</p>`;
       return;
     }
 
@@ -2806,7 +2806,7 @@
     const { data, error } = await client.from("faq_items").select("*").order("sort_order").order("id");
 
     if (error) {
-      faqListEl.innerHTML = `<p class="text-error text-sm">Kon FAQ niet laden: ${escapeHtml(error.message)}. Is supabase/add_faq.sql al uitgevoerd?</p>`;
+      faqListEl.innerHTML = `<p class="text-error text-sm">Kon FAQ niet laden: ${escapeHtml(error.message)}. Is supabase/setup_alles_in_een.sql al uitgevoerd?</p>`;
       return;
     }
 
@@ -3021,12 +3021,12 @@
   async function loadMusicAdmin() {
     const { data, error } = await client.from("music_tracks").select("*").order("sort_order").order("id");
     if (error) {
-      musicListEl.innerHTML = `<p class="text-error text-sm">Kon muziek niet laden: ${escapeHtml(error.message)}. Is supabase/add_admin_content_management.sql al uitgevoerd?</p>`;
+      musicListEl.innerHTML = `<p class="text-error text-sm">Kon muziek niet laden: ${escapeHtml(error.message)}. Is supabase/setup_alles_in_een.sql al uitgevoerd?</p>`;
       return;
     }
     renderSimpleList(musicListEl, data, "music_tracks", loadMusicAdmin,
       (r) => ({ image: coverSrc(r), title: r.title, subtitle: r.builtin_key ? `${r.artist} · vast nummer` : r.artist }),
-      "Nog geen nummers in de database. Voer supabase/add_builtin_content.sql uit om de vaste nummers hier te beheren.",
+      "Nog geen nummers in de database. Voer supabase/setup_alles_in_een.sql uit om de vaste nummers hier te beheren.",
       editMusic);
   }
 
@@ -3109,12 +3109,12 @@
   async function loadBooksAdmin() {
     const { data, error } = await client.from("library_books").select("*").order("sort_order").order("id");
     if (error) {
-      booksListEl.innerHTML = `<p class="text-error text-sm">Kon boeken niet laden: ${escapeHtml(error.message)}. Is supabase/add_admin_content_management.sql al uitgevoerd?</p>`;
+      booksListEl.innerHTML = `<p class="text-error text-sm">Kon boeken niet laden: ${escapeHtml(error.message)}. Is supabase/setup_alles_in_een.sql al uitgevoerd?</p>`;
       return;
     }
     renderSimpleList(booksListEl, data, "library_books", loadBooksAdmin,
       (r) => ({ image: coverSrc(r), title: r.title, subtitle: [r.builtin_key ? `${r.author} · vast boek` : r.author, r.caption, r.external_url ? "link: " + r.external_url : null].filter(Boolean).join(" · ") }),
-      "Nog geen boeken in de database. Voer supabase/add_builtin_content.sql uit om de vaste boeken hier te beheren.",
+      "Nog geen boeken in de database. Voer supabase/setup_alles_in_een.sql uit om de vaste boeken hier te beheren.",
       editBook);
   }
 
@@ -3133,7 +3133,7 @@
     const { data, error } = await client.from("breweries").select("*").order("title").range(0, 4999);
     if (error) {
       fixedBrInfoEl.textContent = "";
-      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">De vaste brouwerijen staan nog niet in de database. Voer supabase/add_builtin_content.sql uit om ze hier te beheren.</p>`;
+      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">De vaste brouwerijen staan nog niet in de database. Voer supabase/setup_alles_in_een.sql uit om ze hier te beheren.</p>`;
       return;
     }
     fixedBreweries = data;
@@ -3147,7 +3147,7 @@
       : fixedBreweries;
     if (!fixedBreweries.length) {
       fixedBrInfoEl.textContent = "";
-      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">Nog geen vaste brouwerijen in de database. Voer supabase/add_builtin_content.sql uit.</p>`;
+      fixedBrListEl.innerHTML = `<p class="text-on-surface-variant text-sm">Nog geen vaste brouwerijen in de database. Voer supabase/setup_alles_in_een.sql uit.</p>`;
       return;
     }
     fixedBrInfoEl.textContent = matches.length > FIXED_BR_SHOWN
@@ -3549,13 +3549,13 @@
     {
       key: "beers_bbf", title: "Bierdatabase: Belgian Beer Factory", file: "data/beers_belgian_beer_factory.json", table: "beer_catalog", conflict: "id",
       source: "Belgian Beer Factory (aangeleverde lijst)",
-      note: "Biernaam, brouwerij, inhoud, alcoholpercentage, gisting, kleur en foto. Geschenkboxen en actiepakken zijn weggelaten. Vereist de kolommen image_url en kleur (supabase/add_external_content_imports.sql).",
+      note: "Biernaam, brouwerij, inhoud, alcoholpercentage, gisting, kleur en foto. Geschenkboxen en actiepakken zijn weggelaten. Vereist de kolommen image_url en kleur (supabase/setup_alles_in_een.sql).",
       countFilter: (q) => q.eq("bron", "Belgian Beer Factory"),
     },
     {
       key: "beers_mitra", title: "Bierdatabase: Nederland bier (Mitra)", file: "data/beers_nederland_bier.json", table: "beer_catalog", conflict: "id",
       source: "Mitra (aangeleverde lijst)",
-      note: "Biernaam, brouwerij, inhoud, bierstijl en foto. Dubbele regels, kratten en 6-packs zijn weggelaten; prijzen niet overgenomen. Vereist de kolom image_url (supabase/add_external_content_imports.sql).",
+      note: "Biernaam, brouwerij, inhoud, bierstijl en foto. Dubbele regels, kratten en 6-packs zijn weggelaten; prijzen niet overgenomen. Vereist de kolom image_url (supabase/setup_alles_in_een.sql).",
       countFilter: (q) => q.eq("bron", "Mitra"),
     },
     {
@@ -3567,13 +3567,13 @@
     {
       key: "events_klant", title: "Evenementenlijst klant (met coördinaten)", file: "data/events_klant_import.json", table: "events", conflict: "bron,bron_id,start_date",
       source: "Aangeleverde Excel 'evenementen met logo's en coördinaten' (okt 2026)",
-      note: "Evenementen met vaste datum, zonder starttijden en zonder straatadres; de pin op de kaart komt uit de meegeleverde coördinaten. Vereist supabase/add_aanscherpen_okt2026.sql. Staan direct in de agenda.",
+      note: "Evenementen met vaste datum, zonder starttijden en zonder straatadres; de pin op de kaart komt uit de meegeleverde coördinaten. Vereist supabase/setup_alles_in_een.sql. Staan direct in de agenda.",
       countFilter: (q) => q.eq("bron", "klant_evenementenlijst"),
     },
     {
       key: "horeca_klant", title: "Horecalijst klant (met coördinaten)", file: "data/horeca_klant_import.json", table: "horeca_submissions", conflict: "bron,bron_id",
       source: "Aangeleverde Excel 'speciaalbier horeca' (NL en BE, nov 2026)",
-      note: "80 gecontroleerde zaken (de eerste 40 per lijst): coördinaten liggen in de juiste stad. De overige regels uit de lijsten zijn niet geïmporteerd omdat adres en website niet klopten. Vereist supabase/add_horeca_import.sql. Staan direct op de kaart.",
+      note: "80 gecontroleerde zaken (de eerste 40 per lijst): coördinaten liggen in de juiste stad. De overige regels uit de lijsten zijn niet geïmporteerd omdat adres en website niet klopten. Vereist supabase/setup_alles_in_een.sql. Staan direct op de kaart.",
       countFilter: (q) => q.eq("bron", "klant_horecalijst"),
     },
     {
@@ -3610,7 +3610,7 @@
           let q = client.from(imp.table).select("id", { count: "exact", head: true });
           if (imp.countFilter) q = imp.countFilter(q);
           const { count, error } = await q;
-          const inDb = error ? "onbekend (is supabase/add_external_content_imports.sql uitgevoerd?)" : count;
+          const inDb = error ? "onbekend (is supabase/setup_alles_in_een.sql uitgevoerd?)" : count;
           infoEl.textContent = `${rows.length} regels klaar om te importeren. Nu in de database: ${inDb}.`;
           btn.disabled = false;
         } catch (e) {
@@ -3679,7 +3679,7 @@
 
     if (error) {
       statsGridEl.innerHTML = "";
-      statsErrorEl.textContent = `Kon statistieken niet laden: ${error.message}. Is supabase/add_admin_stats_rpc.sql al uitgevoerd?`;
+      statsErrorEl.textContent = `Kon statistieken niet laden: ${error.message}. Is supabase/setup_alles_in_een.sql al uitgevoerd?`;
       statsErrorEl.classList.remove("hidden");
       return;
     }
@@ -3807,7 +3807,7 @@
     const { data, error } = await client.from("location_badge_tags").select("*").order("item_type").order("item_id");
 
     if (error) {
-      locbadgeListEl.innerHTML = `<p class="text-error text-sm">Kon tags niet laden: ${escapeHtml(error.message)}. Is supabase/add_remaining_badges.sql al uitgevoerd?</p>`;
+      locbadgeListEl.innerHTML = `<p class="text-error text-sm">Kon tags niet laden: ${escapeHtml(error.message)}. Is supabase/setup_alles_in_een.sql al uitgevoerd?</p>`;
       return;
     }
 
@@ -3934,7 +3934,7 @@
     msgSendLabelEl.textContent = "Versturen";
 
     if (error) {
-      msgErrorEl.textContent = `Versturen mislukt: ${error.message}. Is supabase/add_notifications.sql al uitgevoerd?`;
+      msgErrorEl.textContent = `Versturen mislukt: ${error.message}. Is supabase/setup_alles_in_een.sql al uitgevoerd?`;
       msgErrorEl.classList.remove("hidden");
       return;
     }

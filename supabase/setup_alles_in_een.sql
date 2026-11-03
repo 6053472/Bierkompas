@@ -6,12 +6,16 @@
 --   voorbeeldgegevens worden alleen toegevoegd als ze er nog niet staan.
 -- * Werkt op een lege database en op een bestaande (al deels ingerichte).
 -- * Bevat bewust NIET: reset_test_data.sql, wipe_events.sql,
---   remove_fake_feed_data.sql (verwijderen gegevens) en de oude debug-fix.
+--   remove_fake_feed_data.sql (verwijderen gegevens; staan in
+--   supabase/hulpscripts/) en de oude debug-fix.
 -- * Na het draaien: admin-paneel -> Data-imports -> Importeren (bierdatabase,
 --   agenda, nieuws). Die gegevens zitten niet in dit bestand.
 --
--- Gegenereerd uit de losse bestanden; wijzigingen horen in de losse
--- bestanden en daarna opnieuw genereren.
+-- Dit is het enige setup-bestand (de losse add_*.sql-bestanden zijn hierin
+-- opgegaan; hun naam staat nog als kop boven elk deel). Een nieuwe
+-- database-wijziging voeg je onderaan toe, vóór de laatste NOTIFY-regel, en
+-- schrijf je zo dat hij veilig opnieuw kan draaien (if not exists e.d.).
+-- Losse hulpscripts die gegevens wissen staan in supabase/hulpscripts/.
 
 -- ============================================================
 -- schema.sql
@@ -4465,5 +4469,315 @@ create policy "Events: owner or admin can update" on public.events
 drop policy if exists "Events: admin delete" on public.events;
 create policy "Events: admin delete" on public.events
     for delete using (public.is_admin());
+
+-- ============================================================
+-- add_aanscherpen_okt2026.sql
+-- ============================================================
+-- BierKompas: aanscherpingen oktober 2026. Uitvoeren via het
+-- Supabase-dashboard: SQL Editor -> New query -> plak dit bestand -> Run.
+-- Vereist add_admin_content_management.sql (eerder uitgevoerd).
+
+-- 1. Boeken: bijschrift en externe link ("Bekijk / Kopen").
+alter table public.library_books add column if not exists caption text;
+alter table public.library_books add column if not exists external_url text;
+
+-- 2. Evenementen: optionele coördinaten. Gevuld door de import van de
+-- evenementenlijst van de klant (admin -> Data-imports); de kaart gebruikt
+-- ze direct i.p.v. het adres op te zoeken. Leeg = adres wordt opgezocht.
+alter table public.events add column if not exists latitude double precision;
+alter table public.events add column if not exists longitude double precision;
+
+-- 3. Evenementen: realtime aanzetten, zodat "In afwachting" bij de indiener
+-- direct verdwijnt zodra een beheerder het evenement goedkeurt of afwijst.
+-- (RLS blijft gelden: een gebruiker krijgt alleen wijzigingen die hij mag zien.)
+do $$
+begin
+    if not exists (
+        select 1 from pg_publication_tables
+        where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'events'
+    ) then
+        alter publication supabase_realtime add table public.events;
+    end if;
+end
+$$;
+
+-- ============================================================
+-- add_profiel_qr.sql
+-- ============================================================
+-- BierKompas: persoonlijke QR-code op het profiel. Wie de code scant ziet
+-- het profiel van de ander en kan hem als Bier-vriend toevoegen.
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit
+-- bestand -> Run. Vereist add_friends.sql (eerder uitgevoerd).
+
+-- `profiles` heeft RLS "select own"; deze functie geeft net als
+-- search_profiles alleen naam en avatar van één gebruiker terug.
+drop function if exists public.get_profile_by_id(uuid);
+create or replace function public.get_profile_by_id(p_user_id uuid)
+returns table(id uuid, name text, avatar_url text)
+language sql
+security definer set search_path = public
+stable
+as $$
+    select p.id, p.name, p.avatar_url
+    from public.profiles p
+    where p.id = p_user_id;
+$$;
+
+grant execute on function public.get_profile_by_id(uuid) to authenticated;
+
+-- ============================================================
+-- add_bier_aanmelden.sql
+-- ============================================================
+-- BierKompas: gebruikers kunnen een onbekend bier aanmelden (bijv. als de
+-- scanner geen match vindt). Een beheerder keurt het goed of af; pas na
+-- goedkeuring komt het bier in de tabel `bieren` en is het voor iedereen
+-- zichtbaar. Zelfde patroon als brewery_submissions, zodat de database niet
+-- vervuilt met dubbele of foutieve bieren.
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit
+-- bestand -> Run. Vereist add_bier_toevoegen.sql, add_beer_scan_photo.sql en
+-- add_notifications.sql (eerder uitgevoerd).
+
+create table if not exists public.beer_submissions (
+    id bigint generated always as identity primary key,
+    user_id uuid not null references auth.users(id) on delete cascade,
+
+    naam text not null,
+    brouwerij text not null,
+    stijl text,
+    abv text,
+    beschrijving text,
+    barcode text,
+    photo_url text,
+
+    status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+    created_at timestamptz not null default now(),
+    approved_at timestamptz,
+    approved_by uuid references public.profiles(id),
+    rejection_reason text,
+
+    -- Het bier dat bij goedkeuring in `bieren` is aangemaakt.
+    beer_id integer references public.bieren(id) on delete set null
+);
+
+alter table public.beer_submissions enable row level security;
+
+-- De indiener ziet zijn eigen aanmeldingen, beheerders zien alles.
+drop policy if exists "Beer submissions: view own or admin" on public.beer_submissions;
+create policy "Beer submissions: view own or admin" on public.beer_submissions
+    for select using (
+        user_id = auth.uid()
+        or exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin)
+    );
+
+drop policy if exists "Beer submissions: insert own" on public.beer_submissions;
+create policy "Beer submissions: insert own" on public.beer_submissions
+    for insert with check (user_id = auth.uid() and status = 'pending');
+
+-- Geen update/delete voor gewone gebruikers: goedkeuren/afwijzen gaat via
+-- de functies hieronder.
+
+-- Beheerder keurt goed. De beheerder kan naam, brouwerij, stijl, alcohol en
+-- barcode nog verbeteren (null = ingestuurde waarde houden). Het bier komt in
+-- `bieren`; een barcode die al bij een ander bier hoort wordt niet
+-- overgenomen.
+drop function if exists public.approve_beer_submission(bigint, text, text, text, text, text);
+create or replace function public.approve_beer_submission(
+    p_submission_id bigint,
+    p_naam text default null,
+    p_brouwerij text default null,
+    p_stijl text default null,
+    p_abv text default null,
+    p_barcode text default null
+)
+returns integer
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+    v_sub public.beer_submissions;
+    v_barcode text;
+    v_beer_id integer;
+begin
+    if not exists (select 1 from public.profiles where id = auth.uid() and is_admin) then
+        raise exception 'Alleen beheerders mogen bieren goedkeuren';
+    end if;
+
+    select * into v_sub from public.beer_submissions
+        where id = p_submission_id and status = 'pending'
+        for update;
+    if not found then
+        raise exception 'Aanmelding niet gevonden of al afgehandeld';
+    end if;
+
+    v_barcode := nullif(trim(coalesce(p_barcode, v_sub.barcode, '')), '');
+    if v_barcode is not null and exists (select 1 from public.bieren where barcode = v_barcode) then
+        v_barcode := null;
+    end if;
+
+    insert into public.bieren (naam, brouwerij, stijl, abv, beschrijving, foto_url, barcode)
+    values (
+        coalesce(nullif(trim(p_naam), ''), v_sub.naam),
+        coalesce(nullif(trim(p_brouwerij), ''), v_sub.brouwerij),
+        coalesce(nullif(trim(p_stijl), ''), v_sub.stijl),
+        coalesce(nullif(trim(p_abv), ''), v_sub.abv),
+        v_sub.beschrijving,
+        v_sub.photo_url,
+        v_barcode
+    )
+    returning id into v_beer_id;
+
+    update public.beer_submissions
+        set status = 'approved', approved_at = now(), approved_by = auth.uid(), beer_id = v_beer_id
+        where id = p_submission_id;
+
+    insert into public.notifications (user_id, title, body)
+    values (v_sub.user_id, 'Bier goedgekeurd',
+            'Je aangemelde bier "' || coalesce(nullif(trim(p_naam), ''), v_sub.naam) || '" staat nu in Bierkompas.');
+
+    return v_beer_id;
+end;
+$$;
+
+grant execute on function public.approve_beer_submission(bigint, text, text, text, text, text) to authenticated;
+
+drop function if exists public.reject_beer_submission(bigint, text);
+create or replace function public.reject_beer_submission(p_submission_id bigint, p_reason text default null)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+    v_owner uuid;
+    v_naam text;
+begin
+    if not exists (select 1 from public.profiles where id = auth.uid() and is_admin) then
+        raise exception 'Alleen beheerders mogen bieren afwijzen';
+    end if;
+
+    update public.beer_submissions
+        set status = 'rejected', rejection_reason = p_reason
+        where id = p_submission_id and status = 'pending'
+        returning user_id, naam into v_owner, v_naam;
+
+    if v_owner is not null then
+        insert into public.notifications (user_id, title, body)
+        values (v_owner, 'Bier niet toegevoegd',
+                'Je aangemelde bier "' || coalesce(v_naam, '') || '" is niet toegevoegd'
+                || coalesce('. Reden: ' || nullif(trim(p_reason), ''), '') || '.');
+    end if;
+end;
+$$;
+
+grant execute on function public.reject_beer_submission(bigint, text) to authenticated;
+
+-- ============================================================
+-- add_provincie.sql
+-- ============================================================
+-- BierKompas: provincie bij het adres van evenementen, brouwerij- en
+-- horeca-aanmeldingen. Wordt in de app automatisch ingevuld op basis van de
+-- postcode (NL via PDOK, BE via de postcodereeks) en is handmatig aan te
+-- passen. Optioneel veld: bestaande rijen blijven leeg.
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit
+-- bestand -> Run.
+
+alter table public.events add column if not exists province text;
+alter table public.brewery_submissions add column if not exists province text;
+alter table public.horeca_submissions add column if not exists province text;
+
+-- ============================================================
+-- add_friend_phone.sql
+-- ============================================================
+-- BierKompas: "Bellen" bij een Biervriend -- de belknop in de chat opent de
+-- telefoon-app met het nummer van de vriend. Een gebruiker deelt zijn
+-- telefoonnummer alleen met bevestigde vrienden, en alleen na expliciete
+-- toestemming (share_with_friends, aan te zetten in Profiel bewerken).
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit bestand -> Run.
+-- Vereist add_friends.sql (voor de friend_requests-tabel).
+
+-- Aparte tabel i.p.v. een kolom op profiles: profiles is breder leesbaar,
+-- het nummer mag alleen de eigenaar zelf direct zien.
+create table if not exists public.friend_phones (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    phone text not null,
+    share_with_friends boolean not null default false,
+    updated_at timestamptz not null default now()
+);
+
+alter table public.friend_phones enable row level security;
+
+drop policy if exists "Friend phones: select own" on public.friend_phones;
+create policy "Friend phones: select own" on public.friend_phones
+    for select using (auth.uid() = user_id);
+
+drop policy if exists "Friend phones: insert own" on public.friend_phones;
+create policy "Friend phones: insert own" on public.friend_phones
+    for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Friend phones: update own" on public.friend_phones;
+create policy "Friend phones: update own" on public.friend_phones
+    for update using (auth.uid() = user_id);
+
+drop policy if exists "Friend phones: delete own" on public.friend_phones;
+create policy "Friend phones: delete own" on public.friend_phones
+    for delete using (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.friend_phones to authenticated;
+
+-- Geeft het nummer van één vriend, of null als die geen nummer deelt of
+-- (nog) geen bevestigde vriend is.
+drop function if exists public.friend_phone(uuid);
+create or replace function public.friend_phone(p_friend_id uuid)
+returns text
+language sql
+security definer set search_path = public
+stable
+as $$
+    select fp.phone
+    from public.friend_phones fp
+    where fp.user_id = p_friend_id
+        and fp.share_with_friends = true
+        and fp.user_id <> auth.uid()
+        and exists (
+            select 1 from public.friend_requests fr
+            where fr.status = 'accepted'
+                and (
+                    (fr.requester_id = auth.uid() and fr.addressee_id = fp.user_id)
+                    or (fr.addressee_id = auth.uid() and fr.requester_id = fp.user_id)
+                )
+        );
+$$;
+
+grant execute on function public.friend_phone(uuid) to authenticated;
+
+-- ============================================================
+-- add_horeca_import.sql
+-- ============================================================
+-- BierKompas: horecalijst van de klant importeren (admin -> Data-imports).
+-- Voegt een website toe (de app toont daarmee een klikbare link en het logo)
+-- en een bron-sleutel, zodat de import veilig opnieuw kan worden gedraaid
+-- zonder dubbele zaken.
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit
+-- bestand -> Run. Vereist add_horeca_submissions.sql (eerder uitgevoerd).
+
+alter table public.horeca_submissions add column if not exists website text;
+alter table public.horeca_submissions add column if not exists bron text;
+alter table public.horeca_submissions add column if not exists bron_id text;
+alter table public.horeca_submissions add column if not exists province text;
+
+create unique index if not exists horeca_submissions_bron_unique
+    on public.horeca_submissions (bron, bron_id);
+
+-- ============================================================
+-- add_locatie_website.sql
+-- ============================================================
+-- BierKompas: website bij brouwerijen die via het beheerpaneel of "Brouwerij
+-- toevoegen" zijn aangemeld (horeca heeft deze kolom al sinds
+-- add_horeca_import.sql). De app toont de website als klikbare link en haalt
+-- er het logo mee op.
+-- Uitvoeren via het Supabase-dashboard: SQL Editor -> New query -> plak dit
+-- bestand -> Run.
+
+alter table public.brewery_submissions add column if not exists website text;
+alter table public.horeca_submissions add column if not exists website text;
 
 NOTIFY pgrst, 'reload schema';
