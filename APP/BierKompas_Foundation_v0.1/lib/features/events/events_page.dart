@@ -1140,7 +1140,7 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                   fit: StackFit.expand,
                   children: [
                     Image.network(
-                      imageUrl!,
+                      imageUrl,
                       fit: BoxFit.cover,
                       errorBuilder:
                           (context, error, stackTrace) {
@@ -1600,7 +1600,7 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                       fit: StackFit.expand,
                       children: [
                         Image.network(
-                          imageUrl!,
+                          imageUrl,
                           fit: BoxFit.cover,
                           errorBuilder:
                               (context, error, stackTrace) {
@@ -2337,7 +2337,7 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                           fit: StackFit.expand,
                           children: [
                             Image.network(
-                              imageUrl!,
+                              imageUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 color: backgroundColor,
@@ -3931,7 +3931,7 @@ class _OwnerRegistrationsState
       backgroundColor: cardColor,
       backgroundImage:
           hasAvatar
-              ? NetworkImage(avatarUrl!)
+              ? NetworkImage(avatarUrl)
               : null,
       child: !hasAvatar
           ? const Icon(

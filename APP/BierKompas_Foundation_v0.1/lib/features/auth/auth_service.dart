@@ -84,7 +84,7 @@ class AuthService {
         throw AuthException('Inloggen mislukt.');
       }
 
-      return _appUserFromAuth(user);
+      return await _appUserFromAuth(user);
     } on AuthApiException catch (e) {
       throw AuthException(_translateAuthError(e));
     }

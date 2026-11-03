@@ -117,7 +117,7 @@ const _privacySections = [
     'Wij gaan zorgvuldig om met je gegevens en houden ons aan de Algemene Verordening Gegevensbescherming (AVG).',
   ]),
   _Section('2. Welke gegevens wij verwerken', [
-    'Account: je naam, e-mailadres en wachtwoord (versleuteld opgeslagen). Log je in met Google, dan ontvangen wij van Google je naam, e-mailadres en profielfoto.',
+    'Account: je naam, e-mailadres en wachtwoord (versleuteld opgeslagen). Log je in met Google of Outlook (Microsoft), dan ontvangen wij van Google of Microsoft je naam en e-mailadres, en bij Google ook je profielfoto.',
     'Profiel: je profielfoto en, als je die invult, je woonplaats en telefoonnummer.',
     'Akkoord: wanneer je akkoord gaf op de voorwaarden en het privacybeleid, en welke versie.',
     'Gebruik van de app: gescande en gelogde bieren (met eventuele foto), proefnotities, favorieten, badges, je Bier Streak en wanneer je voor het laatst actief was.',
@@ -141,6 +141,7 @@ const _privacySections = [
   ]),
   _Section('5. Diensten van derden', [
     'Supabase: hier worden je account en de gegevens van de app opgeslagen (database, inloggen en bestanden).',
+    'Microsoft: als je kiest voor inloggen met Outlook.',
     'Google: als je kiest voor inloggen met Google. Ook worden de logo\'s van brouwerijen en horeca via Google opgehaald op basis van hun website; daarbij worden geen gegevens over jou meegestuurd.',
     'OpenStreetMap en PDOK (Kadaster): voor de kaart en om een ingevuld adres of postcode om te zetten naar straat, plaats, provincie en coördinaten. Daarvoor wordt alleen het ingevulde adres verstuurd.',
     'YouTube, TikTok en Instagram: video\'s in de app worden afgespeeld met de spelers van deze platforms. Zij kunnen daarbij hun eigen cookies en gegevens gebruiken volgens hun eigen privacybeleid.',

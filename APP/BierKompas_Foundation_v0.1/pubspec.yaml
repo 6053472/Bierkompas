@@ -28,6 +28,7 @@ dependencies:
   webview_flutter: ^4.14.1
   web: ^1.1.1
   qr_flutter: ^4.1.0
+  cupertino_icons: ^2.0.0
 
 flutter:
   uses-material-design: true
@@ -36,3 +37,5 @@ flutter:
     - assets/books/
     - assets/music/
     - assets/feed/
+dev_dependencies:
+  flutter_lints: ^6.0.0

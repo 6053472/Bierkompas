@@ -1,6 +1,9 @@
-# BierKompas Foundation v0.1
+# Bierkompas – app (Flutter)
 
-Dit is de eerste technische fundering.
-Let op: dit is nog geen volledig Flutter-project. Maak een nieuw Flutter-project
-en vervang de inhoud van de map lib/ en pubspec.yaml met deze bestanden,
-of gebruik ze als basis voor de verdere architectuur.
+```
+flutter pub get
+flutter run
+```
+
+Zie de README.md in de hoofdmap voor de opbouw van het project, Supabase en het
+beheerpaneel.
