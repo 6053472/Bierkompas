@@ -20,6 +20,10 @@ class AuthStorage {
   }
 
   static Future<void> clear() async {
-    await _client.auth.signOut();
+    // Zonder verbinding gooit signOut een fout, terwijl de lokale sessie al
+    // gewist is. Dan toch doorgaan, anders blijft de gebruiker hangen.
+    try {
+      await _client.auth.signOut();
+    } catch (_) {}
   }
 }

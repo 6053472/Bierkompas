@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../favorites/beers.dart';
 import '../../shared/image_utils.dart';
 import 'chat_service.dart';
+import 'friend_qr.dart';
 import 'friend_phone_service.dart';
 import 'friends_service.dart';
 
@@ -15,6 +16,7 @@ const _gold = Color(0xFFD4B28C);
 const _cream = Color(0xFFEFE6DD);
 const _muted = Color(0xFF9E8A7D);
 const _outgoingBubble = Color(0xFF5A4438);
+const _danger = Color(0xFFE57373);
 
 class ChatPage extends StatefulWidget {
   final Friend friend;
@@ -108,7 +110,7 @@ class _ChatPageState extends State<ChatPage> {
     MessageType type = MessageType.text,
     Map<String, dynamic>? metadata,
   }) async {
-    if (body.trim().isEmpty && type == MessageType.text) return;
+    if (_sending || (body.trim().isEmpty && type == MessageType.text)) return;
     setState(() => _sending = true);
     try {
       await _chatService.sendMessage(
@@ -129,9 +131,126 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _comingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature komt binnenkort beschikbaar.')),
+  Future<void> _openMoreOptions() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: _card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person_outline, color: _gold),
+              title: Text('Bekijk profiel', style: GoogleFonts.inter(color: _cream)),
+              onTap: () => Navigator.of(context).pop('profile'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_remove_outlined, color: _danger),
+              title: Text('Vriend verwijderen', style: GoogleFonts.inter(color: _danger)),
+              onTap: () => Navigator.of(context).pop('remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'profile') {
+      await showFriendProfileSheet(context, widget.friend.id);
+    } else if (choice == 'remove') {
+      await _removeFriend();
+    }
+  }
+
+  Future<void> _removeFriend() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _card,
+        title: Text('Vriend verwijderen?', style: GoogleFonts.inter(color: _cream, fontWeight: FontWeight.bold)),
+        content: Text(
+          '${widget.friend.name} staat daarna niet meer in je Bier-vrienden. Jullie kunnen elkaar later opnieuw toevoegen.',
+          style: GoogleFonts.inter(color: _muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Annuleren', style: GoogleFonts.inter(color: _muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Verwijderen', style: GoogleFonts.inter(color: _danger)),
+          ),
+        ],
+      ),
+    );
+    final myId = _myId;
+    if (confirmed != true || !mounted || myId == null) return;
+    try {
+      await FriendsService().removeFriend(userId: myId, friendId: widget.friend.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${widget.friend.name} is verwijderd uit je Bier-vrienden.')),
+      );
+      Navigator.of(context).pop();
+    } on FriendsException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verwijderen mislukt: $e')));
+    }
+  }
+
+  void _showBeerDetails(Map<String, dynamic> metadata) {
+    final name = metadata['name'] as String? ?? 'Onbekend bier';
+    final details = [metadata['style'], metadata['abv']]
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .join(' · ');
+    final imageUrl = metadata['image_url'] as String?;
+    const placeholder = SizedBox(
+      width: 120,
+      height: 120,
+      child: ColoredBox(color: _bg, child: Icon(Icons.sports_bar, color: _gold, size: 48)),
+    );
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: imageUrl != null
+                    ? Image.network(
+                        imageUrl,
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => placeholder,
+                      )
+                    : placeholder,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.playfairDisplay(color: _cream, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              if (details.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(details, style: GoogleFonts.inter(color: _gold, fontSize: 14)),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -293,6 +412,9 @@ class _ChatPageState extends State<ChatPage> {
       final rows = await Supabase.instance.client
           .from('events')
           .select('id, name, start_date, location_name')
+          // Alleen goedgekeurde evenementen die nog niet voorbij zijn.
+          .eq('status', 'approved')
+          .gte('end_date', DateTime.now().toUtc().toIso8601String())
           .order('start_date')
           .limit(30);
       events = (rows as List).cast<Map<String, dynamic>>();
@@ -301,7 +423,9 @@ class _ChatPageState extends State<ChatPage> {
     }
     if (!mounted) return;
     if (events.isEmpty) {
-      _comingSoon('Er zijn nog geen evenementen om te delen');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Er zijn nog geen evenementen om te delen.')),
+      );
       return;
     }
     final picked = await showModalBottomSheet<Map<String, dynamic>>(
@@ -428,7 +552,8 @@ class _ChatPageState extends State<ChatPage> {
           ),
           IconButton(
             icon: const Icon(Icons.more_vert, color: _cream),
-            onPressed: () => _comingSoon('Meer opties'),
+            tooltip: 'Meer opties',
+            onPressed: _openMoreOptions,
           ),
         ],
       ),
@@ -640,7 +765,7 @@ class _ChatPageState extends State<ChatPage> {
     final style = metadata['style'] as String? ?? '';
     final imageUrl = metadata['image_url'] as String?;
     return GestureDetector(
-      onTap: () => _comingSoon('Bierdetails'),
+      onTap: () => _showBeerDetails(metadata),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(

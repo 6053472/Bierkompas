@@ -127,7 +127,9 @@ class BeerScanService {
         'p_user_id': userId,
         'p_beer_id': beerId,
         'p_brewery': brewery,
-        if (photoUrl != null) 'p_photo_url': photoUrl,
+        // Altijd meesturen (ook als null), zodat de database precies één
+        // versie van de functie kan kiezen.
+        'p_photo_url': photoUrl,
       });
       final row = (rows as List).first as Map<String, dynamic>;
       return BeerScanLogResult(

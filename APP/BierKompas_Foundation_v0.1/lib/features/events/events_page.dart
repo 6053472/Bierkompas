@@ -206,11 +206,15 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
     }
   }
 
+  // Laatst geladen gegevens: tijdens het herladen (bij elke tik op een dag of
+  // maand) blijft de lijst staan in plaats van steeds een spinner te tonen.
+  Map<String, dynamic>? _lastEventData;
+
   Future<Map<String, dynamic>> _fetchAllEventData() async {
     final approved = await _fetchApprovedEvents();
     final pending = await _fetchMyPendingEvents();
 
-    return {
+    return _lastEventData = {
       'approved': approved,
       'pending': pending,
     };
@@ -2988,7 +2992,8 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
           snapshot,
         ) {
           if (snapshot.connectionState ==
-              ConnectionState.waiting) {
+                  ConnectionState.waiting &&
+              _lastEventData == null) {
             return const Center(
               child:
                   CircularProgressIndicator(
@@ -3046,7 +3051,7 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
           }
 
           final data =
-              snapshot.data ?? {};
+              snapshot.data ?? _lastEventData ?? {};
 
           final approvedEvents =
               List<Map<String, dynamic>>.from(
@@ -3263,15 +3268,17 @@ class _RegistrationButtonState
             existing['status']?.toString();
 
         if (existingStatus == 'rejected') {
+          // Een deelnemer mag zijn eigen aanmelding niet bijwerken (alleen de
+          // organisator), wel verwijderen en opnieuw aanmaken.
           await widget.supabase
               .from('event_registrations')
-              .update({
-                'status': 'pending',
-              })
-              .eq(
-                'id',
-                existing['id'],
-              );
+              .delete()
+              .eq('id', existing['id']);
+          await widget.supabase.from('event_registrations').insert({
+            'event_id': widget.eventId,
+            'user_id': user.id,
+            'status': 'pending',
+          });
 
           if (!mounted) return;
 

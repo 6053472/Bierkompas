@@ -76,7 +76,7 @@ class _NewsArticlePageState extends State<NewsArticlePage> {
   String _formatDate(dynamic value) {
     if (value == null) return '';
 
-    final date = DateTime.tryParse(value.toString());
+    final date = DateTime.tryParse(value.toString())?.toLocal();
 
     if (date == null) return '';
 
@@ -471,7 +471,7 @@ class NewsDetailPage extends StatelessWidget {
 
     final date = DateTime.tryParse(
       value.toString(),
-    );
+    )?.toLocal();
 
     if (date == null) return '';
 

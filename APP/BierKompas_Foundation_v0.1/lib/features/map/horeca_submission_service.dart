@@ -98,8 +98,8 @@ class HorecaSubmissionService {
           title: row['naam'] as String,
           location: row['city'] as String? ?? '',
           about: row['beschrijving'] as String? ?? '',
-          latitude: row['latitude'] as double,
-          longitude: row['longitude'] as double,
+          latitude: (row['latitude'] as num).toDouble(),
+          longitude: (row['longitude'] as num).toDouble(),
           imageUrl: row['photo_url'] as String?,
           website: row['website'] as String?,
         );

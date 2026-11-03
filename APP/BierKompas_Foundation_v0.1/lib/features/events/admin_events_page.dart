@@ -67,14 +67,31 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
   }
 
   Future<void> _reject(int id) async {
+    final reasonController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _card,
         title: Text('Evenement afwijzen?', style: GoogleFonts.playfairDisplay(color: _cream, fontWeight: FontWeight.bold)),
-        content: Text(
-          'Het evenement wordt permanent verwijderd (het is nog nooit gepubliceerd geweest).',
-          style: GoogleFonts.inter(color: _cream, fontSize: 13),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'De indiener krijgt een bericht en ziet het evenement als afgewezen onder "Mijn evenementen".',
+              style: GoogleFonts.inter(color: _cream, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              style: GoogleFonts.inter(color: _cream, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Reden (optioneel)',
+                hintStyle: GoogleFonts.inter(color: _muted, fontSize: 13),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -88,11 +105,13 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
         ],
       ),
     );
+    final reason = reasonController.text.trim();
+    reasonController.dispose();
     if (confirmed != true) return;
 
     setState(() => _busyIds.add(id));
     try {
-      await _supabase.rpc('reject_event', params: {'p_event_id': id});
+      await _supabase.rpc('reject_event', params: {'p_event_id': id, 'p_reason': reason.isEmpty ? null : reason});
       if (!mounted) return;
       setState(() => _pendingEvents?.removeWhere((e) => e['id'] == id));
     } catch (e) {

@@ -40,7 +40,9 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Future<void> _play(Song song) async {
-    final opened = await launchUrl(Uri.parse(song.listenUrl), mode: LaunchMode.externalApplication);
+    final raw = song.listenUrl.trim();
+    final uri = Uri.tryParse(raw.contains('://') ? raw : 'https://$raw');
+    final opened = uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Kon "${song.title}" niet openen.')));
     }
@@ -50,7 +52,10 @@ class _MusicPageState extends State<MusicPage> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
     final featured = songs.firstWhere((s) => s.featured, orElse: () => songs.first);
-    final rest = filtered.where((s) => s.id != featured.id).toList();
+    // Tijdens zoeken staat "Muziek van de Dag" er niet, dus dan hoort dat
+    // nummer gewoon in de resultaten.
+    final searching = _searchController.text.trim().isNotEmpty;
+    final rest = searching ? filtered : filtered.where((s) => s.id != featured.id).toList();
 
     return Scaffold(
       backgroundColor: _background,

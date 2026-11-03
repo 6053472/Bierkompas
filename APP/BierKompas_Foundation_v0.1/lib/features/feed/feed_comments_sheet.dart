@@ -68,6 +68,7 @@ class _FeedCommentsSheetState extends State<_FeedCommentsSheet> {
         body: body,
         rating: _canRate && _rating > 0 ? _rating.toDouble() : null,
       );
+      if (!mounted) return;
       _bodyController.clear();
       setState(() => _rating = 0);
       await _reload();
@@ -217,7 +218,16 @@ class _FeedCommentsSheetState extends State<_FeedCommentsSheet> {
                     const Spacer(),
                     GestureDetector(
                       onTap: () async {
-                        await _service.deleteComment(comment.id);
+                        try {
+                          await _service.deleteComment(comment.id);
+                        } on FeedCommentException catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Reactie verwijderen mislukt: $e')),
+                          );
+                          return;
+                        }
+                        if (!mounted) return;
                         await _reload();
                       },
                       child: const Icon(Icons.delete_outline, color: _onSurfaceVariant, size: 16),

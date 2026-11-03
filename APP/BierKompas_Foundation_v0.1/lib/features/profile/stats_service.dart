@@ -108,19 +108,30 @@ class StatsService {
   }
 
   Future<int> fetchCurrentStreak(String userId) async {
-    final profile = await _client.from('profiles').select('current_streak').eq('id', userId).maybeSingle();
-    return profile?['current_streak'] as int? ?? 0;
+    final profile = await _client.from('profiles').select('current_streak, last_activity_date').eq('id', userId).maybeSingle();
+    return _effectiveStreak(profile);
+  }
+
+  /// `current_streak` wordt alleen bijgewerkt bij activiteit. Was de laatste
+  /// activiteit vóór gisteren, dan is de streak in werkelijkheid verbroken.
+  static int _effectiveStreak(Map<String, dynamic>? profile) {
+    final streak = profile?['current_streak'] as int? ?? 0;
+    final last = DateTime.tryParse(profile?['last_activity_date'] as String? ?? '');
+    if (last == null) return streak;
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    return DateTime(last.year, last.month, last.day).isBefore(yesterday) ? 0 : streak;
   }
 
   Future<ProfileStats> fetchStats(String userId) async {
     final profile = await _client
         .from('profiles')
-        .select('beers_tasted, breweries_explored, current_streak, longest_streak')
+        .select('beers_tasted, breweries_explored, current_streak, longest_streak, last_activity_date')
         .eq('id', userId)
         .maybeSingle();
 
     final beersTasted = profile?['beers_tasted'] as int? ?? 0;
-    final currentStreak = profile?['current_streak'] as int? ?? 0;
+    final currentStreak = _effectiveStreak(profile);
 
     // Voor 'style'- en 'taster_flight'-voortgang: welke bierstijlen heeft
     // deze gebruiker al gelogd, en hoeveel daarvan zijn van vandaag.

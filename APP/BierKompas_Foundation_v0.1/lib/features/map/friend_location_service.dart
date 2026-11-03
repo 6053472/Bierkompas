@@ -137,8 +137,8 @@ class FriendLocationService {
           friendId: row['friend_id'] as String,
           name: row['name'] as String? ?? 'Onbekend',
           avatarUrl: row['avatar_url'] as String?,
-          latitude: row['latitude'] as double,
-          longitude: row['longitude'] as double,
+          latitude: (row['latitude'] as num).toDouble(),
+          longitude: (row['longitude'] as num).toDouble(),
           updatedAt: DateTime.parse(row['updated_at'] as String),
         );
       }).toList();

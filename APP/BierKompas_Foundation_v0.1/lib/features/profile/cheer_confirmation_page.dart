@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'chat_page.dart';
 import 'cheers_service.dart';
+import 'friend_qr.dart';
 import 'friends_service.dart';
 
 /// Volledig scherm getoond wanneer een vriend "Proost terug" stuurt als
@@ -35,12 +36,6 @@ class _CheerConfirmationPageState extends State<CheerConfirmationPage> {
       // negeren: het scherm sluit sowieso, anders blijft de gebruiker vast zitten.
     }
     if (mounted) Navigator.of(context).pop();
-  }
-
-  void _comingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature komt binnenkort beschikbaar.')),
-    );
   }
 
   void _openChat() {
@@ -209,7 +204,7 @@ class _CheerConfirmationPageState extends State<CheerConfirmationPage> {
                         width: double.infinity,
                         height: 48,
                         child: OutlinedButton.icon(
-                          onPressed: () => _comingSoon('Profielen bekijken'),
+                          onPressed: () => showFriendProfileSheet(context, widget.cheer.senderId),
                           icon: const Icon(Icons.person_outline, size: 18, color: _gold),
                           label: Text(
                             'BEKIJK PROFIEL',

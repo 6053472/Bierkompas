@@ -147,6 +147,11 @@ class AuthService {
       if (user == null) {
         throw AuthException('Registreren mislukt.');
       }
+      // Bestaat het e-mailadres al, dan geeft Supabase (met e-mailbevestiging
+      // aan) geen fout maar een gebruiker zonder identities terug.
+      if (user.identities != null && user.identities!.isEmpty) {
+        throw AuthException('Er bestaat al een account met dit e-mailadres. Log in of herstel je wachtwoord.');
+      }
 
       return RegisterResult(
         user: AppUser(

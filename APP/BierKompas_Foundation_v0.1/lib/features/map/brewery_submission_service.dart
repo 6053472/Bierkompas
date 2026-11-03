@@ -108,8 +108,8 @@ class BrewerySubmissionService {
           facts: [
             if ((row['website'] as String?)?.trim().isNotEmpty ?? false) 'Website: ${(row['website'] as String).trim()}',
           ],
-          latitude: row['latitude'] as double,
-          longitude: row['longitude'] as double,
+          latitude: (row['latitude'] as num).toDouble(),
+          longitude: (row['longitude'] as num).toDouble(),
           imageUrl: row['photo_url'] as String?,
         );
       }).toList();

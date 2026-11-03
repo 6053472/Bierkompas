@@ -4800,4 +4800,340 @@ create unique index if not exists horeca_submissions_bron_unique
 alter table public.brewery_submissions add column if not exists website text;
 alter table public.horeca_submissions add column if not exists website text;
 
+-- ============================================================
+-- fix_bugs_nov2026
+-- ============================================================
+-- BierKompas: bugfixes uit de controle van november 2026.
+
+-- 1. log_beer_scan bestond in twee versies naast elkaar: (uuid, int, text) en
+-- (uuid, int, text, text). Een barcode-scan stuurde 3 parameters en de
+-- database kon dan niet kiezen ("could not choose the best candidate
+-- function"), dus scannen logde niets. Nu is er nog één versie, met een
+-- optionele foto en alle badge-logica. Ook mag je alleen voor jezelf loggen.
+drop function if exists public.log_beer_scan(uuid, integer, text);
+drop function if exists public.log_beer_scan(uuid, integer, text, text);
+create or replace function public.log_beer_scan(p_user_id uuid, p_beer_id integer, p_brewery text, p_photo_url text default null)
+returns table(
+    beers_tasted integer,
+    breweries_explored integer,
+    current_streak integer,
+    longest_streak integer,
+    newly_earned_badges text[]
+)
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+    v_already_logged boolean;
+    v_beers_tasted integer;
+    v_breweries_explored integer;
+    v_style text;
+    v_styles_today integer;
+    v_distinct_styles integer;
+    v_max_per_style integer;
+    v_max_per_brewery integer;
+    v_streak_row record;
+    v_newly_earned text[] := array[]::text[];
+    v_checkin_earned text[];
+    v_style_earned text[];
+    v_taster_earned text[];
+    v_taps_earned text[];
+    v_stylecount_earned text[];
+begin
+    if p_user_id is distinct from auth.uid() then
+        raise exception 'Niet toegestaan.';
+    end if;
+
+    select exists(
+        select 1 from public.user_beer_logs
+        where user_id = p_user_id and beer_id = p_beer_id
+    ) into v_already_logged;
+
+    if not v_already_logged then
+        insert into public.user_beer_logs (user_id, beer_id, brewery, photo_url)
+        values (p_user_id, p_beer_id, p_brewery, p_photo_url);
+    elsif p_photo_url is not null then
+        update public.user_beer_logs
+            set photo_url = p_photo_url
+            where user_id = p_user_id and beer_id = p_beer_id;
+    end if;
+
+    -- Bier scannen telt als activiteit voor de Bier Streak.
+    select * into v_streak_row from public.record_daily_activity(p_user_id);
+    v_newly_earned := v_newly_earned || v_streak_row.newly_earned_badges;
+
+    select count(*) into v_beers_tasted
+        from public.user_beer_logs where user_id = p_user_id;
+
+    select count(distinct brewery) into v_breweries_explored
+        from public.user_beer_logs
+        where user_id = p_user_id and brewery is not null;
+
+    update public.profiles
+        set beers_tasted = v_beers_tasted,
+            breweries_explored = v_breweries_explored
+        where id = p_user_id;
+
+    -- Totaal aantal gelogde bieren ('checkins').
+    with inserted as (
+        insert into public.user_badges (user_id, badge_id)
+        select p_user_id, b.id
+        from public.badges b
+        where b.requirement_type = 'checkins'
+            and b.requirement_value <= v_beers_tasted
+            and not exists (
+                select 1 from public.user_badges ub
+                where ub.user_id = p_user_id and ub.badge_id = b.id
+            )
+        on conflict (user_id, badge_id) do nothing
+        returning badge_id
+    )
+    select coalesce(array_agg(badge_id), array[]::text[]) into v_checkin_earned from inserted;
+    v_newly_earned := v_newly_earned || v_checkin_earned;
+
+    -- Een specifieke bierstijl ('style').
+    select stijl into v_style from public.bieren where id = p_beer_id;
+    if v_style is not null then
+        with inserted as (
+            insert into public.user_badges (user_id, badge_id)
+            select p_user_id, b.id
+            from public.badges b
+            where b.requirement_type = 'style'
+                and b.target_style = v_style
+                and not exists (
+                    select 1 from public.user_badges ub
+                    where ub.user_id = p_user_id and ub.badge_id = b.id
+                )
+            on conflict (user_id, badge_id) do nothing
+            returning badge_id
+        )
+        select coalesce(array_agg(badge_id), array[]::text[]) into v_style_earned from inserted;
+        v_newly_earned := v_newly_earned || v_style_earned;
+    end if;
+
+    -- 4 verschillende stijlen op één dag ('Taster, Please').
+    select count(distinct bi.stijl) into v_styles_today
+        from public.user_beer_logs ubl
+        join public.bieren bi on bi.id = ubl.beer_id
+        where ubl.user_id = p_user_id
+            and ubl.logged_at::date = current_date
+            and bi.stijl is not null;
+
+    with inserted as (
+        insert into public.user_badges (user_id, badge_id)
+        select p_user_id, b.id
+        from public.badges b
+        where b.requirement_type = 'taster_flight'
+            and b.requirement_value <= v_styles_today
+            and not exists (
+                select 1 from public.user_badges ub
+                where ub.user_id = p_user_id and ub.badge_id = b.id
+            )
+        on conflict (user_id, badge_id) do nothing
+        returning badge_id
+    )
+    select coalesce(array_agg(badge_id), array[]::text[]) into v_taster_earned from inserted;
+    v_newly_earned := v_newly_earned || v_taster_earned;
+
+    -- 5 verschillende bieren van dezelfde brouwerij ('Draft City').
+    select max(cnt) into v_max_per_brewery from (
+        select count(distinct beer_id) as cnt
+        from public.user_beer_logs
+        where user_id = p_user_id and brewery is not null
+        group by brewery
+    ) sub;
+
+    with inserted as (
+        insert into public.user_badges (user_id, badge_id)
+        select p_user_id, b.id
+        from public.badges b
+        where b.requirement_type = 'taps'
+            and b.requirement_value <= coalesce(v_max_per_brewery, 0)
+            and not exists (
+                select 1 from public.user_badges ub
+                where ub.user_id = p_user_id and ub.badge_id = b.id
+            )
+        on conflict (user_id, badge_id) do nothing
+        returning badge_id
+    )
+    select coalesce(array_agg(badge_id), array[]::text[]) into v_taps_earned from inserted;
+    v_newly_earned := v_newly_earned || v_taps_earned;
+
+    -- Stijl-diversiteit ('Wheel of Styles') en stijl-aantal ('The Century Club').
+    select count(distinct bi.stijl) into v_distinct_styles
+        from public.user_beer_logs ubl
+        join public.bieren bi on bi.id = ubl.beer_id
+        where ubl.user_id = p_user_id and bi.stijl is not null;
+
+    select max(cnt) into v_max_per_style from (
+        select count(distinct ubl.beer_id) as cnt
+        from public.user_beer_logs ubl
+        join public.bieren bi on bi.id = ubl.beer_id
+        where ubl.user_id = p_user_id and bi.stijl is not null
+        group by bi.stijl
+    ) sub;
+
+    with inserted as (
+        insert into public.user_badges (user_id, badge_id)
+        select p_user_id, b.id
+        from public.badges b
+        where b.requirement_type = 'style_count'
+            and (
+                (b.id = 'wheel_of_styles' and b.requirement_value <= coalesce(v_distinct_styles, 0))
+                or (b.id = 'century_club' and b.requirement_value <= coalesce(v_max_per_style, 0))
+            )
+            and not exists (
+                select 1 from public.user_badges ub
+                where ub.user_id = p_user_id and ub.badge_id = b.id
+            )
+        on conflict (user_id, badge_id) do nothing
+        returning badge_id
+    )
+    select coalesce(array_agg(badge_id), array[]::text[]) into v_stylecount_earned from inserted;
+    v_newly_earned := v_newly_earned || v_stylecount_earned;
+
+    perform public.check_meta_badges(p_user_id);
+
+    return query select v_beers_tasted, v_breweries_explored, v_streak_row.current_streak, v_streak_row.longest_streak, v_newly_earned;
+end;
+$$;
+
+grant execute on function public.log_beer_scan(uuid, integer, text, text) to authenticated;
+
+-- 2. Opslag voor evenementfoto's. De app uploadde naar 'event-images', maar
+-- die bucket werd nergens aangemaakt, waardoor een evenement met foto niet
+-- kon worden aangemeld.
+insert into storage.buckets (id, name, public)
+values ('event-images', 'event-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Event images: public read" on storage.objects;
+create policy "Event images: public read" on storage.objects
+    for select using (bucket_id = 'event-images');
+
+drop policy if exists "Event images: authenticated upload" on storage.objects;
+create policy "Event images: authenticated upload" on storage.objects
+    for insert to authenticated with check (bucket_id = 'event-images');
+
+-- 3. Evenementen: een gewone gebruiker kon via de API zijn eigen evenement
+-- meteen op 'approved' zetten en zo de goedkeuring overslaan. Aanmaken mag
+-- nu alleen als 'pending', en zelf de status op 'approved' zetten kan niet
+-- meer (vervallen gaat via cancel_event, dat blijft werken).
+drop policy if exists "Events: authenticated users can insert" on public.events;
+create policy "Events: authenticated users can insert" on public.events
+    for insert to authenticated
+    with check (
+        auth.uid() = user_id
+        and (status = 'pending' or public.is_admin())
+    );
+
+drop policy if exists "Events: owner or admin can update" on public.events;
+create policy "Events: owner or admin can update" on public.events
+    for update using (
+        user_id = auth.uid()
+        or public.is_admin()
+    )
+    with check (
+        public.is_admin()
+        or (user_id = auth.uid() and status <> 'approved')
+    );
+
+-- 4. Profielen: een gebruiker kon via de API zijn eigen rij volledig
+-- bijwerken, dus ook is_admin = true zetten of zijn streak en tellers
+-- aanpassen. Nu mag een gebruiker alleen naam, e-mail, foto en woonplaats
+-- wijzigen. Streaks, tellers en presence lopen via security-definer-functies
+-- en werken gewoon door.
+revoke update on public.profiles from authenticated;
+grant update (name, email, avatar_url, city) on public.profiles to authenticated;
+
+-- 5. Streak bijwerken mag alleen voor jezelf (anders kon iedereen de streak
+-- en badges van een ander aanpassen).
+create or replace function public.record_daily_activity(p_user_id uuid)
+returns table(current_streak integer, longest_streak integer, newly_earned_badges text[])
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+    v_last_date date;
+    v_current_streak integer;
+    v_longest_streak integer;
+    v_new_streak integer;
+    v_today date := current_date;
+    v_newly_earned text[];
+begin
+    if p_user_id is distinct from auth.uid() then
+        raise exception 'Niet toegestaan.';
+    end if;
+
+    select p.last_activity_date, p.current_streak, p.longest_streak
+        into v_last_date, v_current_streak, v_longest_streak
+        from public.profiles p
+        where p.id = p_user_id
+        for update;
+
+    if not found then
+        raise exception 'record_daily_activity: geen profiel gevonden voor gebruiker %', p_user_id;
+    end if;
+
+    if v_last_date = v_today then
+        v_new_streak := v_current_streak;
+    elsif v_last_date = v_today - 1 then
+        v_new_streak := v_current_streak + 1;
+    else
+        v_new_streak := 1;
+    end if;
+
+    update public.profiles
+        set current_streak = v_new_streak,
+            longest_streak = greatest(v_longest_streak, v_new_streak),
+            last_activity_date = v_today
+        where id = p_user_id;
+
+    with inserted as (
+        insert into public.user_badges (user_id, badge_id)
+        select p_user_id, b.id
+        from public.badges b
+        where b.requirement_type = 'streak'
+            and b.requirement_value <= v_new_streak
+            and not exists (
+                select 1 from public.user_badges ub
+                where ub.user_id = p_user_id and ub.badge_id = b.id
+            )
+        on conflict (user_id, badge_id) do nothing
+        returning badge_id
+    )
+    select coalesce(array_agg(badge_id), array[]::text[]) into v_newly_earned from inserted;
+
+    return query select v_new_streak, greatest(v_longest_streak, v_new_streak), v_newly_earned;
+end;
+$$;
+
+grant execute on function public.record_daily_activity(uuid) to authenticated;
+
+-- 6. Account verwijderen faalde voor een beheerder die ooit iets had
+-- goedgekeurd: approved_by verwees naar het profiel zonder "on delete".
+-- Nu wordt dat veld leeggemaakt als het account verdwijnt.
+do $mig$
+declare
+    v_table text;
+    v_con text;
+begin
+    foreach v_table in array array['events', 'brewery_submissions', 'horeca_submissions', 'beer_submissions'] loop
+        for v_con in
+            select c.conname
+            from pg_constraint c
+            join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+            where c.conrelid = ('public.' || v_table)::regclass
+              and c.contype = 'f'
+              and a.attname = 'approved_by'
+        loop
+            execute format('alter table public.%I drop constraint %I', v_table, v_con);
+        end loop;
+        execute format(
+            'alter table public.%I add constraint %I foreign key (approved_by) references public.profiles(id) on delete set null',
+            v_table, v_table || '_approved_by_fkey');
+    end loop;
+end;
+$mig$;
+
 NOTIFY pgrst, 'reload schema';

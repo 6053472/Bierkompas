@@ -41,11 +41,13 @@ class FavoritesService {
 
   Future<void> add({required String userId, required String itemType, required int itemId}) async {
     try {
-      await _client.from('favorites').insert({
+      // Upsert i.p.v. insert: staat hij er al (bijv. dubbel getikt), dan is
+      // dat geen fout.
+      await _client.from('favorites').upsert({
         'user_id': userId,
         'item_type': itemType,
         'item_id': itemId,
-      });
+      }, onConflict: 'user_id,item_type,item_id', ignoreDuplicates: true);
       // Kent locatie-badges toe als deze brouwerij/horeca door een beheerder
       // getagd is (zie supabase/add_remaining_badges.sql); no-op voor andere
       // itemTypes of ongetagde locaties. Mag het favorieten zelf niet

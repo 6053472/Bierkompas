@@ -350,13 +350,18 @@ class _EventCreatePageState extends State<EventCreatePage> {
         _selectedStartTime!.minute,
       );
 
-      final DateTime endDateTime = DateTime(
+      DateTime endDateTime = DateTime(
         _selectedDate!.year,
         _selectedDate!.month,
         _selectedDate!.day,
         _selectedEndTime!.hour,
         _selectedEndTime!.minute,
       );
+      // Een eindtijd vóór de starttijd (bijv. 20:00 - 01:00) loopt door tot
+      // na middernacht: dan eindigt het evenement de volgende dag.
+      if (endDateTime.isBefore(startDateTime)) {
+        endDateTime = endDateTime.add(const Duration(days: 1));
+      }
 
       if (!endDateTime.isAfter(startDateTime)) {
         if (mounted) {
@@ -380,8 +385,10 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'user_id': user.id,
         'name': _nameController.text.trim(),
         'event_type': _selectedEventType,
-        'start_date': startDateTime.toIso8601String(),
-        'end_date': endDateTime.toIso8601String(),
+        // Als UTC opslaan: zonder tijdzone leest de database het als UTC en
+        // staat het evenement 1-2 uur verschoven in de agenda.
+        'start_date': startDateTime.toUtc().toIso8601String(),
+        'end_date': endDateTime.toUtc().toIso8601String(),
         'opening_hours': '$formattedStartTime - $formattedEndTime',
         'street': _streetController.text.trim(),
         'house_number': _houseNumberController.text.trim(),

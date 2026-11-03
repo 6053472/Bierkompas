@@ -44,7 +44,10 @@ class _SocialPageState extends State<SocialPage> {
 
   Future<void> _loadFriends() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      setState(() => _friendsLoading = false);
+      return;
+    }
     setState(() {
       _friendsLoading = true;
       _friendsError = null;

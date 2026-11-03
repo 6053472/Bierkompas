@@ -174,6 +174,17 @@ class FriendsService {
     }
   }
 
+  /// Verbreekt de vriendschap met [friendId], in beide richtingen. RLS
+  /// "involved can delete" staat dit alleen toe voor je eigen rijen.
+  Future<void> removeFriend({required String userId, required String friendId}) async {
+    try {
+      await _client.from('friend_requests').delete().or(
+          'and(requester_id.eq.$userId,addressee_id.eq.$friendId),and(requester_id.eq.$friendId,addressee_id.eq.$userId)');
+    } on PostgrestException catch (e) {
+      throw FriendsException(e.message);
+    }
+  }
+
   /// Willekeurige suggesties voor nieuwe vrienden (Snapchat-achtige "Snel
   /// toevoegen"-lijst): geen vrienden, geen openstaand verzoek, niet jezelf.
   Future<List<FriendSuggestion>> suggestFriends({int limit = 12}) async {

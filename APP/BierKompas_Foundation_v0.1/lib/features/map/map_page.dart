@@ -120,6 +120,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final Set<int> _favoriteHorecaIds = {};
 
   List<BreweryResult> _results = [];
+  // Vaste én goedgekeurde aangemelde brouwerijen samen (zie _loadBreweries).
+  List<Brewery> _allBreweries = breweries;
   List<HorecaResult> _horecaResults = [];
   List<NearbyFriend> _nearbyFriends = [];
   bool _locationSharingEnabled = false;
@@ -315,30 +317,46 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
+  // De sheets lezen de favorietstatus live en verversen na elke tik, anders
+  // blijft het hartje in de sheet op de oude stand staan.
   Future<void> _openBreweryDetail(Brewery brewery) async {
-    final isFavorite = _favoriteIds.contains(brewery.id);
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF2C221C),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => _BreweryDetailSheet(
-        brewery: brewery,
-        isFavorite: isFavorite,
-        onFavoriteTap: () => _toggleFavorite(brewery),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => _BreweryDetailSheet(
+          brewery: brewery,
+          isFavorite: _favoriteIds.contains(brewery.id),
+          onFavoriteTap: () {
+            final done = _toggleFavorite(brewery);
+            setSheetState(() {});
+            done.whenComplete(() {
+              if (context.mounted) setSheetState(() {});
+            });
+          },
+        ),
       ),
     );
   }
 
   Future<void> _openHorecaDetail(HorecaVenue venue) async {
-    final isFavorite = _favoriteHorecaIds.contains(venue.id);
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF2C221C),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => _HorecaDetailSheet(
-        venue: venue,
-        isFavorite: isFavorite,
-        onFavoriteTap: () => _toggleHorecaFavorite(venue),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => _HorecaDetailSheet(
+          venue: venue,
+          isFavorite: _favoriteHorecaIds.contains(venue.id),
+          onFavoriteTap: () {
+            final done = _toggleHorecaFavorite(venue);
+            setSheetState(() {});
+            done.whenComplete(() {
+              if (context.mounted) setSheetState(() {});
+            });
+          },
+        ),
       ),
     );
   }
@@ -439,7 +457,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         unique[key] = brewery;
       }
 
-      final result = _sortedBreweryResults(unique.values.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
+      _allBreweries = unique.values.toList();
+      final result = _sortedBreweryResults(_allBreweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
 
       if (!mounted) return;
       setState(() {
@@ -857,7 +876,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _resetSearch() {
     _searchController.clear();
 
-    final resetResults = _sortedBreweryResults(breweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
+    // Uit de samengevoegde lijst, anders verdwijnen de aangemelde brouwerijen.
+    final resetResults = _sortedBreweryResults(_allBreweries.map((brewery) => BreweryResult(brewery: brewery, distance: 0)).toList());
     final resetHoreca = _sortedHorecaResults(_horecaResults.map((result) => HorecaResult(venue: result.venue, distance: 0)).toList());
 
     setState(() {
