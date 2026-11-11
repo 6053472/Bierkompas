@@ -46,7 +46,7 @@ valt de build terug op de debug-sleutel; zo'n bestand weigert Google Play.
 
 ## Een nieuwe versie bouwen
 
-1. Verhoog het versienummer in `pubspec.yaml` (`version: 1.0.0+10`: het getal na
+1. Verhoog het versienummer in `pubspec.yaml` (nu `version: 1.0.0+11`; het getal na
    de `+` moet bij elke upload hoger zijn).
 2. Bouw het bestand:
 
