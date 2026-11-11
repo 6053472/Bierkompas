@@ -16,6 +16,7 @@ import '../profile/cheers_service.dart';
 import '../profile/settings_page.dart';
 import 'breweries.dart';
 import 'brewery_fact_text.dart';
+import 'brewery_stays.dart';
 import 'brewery_submission_page.dart';
 import 'brewery_submission_service.dart';
 import 'event_map_service.dart';
@@ -30,7 +31,7 @@ import '../../shared/share_sheet.dart';
 import '../../shared/share_with_friend.dart';
 
 /// De weergaven van de kaart: alles samen, of per soort.
-enum _MapTab { all, breweries, horeca, events, nearby }
+enum _MapTab { all, breweries, horeca, events, nearby, stays }
 
 class MapPage extends StatefulWidget {
   const MapPage({
@@ -139,6 +140,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // want de publieke servers kunnen traag zijn.
   bool _loadingMoreBreweries = false;
   bool _loadingHoreca = false;
+  bool _loadingStays = false;
+  bool _staysLoadFailed = false;
+  final _staysService = BreweryStaysService();
+  List<BreweryStay> _stays = [];
   bool _loadingNearby = false;
   // true als de lijst niet opgehaald kon worden -- dan tonen we een
   // duidelijke foutmelding met een "Opnieuw proberen"-knop i.p.v. stil een
@@ -174,7 +179,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _tabController = TabController(length: 5, vsync: this)..addListener(_onTabChanged);
+    _tabController = TabController(length: _MapTab.values.length, vsync: this)..addListener(_onTabChanged);
 
     // Toon de lokale lijst meteen, zodat de kaart niet minutenlang leeg/aan
     // het laden lijkt terwijl er op de online data gewacht wordt.
@@ -182,6 +187,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     _loadBreweries();
     _loadHoreca();
+    _loadStays();
     _loadFavorites();
     _loadEvents();
     _startNearbyRefresh();
@@ -506,6 +512,43 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         _horecaLoadFailed = _horecaResults.isEmpty;
       });
     }
+  }
+
+  // ============================================================
+  // OVERNACHTINGEN
+  // ============================================================
+
+  Future<void> _loadStays() async {
+    setState(() {
+      _loadingStays = true;
+      _staysLoadFailed = false;
+    });
+    try {
+      final stays = await _staysService.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _stays = stays;
+        _loadingStays = false;
+      });
+    } catch (e) {
+      debugPrint('Overnachtingen laden mislukt: $e');
+      if (!mounted) return;
+      setState(() {
+        _loadingStays = false;
+        _staysLoadFailed = _stays.isEmpty;
+      });
+    }
+  }
+
+  void _openStayDetail(BreweryStay stay) {
+    _mapController.move(LatLng(stay.latitude, stay.longitude), 14);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF2C221C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => _StayDetailSheet(stay: stay),
+    );
   }
 
   Future<void> _openHorecaSubmission() async {
@@ -995,6 +1038,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           Tab(icon: Text('\u{1F37D}\u{FE0F}', style: TextStyle(fontSize: 18)), text: 'Horeca'),
                           Tab(icon: Text('\u{1F4C5}', style: TextStyle(fontSize: 18)), text: 'Activiteiten'),
                           Tab(icon: Text('\u{1F37B}', style: TextStyle(fontSize: 18)), text: 'Bierliefhebbers'),
+                          Tab(icon: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 18)), text: 'Overnachten'),
                         ],
                       ),
                     ],
@@ -1012,6 +1056,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 if ((_activeTab == _MapTab.breweries || _activeTab == _MapTab.all) && _loadingMoreBreweries) _buildLoadingHint('Brouwerijen laden...'),
                 if ((_activeTab == _MapTab.horeca || _activeTab == _MapTab.all) && _loadingHoreca) _buildLoadingHint('Horeca laden...'),
                 if (_activeTab == _MapTab.nearby && _loadingNearby) _buildLoadingHint('Bierliefhebbers zoeken...'),
+                if (_activeTab == _MapTab.stays && _loadingStays) _buildLoadingHint('Overnachtingen laden...'),
 
                 // De lijst blijft ingeklapt tot de gebruiker er zelf om vraagt,
                 // zodat de kaart standaard zoveel mogelijk ruimte krijgt.
@@ -1076,6 +1121,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case _MapTab.all:
       case _MapTab.events:
       case _MapTab.nearby:
+      case _MapTab.stays:
         return null;
     }
   }
@@ -1092,6 +1138,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return 'Evenementen bekijken';
       case _MapTab.nearby:
         return 'Bierliefhebbers bekijken';
+      case _MapTab.stays:
+        return 'Overnachtingen bekijken';
     }
   }
 
@@ -1148,7 +1196,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<Marker> _buildMarkers() {
     switch (_activeTab) {
       case _MapTab.all:
-        return [..._breweryMarkers(), ..._horecaMarkers(), ..._eventMarkers(), ..._friendMarkers()];
+        return [..._breweryMarkers(), ..._horecaMarkers(), ..._stayMarkers(), ..._eventMarkers(), ..._friendMarkers()];
       case _MapTab.breweries:
         return _breweryMarkers();
       case _MapTab.horeca:
@@ -1157,7 +1205,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return _eventMarkers();
       case _MapTab.nearby:
         return _friendMarkers();
+      case _MapTab.stays:
+        return _stayMarkers();
     }
+  }
+
+  List<Marker> _stayMarkers() {
+    return [
+      for (final stay in _stays)
+        Marker(
+          point: LatLng(stay.latitude, stay.longitude),
+          width: 36,
+          height: 36,
+          child: GestureDetector(
+            onTap: () => _openStayDetail(stay),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFD4B28C),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF2C221C), width: 2),
+              ),
+              child: const Center(child: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 16))),
+            ),
+          ),
+        ),
+    ];
   }
 
   List<Marker> _breweryMarkers() {
@@ -1336,7 +1408,80 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return _buildEventsPanel();
       case _MapTab.nearby:
         return _buildNearbyPanel();
+      case _MapTab.stays:
+        return _buildStaysPanel();
     }
+  }
+
+  Widget _buildStaysPanel() {
+    if (_staysLoadFailed) {
+      return _buildEmptyState(
+        emoji: '\u{1F4E1}',
+        message: 'Kon overnachtingen niet laden. Controleer je internetverbinding.',
+        showRetry: true,
+        onRetry: _loadingStays ? null : _loadStays,
+      );
+    }
+    if (_stays.isEmpty) {
+      return _buildEmptyState(
+        emoji: '\u{1F6CF}\u{FE0F}',
+        message: _loadingStays ? 'Overnachtingen laden...' : 'Nog geen overnachtingen gevonden.',
+      );
+    }
+    return _buildCompactList(
+      itemCount: _stays.length,
+      itemBuilder: (context, index) => _buildStayTile(_stays[index]),
+    );
+  }
+
+  Widget _buildStayTile(BreweryStay stay) {
+    return InkWell(
+      onTap: () => _openStayDetail(stay),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2C221C),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF3E312A)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: const Color(0xFF1E1712), borderRadius: BorderRadius.circular(10)),
+              clipBehavior: Clip.antiAlias,
+              child: stay.logoUrl != null
+                  ? _BreweryLogo(url: stay.logoUrl!, emojiSize: 20)
+                  : const Center(child: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 20))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(stay.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${stay.place}, ${stay.countryName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(color: const Color(0xFF9E8A7D), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            if (stay.stayConfirmed)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFF3E312A), borderRadius: BorderRadius.circular(999)),
+                child: Text('Verblijf', style: GoogleFonts.inter(color: const Color(0xFFD4B28C), fontSize: 11, fontWeight: FontWeight.w600)),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildEmptyState({required String emoji, required String message, bool showRetry = false, VoidCallback? onRetry, String? actionLabel, VoidCallback? onAction}) {
@@ -1405,6 +1550,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final tiles = <Widget>[
       for (var i = 0; i < _results.length; i++) _buildBreweryTile(i, _results[i]),
       for (var i = 0; i < _horecaResults.length; i++) _buildHorecaTile(i, _horecaResults[i]),
+      for (final stay in _stays) _buildStayTile(stay),
       for (final event in events) _buildEventTile(event),
       if (_locationSharingEnabled) for (final friend in _nearbyFriends) _buildNearbyFriendTile(friend),
     ];
@@ -2107,6 +2253,122 @@ class _HorecaDetailSheet extends StatelessWidget {
                     const SizedBox(height: 12),
                     BreweryFactText(
                       fact: 'Website: ${venue.website}',
+                      style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4),
+                      linkColor: _primary,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottomsheet met een brouwerij waar je kunt overnachten.
+class _StayDetailSheet extends StatelessWidget {
+  const _StayDetailSheet({required this.stay});
+
+  final BreweryStay stay;
+
+  static const _primary = Color(0xFFD4B28C);
+  static const _onSurface = Color(0xFFEFE6DD);
+  static const _onSurfaceVariant = Color(0xFF9E8A7D);
+
+  @override
+  Widget build(BuildContext context) {
+    final location = [stay.address, stay.countryName].where((s) => s.isNotEmpty).join(' · ');
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SizedBox(
+                    height: 160,
+                    width: double.infinity,
+                    child: ColoredBox(
+                      color: const Color(0xFF3E312A),
+                      child: Center(
+                        child: stay.logoUrl != null
+                            ? Container(
+                                width: 96,
+                                height: 96,
+                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+                                clipBehavior: Clip.antiAlias,
+                                child: _BreweryLogo(url: stay.logoUrl!, emojiSize: 44),
+                              )
+                            : const Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 44)),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: _photoButton(
+                    icon: Icons.ios_share,
+                    color: Colors.white,
+                    onTap: () => _shareLocation(context, name: stay.name, place: stay.place),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(stay.name, style: GoogleFonts.playfairDisplay(color: _onSurface, fontSize: 22, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, color: _onSurfaceVariant, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(location, style: GoogleFonts.inter(color: _onSurfaceVariant, fontSize: 13))),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1712),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF3E312A)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 18)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            stay.stayConfirmed
+                                ? 'De brouwerij vermeldt overnachtingsmogelijkheden op haar website. Bekijk de website voor de actuele mogelijkheden en prijzen.'
+                                : 'Vraag bij de brouwerij naar overnachtingsmogelijkheden of arrangementen in de buurt.',
+                            style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  RouteButton(latitude: stay.latitude, longitude: stay.longitude),
+                  if (stay.description != null && stay.description!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(stay.description!, style: GoogleFonts.inter(color: _onSurface, fontSize: 14, height: 1.5)),
+                  ],
+                  if (stay.website != null && stay.website!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    BreweryFactText(
+                      fact: 'Website: ${stay.website}',
                       style: GoogleFonts.inter(color: _onSurface, fontSize: 13, height: 1.4),
                       linkColor: _primary,
                     ),
