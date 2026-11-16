@@ -5223,4 +5223,62 @@ from jsonb_to_recordset($data$[{"id":37,"naam":"Brouwerij Hertog Jan","plaats":"
 where not exists (select 1 from public.brewery_stays where id >= 37)
 on conflict (id) do nothing;
 
+-- ============================================================
+-- evenementen_bewerken_alleen_beheerder
+-- ============================================================
+-- Beheerders kunnen bestaande evenementen bewerken (app: Evenementen beheren
+-- → Bewerken). Gewone gebruikers mochten via de API hun eigen, nog niet
+-- goedgekeurde evenement nog rechtstreeks bijwerken; dat gebruikt de app
+-- nergens. Vervallen (cancel_event), goedkeuren en afwijzen lopen via
+-- security-definer-functies en werken dus gewoon door.
+drop policy if exists "Events: owner or admin can update" on public.events;
+drop policy if exists "Events: admins can update" on public.events;
+create policy "Events: admins can update" on public.events
+    for update to authenticated
+    using (public.is_admin())
+    with check (public.is_admin());
+
+-- ============================================================
+-- afbeeldingen_uploaden_beheerder
+-- ============================================================
+-- Beheerders uploaden in het beheerpaneel foto's voor evenementen, brouwerijen
+-- en horeca, in dezelfde buckets die de app al gebruikt (event-images,
+-- brewery-photos, horeca-photos). Gewone gebruikers houden alleen hun
+-- bestaande recht om bij een aanmelding een foto te uploaden; beheren
+-- (vervangen en verwijderen) kan alleen een beheerder. De maximale grootte
+-- van 5 MB en de bestandstypen worden in het beheerpaneel gecontroleerd.
+insert into storage.buckets (id, name, public)
+values ('event-images', 'event-images', true),
+       ('brewery-photos', 'brewery-photos', true),
+       ('horeca-photos', 'horeca-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Afbeeldingen: beheerders mogen uploaden" on storage.objects;
+create policy "Afbeeldingen: beheerders mogen uploaden" on storage.objects
+    for insert to authenticated
+    with check (
+        bucket_id in ('event-images', 'brewery-photos', 'horeca-photos')
+        and public.is_admin()
+    );
+
+drop policy if exists "Afbeeldingen: beheerders mogen vervangen" on storage.objects;
+create policy "Afbeeldingen: beheerders mogen vervangen" on storage.objects
+    for update to authenticated
+    using (
+        bucket_id in ('event-images', 'brewery-photos', 'horeca-photos')
+        and public.is_admin()
+    )
+    with check (
+        bucket_id in ('event-images', 'brewery-photos', 'horeca-photos')
+        and public.is_admin()
+    );
+
+drop policy if exists "Afbeeldingen: beheerders mogen verwijderen" on storage.objects;
+create policy "Afbeeldingen: beheerders mogen verwijderen" on storage.objects
+    for delete to authenticated
+    using (
+        bucket_id in ('event-images', 'brewery-photos', 'horeca-photos')
+        and public.is_admin()
+    );
+
 NOTIFY pgrst, 'reload schema';

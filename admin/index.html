@@ -299,10 +299,12 @@
           </div>
         </div>
 
-        <!-- Evenement rechtstreeks aanmaken en publiceren (zonder goedkeuringsronde) -->
+        <p id="events-success" class="hidden text-success text-sm bg-success/10 border border-success/30 rounded-lg px-3 py-2 mb-6"></p>
+
+        <!-- Evenement rechtstreeks aanmaken en publiceren (zonder goedkeuringsronde), of een bestaand evenement bewerken -->
         <div id="event-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 fade-in">
-          <h3 class="font-display text-lg text-on-surface mb-1">Nieuw evenement</h3>
-          <p class="text-on-surface-variant text-xs mb-4">Wordt direct gepubliceerd in de agenda.</p>
+          <h3 id="event-form-title" class="font-display text-lg text-on-surface mb-1">Nieuw evenement</h3>
+          <p id="event-form-subtitle" class="text-on-surface-variant text-xs mb-4">Wordt direct gepubliceerd in de agenda.</p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input id="event-new-name" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Soort*</span>
@@ -316,6 +318,7 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Huisnummer*</span><input id="event-new-number" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Postcode*</span><input id="event-new-postal" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="event-new-city" type="text" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Provincie (optioneel)</span><input id="event-new-province" type="text" placeholder="Bijv. Utrecht of Antwerpen" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Omschrijving*</span><textarea id="event-new-desc" rows="3" class="fi"></textarea></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="event-new-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
             <div class="md:col-span-2 flex items-center gap-6 flex-wrap text-sm text-on-surface">
@@ -868,6 +871,7 @@
             <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe locatie
           </button>
         </div>
+        <p id="loc-success" class="hidden text-success text-sm bg-success/10 border border-success/30 rounded-lg px-3 py-2 mt-4"></p>
         <div id="loc-new-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-6 mt-4 fade-in">
           <h3 id="loc-form-title" class="font-display text-lg text-on-surface mb-4">Nieuwe locatie</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -893,12 +897,20 @@
         <input type="text" data-filter-list="loc-list" placeholder="Zoek op naam of plaats..." class="fi mb-3"/>
         <div id="loc-list" class="flex flex-col gap-2"></div>
 
-        <h3 class="font-display text-lg text-on-surface mt-10 mb-1">Vaste brouwerijen op de kaart</h3>
-        <p class="text-on-surface-variant text-sm mb-3">De brouwerijen uit de aangeleverde lijsten van Nederland en België. Zoek, bewerk of verwijder ze hier; de app neemt de wijziging over bij de volgende keer opstarten.</p>
+        <div class="flex items-start justify-between flex-wrap gap-3 mt-10 mb-3">
+          <div>
+            <h3 class="font-display text-lg text-on-surface mb-1">Vaste brouwerijen op de kaart</h3>
+            <p class="text-on-surface-variant text-sm">De brouwerijen uit de aangeleverde lijsten van Nederland en België. Zoek, voeg toe, bewerk of verwijder ze hier; de app neemt de wijziging over bij de volgende keer opstarten.</p>
+          </div>
+          <button id="fixed-br-new" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shrink-0">
+            <span class="material-symbols-outlined text-[18px]">add</span> Nieuwe brouwerij
+          </button>
+        </div>
         <input id="fixed-br-search" type="search" placeholder="Zoek op naam of plaats..." class="fi w-full mb-2"/>
         <p id="fixed-br-info" class="text-on-surface-variant text-xs mb-3"></p>
+        <p id="fixed-br-success" class="hidden text-success text-sm bg-success/10 border border-success/30 rounded-lg px-3 py-2 mb-3"></p>
         <div id="fixed-br-form" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-5 mb-4 fade-in">
-          <p class="text-on-surface text-sm mb-3">Brouwerij bewerken <span id="fixed-br-id" class="text-on-surface-variant text-xs"></span></p>
+          <p class="text-on-surface text-sm mb-3"><span id="fixed-br-form-title">Brouwerij bewerken</span> <span id="fixed-br-id" class="text-on-surface-variant text-xs"></span></p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Naam*</span><input id="fixed-br-title" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="fixed-br-location" type="text" class="fi"/></label>
@@ -906,9 +918,13 @@
               <select id="fixed-br-country" class="fi"><option value="NEDERLAND">Nederland</option><option value="BELGIË">België</option></select></label>
             <label class="flex items-center gap-2 mt-6"><input id="fixed-br-taproom" type="checkbox"/><span class="text-sm text-on-surface">Heeft een proeflokaal</span></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Over deze brouwerij</span><textarea id="fixed-br-about" rows="2" class="fi"></textarea></label>
-            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Gegevens (één per regel)</span><textarea id="fixed-br-facts" rows="3" class="fi" placeholder="Adres: Straat 1, Plaats&#10;Website: https://..."></textarea></label>
-            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Breedtegraad*</span><input id="fixed-br-lat" type="number" step="any" class="fi"/></label>
-            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Lengtegraad*</span><input id="fixed-br-lng" type="number" step="any" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Adres</span><input id="fixed-br-address" type="text" placeholder="Straat 1, Plaats" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Website</span><input id="fixed-br-website" type="text" placeholder="https://www.voorbeeld.nl" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Overige gegevens (één per regel)</span><textarea id="fixed-br-facts" rows="2" class="fi" placeholder="Bijv. Opgericht: 1998"></textarea></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Breedtegraad</span><input id="fixed-br-lat" type="number" step="any" class="fi"/></label>
+            <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Lengtegraad</span><input id="fixed-br-lng" type="number" step="any" class="fi"/></label>
+            <p class="md:col-span-2 -mt-2 text-xs text-on-surface-variant/70">Laat breedte- en lengtegraad leeg om de positie automatisch via het adres op te zoeken.</p>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="fixed-br-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
           </div>
           <p id="fixed-br-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
           <div class="flex gap-3 mt-4">
@@ -1427,6 +1443,9 @@
         </div>
         <div id="event-action-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mb-4 mt-4"></div>
         <div class="flex gap-4 pt-2 border-t border-outline-variant/20">
+          <button class="edit-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:text-primary hover:border-primary/40 transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">edit</span> Bewerken
+          </button>
           <button class="reject-btn flex-1 mt-4 py-3 rounded-lg border border-outline-variant text-on-surface hover:bg-error-container/10 hover:border-error/40 hover:text-error transition-colors font-label text-xs uppercase tracking-widest flex items-center justify-center gap-2">
             Afwijzen
           </button>
@@ -1436,6 +1455,7 @@
         </div>
       </div>`;
 
+    eventsDetailEl.querySelector(".edit-btn").addEventListener("click", () => editEvent(event.id));
     eventsDetailEl.querySelector(".approve-btn").addEventListener("click", (e) => moderateEvent(event.id, "approve", e.currentTarget, null));
     eventsDetailEl.querySelector(".reject-btn").addEventListener("click", () => {
       document.getElementById("event-reject-reason-wrap").classList.toggle("hidden");
@@ -1489,6 +1509,185 @@
       };
       img.src = url;
     });
+  }
+
+  // ---------- Afbeelding uploaden (evenementen, brouwerijen, horeca) ----------
+  // Breidt een bestaand Foto-URL-veld uit met een uploadknop, voorbeeld en
+  // verwijderknop. Het geüploade bestand komt in dezelfde Storage-bucket die de
+  // app voor dat onderdeel gebruikt; de publieke URL gaat in het URL-veld, zodat
+  // het bestaande opslaan (en de app) niets anders hoeft te doen.
+  const IMAGE_BUCKETS = ["event-images", "brewery-photos", "horeca-photos"];
+  const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+  const IMAGE_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+  const IMAGE_EXT_TYPES = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+
+  // Bucket en pad van een URL uit een van de eigen afbeelding-buckets, anders null.
+  function imageStorageRef(url) {
+    const prefix = `${SUPABASE_URL}/storage/v1/object/public/`;
+    if (!url || !url.startsWith(prefix)) return null;
+    const [bucket, ...rest] = url.slice(prefix.length).split("?")[0].split("/");
+    if (!IMAGE_BUCKETS.includes(bucket) || !rest.length) return null;
+    return { bucket, path: decodeURIComponent(rest.join("/")) };
+  }
+
+  // Alle plekken waar een afbeeldings-URL kan staan. Een bestand wordt pas
+  // verwijderd als geen enkel item er (nog) naar verwijst.
+  const IMAGE_REFERENCES = [
+    ["events", "image_asset"],
+    ["brewery_submissions", "photo_url"],
+    ["horeca_submissions", "photo_url"],
+    ["breweries", "image_url"],
+    ["news_articles", "foto_url"],
+    ["feed_items", "image_url"],
+  ];
+
+  async function imageStillUsed(url) {
+    const results = await Promise.all(
+      IMAGE_REFERENCES.map(([table, column]) =>
+        client.from(table).select("id", { count: "exact", head: true }).eq(column, url)
+      )
+    );
+    // Bij twijfel (fout bij controleren) het bestand laten staan.
+    return results.some((r) => r.error || (r.count ?? 0) > 0);
+  }
+
+  // Verwijdert afbeeldingen uit de eigen buckets die nergens meer gebruikt
+  // worden. Aanroepen nadat het item zelf is bijgewerkt of verwijderd.
+  async function removeStoredImages(urls) {
+    for (const url of new Set(urls)) {
+      const ref = imageStorageRef(url);
+      if (!ref) continue; // externe URL of andere bucket: nooit aankomen
+      if (await imageStillUsed(url)) {
+        console.info(`Afbeelding blijft staan, wordt nog door een ander item gebruikt: ${ref.path}`);
+        continue;
+      }
+      const { error } = await client.storage.from(ref.bucket).remove([ref.path]);
+      if (error) console.warn(`Afbeelding niet verwijderd (${ref.path}): ${error.message}`);
+    }
+  }
+
+  // input: het Foto-URL-veld. bucket: naam van de bucket, of een functie die
+  // die teruggeeft (bij locaties hangt die af van de gekozen soort).
+  function createImageUpload(input, bucket) {
+    const wrap = document.createElement("div");
+    wrap.className = "md:col-span-2 flex flex-col gap-2";
+    wrap.innerHTML = `
+      <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" class="img-upload-btn flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-colors text-sm">
+          <span class="material-symbols-outlined text-[18px]">upload</span><span class="img-upload-label">Afbeelding uploaden</span>
+        </button>
+        <button type="button" class="img-remove-btn hidden flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-sm">
+          <span class="material-symbols-outlined text-[18px]">delete</span> Verwijderen
+        </button>
+        <span class="text-xs text-on-surface-variant/70">JPG, PNG of WebP, maximaal 5 MB. Een URL plakken kan ook.</span>
+        <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" class="hidden"/>
+      </div>
+      <img class="img-preview hidden w-full max-w-xs h-40 object-cover rounded-lg border border-outline-variant/20" alt="Voorbeeld van de afbeelding"/>
+      <p class="img-status hidden text-sm rounded-lg px-3 py-2"></p>`;
+    input.closest("label").after(wrap);
+
+    const fileInput = wrap.querySelector("input[type=file]");
+    const uploadBtn = wrap.querySelector(".img-upload-btn");
+    const uploadLabel = wrap.querySelector(".img-upload-label");
+    const removeBtn = wrap.querySelector(".img-remove-btn");
+    const preview = wrap.querySelector(".img-preview");
+    const status = wrap.querySelector(".img-status");
+    let originalUrl = null; // URL zoals die in de database staat
+    let sessionUploads = []; // in deze bewerking geüpload, nog niet opgeslagen
+
+    function setStatus(kind, message) {
+      if (!kind) {
+        status.classList.add("hidden");
+        return;
+      }
+      const styles = {
+        busy: "text-on-surface-variant bg-surface-container-high border border-outline-variant/20",
+        ok: "text-success bg-success/10 border border-success/30",
+        error: "text-error bg-error-container/20 border border-error/30",
+      };
+      status.className = `img-status text-sm rounded-lg px-3 py-2 ${styles[kind]}`;
+      status.innerHTML = message;
+    }
+
+    function refresh() {
+      const url = input.value.trim();
+      if (url) {
+        preview.src = url;
+        preview.classList.remove("hidden");
+      } else {
+        preview.removeAttribute("src");
+        preview.classList.add("hidden");
+      }
+      removeBtn.classList.toggle("hidden", !url);
+      uploadLabel.textContent = url ? "Afbeelding vervangen" : "Afbeelding uploaden";
+    }
+
+    preview.addEventListener("error", () => preview.classList.add("hidden"));
+    input.addEventListener("input", () => {
+      setStatus(null);
+      refresh();
+    });
+    uploadBtn.addEventListener("click", () => fileInput.click());
+    removeBtn.addEventListener("click", () => {
+      input.value = "";
+      refresh();
+      setStatus("ok", "Afbeelding verwijderd. Klik op opslaan om de wijziging te bewaren.");
+    });
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      fileInput.value = "";
+      if (!file) return;
+      const ext = (file.name.split(".").pop() || "").toLowerCase();
+      const type = IMAGE_TYPES[file.type] ? file.type : IMAGE_EXT_TYPES[ext];
+      if (!type) return setStatus("error", "Dit bestandstype wordt niet ondersteund. Kies een JPG-, PNG- of WebP-afbeelding.");
+      if (file.size > IMAGE_MAX_BYTES) {
+        return setStatus("error", `Dit bestand is ${(file.size / 1024 / 1024).toFixed(1)} MB. De maximale grootte is 5 MB.`);
+      }
+
+      const bucketName = typeof bucket === "function" ? bucket() : bucket;
+      // Unieke naam: een vervangen foto krijgt een nieuwe URL, dus de app toont
+      // meteen de nieuwe en niet een oude uit de cache.
+      const path = `admin/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${IMAGE_TYPES[type]}`;
+      widget.busy = true;
+      uploadBtn.disabled = true;
+      setStatus("busy", '<span class="spinner"></span> Afbeelding uploaden...');
+      const { error } = await client.storage.from(bucketName).upload(path, file, { contentType: type, upsert: false, cacheControl: "3600" });
+      widget.busy = false;
+      uploadBtn.disabled = false;
+      if (error) return setStatus("error", `Uploaden mislukt: ${escapeHtml(error.message)}`);
+
+      const url = client.storage.from(bucketName).getPublicUrl(path).data.publicUrl;
+      sessionUploads.push(url);
+      input.value = url;
+      refresh();
+      setStatus("ok", "Afbeelding geüpload. Klik op opslaan om hem bij dit onderdeel te bewaren.");
+    });
+
+    const widget = {
+      busy: false,
+      // Na het vullen of leegmaken van het formulier: huidige waarde is de
+      // opgeslagen waarde. Uploads die niet zijn opgeslagen worden opgeruimd.
+      reset() {
+        const leftovers = sessionUploads;
+        sessionUploads = [];
+        if (leftovers.length) removeStoredImages(leftovers);
+        originalUrl = input.value.trim() || null;
+        setStatus(null);
+        refresh();
+      },
+      // Na succesvol opslaan: vervangen of verwijderde eigen bestanden en
+      // ongebruikte uploads opruimen.
+      async commit() {
+        const finalUrl = input.value.trim() || null;
+        const unused = [...sessionUploads, originalUrl].filter((u) => u && u !== finalUrl);
+        sessionUploads = [];
+        originalUrl = finalUrl;
+        await removeStoredImages(unused);
+      },
+    };
+    refresh();
+    return widget;
   }
 
   // ---------- Nieuw bier toevoegen ----------
@@ -3127,6 +3326,10 @@
   const FIXED_BR_SHOWN = 50;
   let fixedBreweries = [];
   let editingFixedBr = null;
+  const fixedBrSuccessEl = document.getElementById("fixed-br-success");
+  let fixedBrSuccessTimer = null;
+  // Zelfde bucket als de andere brouwerijfoto's; de app toont image_url op de kaart.
+  const fixedBrImageUpload = createImageUpload(document.getElementById("fixed-br-photo"), "brewery-photos");
 
   async function loadFixedBreweries() {
     fixedBrInfoEl.textContent = "Laden...";
@@ -3174,8 +3377,11 @@
       item.querySelector(".edit-btn").addEventListener("click", () => editFixedBrewery(b));
       item.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${b.title}" van de kaart verwijderen?`)) return;
-        const { error } = await client.from("breweries").delete().eq("id", b.id);
+        // .select() geeft de werkelijk verwijderde rij terug, met de foto die erbij hoorde.
+        const { data: deleted, error } = await client.from("breweries").delete().eq("id", b.id).select("id, image_url");
         if (error) return alert(`Verwijderen mislukt: ${error.message}`);
+        if (!deleted || !deleted.length) return alert("Verwijderen mislukt: je hebt geen rechten om deze brouwerij te verwijderen, of hij bestaat niet meer.");
+        await removeStoredImages(deleted.map((r) => r.image_url));
         fixedBreweries = fixedBreweries.filter((x) => x.id !== b.id);
         renderFixedBreweries();
       });
@@ -3183,56 +3389,159 @@
     });
   }
 
-  function editFixedBrewery(b) {
+  // Adres en website staan in de app (en in de aangeleverde lijsten) als regels
+  // "Adres: ..." en "Website: ..." in de kolom facts; het formulier toont ze als
+  // eigen velden en zet ze bij opslaan weer vooraan in facts.
+  const FIXED_BR_ADDRESS = /^Adres:\s*/i;
+  const FIXED_BR_WEBSITE = /^Website:\s*/i;
+
+  // b = bestaande brouwerij, of null voor een nieuwe.
+  function openFixedBrForm(b) {
     editingFixedBr = b;
+    const facts = b ? b.facts || [] : [];
+    const addressFact = facts.find((f) => FIXED_BR_ADDRESS.test(f));
+    const websiteFact = facts.find((f) => FIXED_BR_WEBSITE.test(f));
+    const set = (id, value) => (document.getElementById(`fixed-br-${id}`).value = value ?? "");
     fixedBrError.classList.add("hidden");
-    document.getElementById("fixed-br-id").textContent = `(nr. ${b.id})`;
-    document.getElementById("fixed-br-title").value = b.title || "";
-    document.getElementById("fixed-br-location").value = b.location || "";
-    document.getElementById("fixed-br-country").value = (b.tags || []).includes("BELGIË") ? "BELGIË" : "NEDERLAND";
-    document.getElementById("fixed-br-taproom").checked = (b.tags || []).includes("PROEFLOKAAL");
-    document.getElementById("fixed-br-about").value = b.about || "";
-    document.getElementById("fixed-br-facts").value = (b.facts || []).join("\n");
-    document.getElementById("fixed-br-lat").value = b.latitude;
-    document.getElementById("fixed-br-lng").value = b.longitude;
+    document.getElementById("fixed-br-form-title").textContent = b ? "Brouwerij bewerken" : "Nieuwe brouwerij";
+    document.getElementById("fixed-br-id").textContent = b ? `(nr. ${b.id})` : "";
+    document.getElementById("fixed-br-save").textContent = b ? "Wijzigingen opslaan" : "Brouwerij toevoegen";
+    set("title", b?.title);
+    set("location", b?.location);
+    set("country", b && (b.tags || []).includes("BELGIË") ? "BELGIË" : "NEDERLAND");
+    document.getElementById("fixed-br-taproom").checked = !!b && (b.tags || []).includes("PROEFLOKAAL");
+    set("about", b?.about);
+    set("address", addressFact ? addressFact.replace(FIXED_BR_ADDRESS, "") : "");
+    set("website", websiteFact ? websiteFact.replace(FIXED_BR_WEBSITE, "") : "");
+    set("facts", facts.filter((f) => f !== addressFact && f !== websiteFact).join("\n"));
+    set("lat", b?.latitude);
+    set("lng", b?.longitude);
+    // Eerst leegmaken: ruimt een niet-opgeslagen upload van een vorige bewerking op.
+    set("photo", "");
+    fixedBrImageUpload.reset();
+    set("photo", b?.image_url);
+    fixedBrImageUpload.reset();
+    fixedBrSuccessEl.classList.add("hidden");
     fixedBrForm.classList.remove("hidden");
     fixedBrForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  function editFixedBrewery(b) {
+    openFixedBrForm(b);
+  }
+
+  function showFixedBrSuccess(message) {
+    fixedBrSuccessEl.textContent = message;
+    fixedBrSuccessEl.classList.remove("hidden");
+    clearTimeout(fixedBrSuccessTimer);
+    fixedBrSuccessTimer = setTimeout(() => fixedBrSuccessEl.classList.add("hidden"), 6000);
+  }
 
   fixedBrSearchEl.addEventListener("input", renderFixedBreweries);
+  document.getElementById("fixed-br-new").addEventListener("click", () => openFixedBrForm(null));
   document.getElementById("fixed-br-cancel").addEventListener("click", () => {
     editingFixedBr = null;
     fixedBrForm.classList.add("hidden");
+    document.getElementById("fixed-br-photo").value = "";
+    fixedBrImageUpload.reset(); // niet-opgeslagen upload opruimen
   });
   document.getElementById("fixed-br-save").addEventListener("click", async (e) => {
-    if (!editingFixedBr) return;
-    const title = document.getElementById("fixed-br-title").value.trim();
-    const location = document.getElementById("fixed-br-location").value.trim();
-    const lat = Number(document.getElementById("fixed-br-lat").value);
-    const lng = Number(document.getElementById("fixed-br-lng").value);
+    const isNew = !editingFixedBr;
+    const val = (id) => document.getElementById(`fixed-br-${id}`).value.trim();
+    const title = val("title");
+    const location = val("location");
+    const address = val("address");
+    const website = normalizeWebsite(val("website"));
+    if (fixedBrImageUpload.busy) return showFormError(fixedBrError, "Wacht tot de afbeelding klaar is met uploaden.");
     if (!title || !location) return showFormError(fixedBrError, "Naam en plaats zijn verplicht.");
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      return showFormError(fixedBrError, "Vul een geldige breedte- en lengtegraad in.");
+
+    const btn = e.currentTarget;
+    const btnLabel = btn.textContent;
+    btn.disabled = true;
+    fixedBrError.classList.add("hidden");
+    const fail = (message) => {
+      btn.disabled = false;
+      btn.textContent = btnLabel;
+      return showFormError(fixedBrError, message);
+    };
+
+    // Positie: ingevuld, of leeg en dan opzoeken via adres en plaats.
+    let lat = val("lat");
+    let lng = val("lng");
+    // Eén van de twee leeg zou als 0 gelezen worden: een pin op de verkeerde plek.
+    if (!lat !== !lng) return fail("Vul zowel de breedte- als de lengtegraad in, of laat beide leeg om ze op te zoeken.");
+    if (!lat && !lng) {
+      btn.innerHTML = '<span class="spinner"></span> Positie opzoeken...';
+      const query = address && address.toLowerCase().includes(location.toLowerCase()) ? address : [address, location].filter(Boolean).join(", ");
+      const coords = await geocodeAddress(query, "", "", "");
+      if (!coords) return fail("De positie kon niet via het adres gevonden worden. Controleer adres en plaats, of vul breedte- en lengtegraad zelf in.");
+      lat = coords.lat;
+      lng = coords.lng;
     }
+    lat = Number(lat);
+    lng = Number(lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) {
+      return fail("Vul een geldige breedte- en lengtegraad in, of laat beide leeg om ze op te zoeken.");
+    }
+
     const tags = [document.getElementById("fixed-br-country").value];
     if (document.getElementById("fixed-br-taproom").checked) tags.push("PROEFLOKAAL");
     const values = {
       title,
       location,
       tags,
-      about: document.getElementById("fixed-br-about").value.trim(),
-      facts: document.getElementById("fixed-br-facts").value.split("\n").map((l) => l.trim()).filter(Boolean),
+      about: val("about"),
+      facts: [
+        ...(address ? [`Adres: ${address}`] : []),
+        ...(website ? [`Website: ${website}`] : []),
+        ...document.getElementById("fixed-br-facts").value.split("\n").map((l) => l.trim()).filter(Boolean),
+      ],
       latitude: lat,
       longitude: lng,
+      image_url: val("photo") || null,
     };
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    const { error } = await client.from("breweries").update(values).eq("id", editingFixedBr.id);
+    btn.innerHTML = '<span class="spinner"></span> Opslaan...';
+    if (!(await checkImageUrl(values.image_url))) {
+      return fail("De foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+    }
+
+    let saved;
+    if (isNew) {
+      // De kolom id heeft geen automatische waarde: volgende vrije nummer
+      // nemen, en bij een gelijktijdige toevoeging (zelfde nummer) één keer
+      // opnieuw proberen.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const { data: top, error: topError } = await client.from("breweries").select("id").order("id", { ascending: false }).limit(1);
+        if (topError) return fail(`Opslaan mislukt: ${topError.message}`);
+        const id = (top[0]?.id ?? 1000) + 1;
+        const { data, error } = await client.from("breweries").insert({ id, ...values }).select("*");
+        if (error && error.code === "23505" && attempt === 0) continue;
+        if (error) return fail(`Opslaan mislukt: ${error.message}`);
+        saved = data && data[0];
+        break;
+      }
+      if (!saved) return fail("Opslaan mislukt: de brouwerij is niet toegevoegd. Controleer of je beheerdersrechten hebt.");
+    } else {
+      // .select() geeft de bijgewerkte rij terug; RLS laat een verboden update
+      // stilletjes niets doen, en dat mag niet als "opgeslagen" gemeld worden.
+      const { data: updated, error } = await client.from("breweries").update(values).eq("id", editingFixedBr.id).select("id");
+      if (error) return fail(`Opslaan mislukt: ${error.message}`);
+      if (!updated || !updated.length) return fail("Opslaan mislukt: je hebt geen rechten om deze brouwerij te wijzigen, of hij bestaat niet meer.");
+    }
+
     btn.disabled = false;
-    if (error) return showFormError(fixedBrError, `Opslaan mislukt: ${error.message}`);
-    Object.assign(editingFixedBr, values);
+    btn.textContent = btnLabel;
+    await fixedBrImageUpload.commit();
+    if (isNew) {
+      fixedBreweries.push(saved);
+      fixedBreweries.sort((a, b) => a.title.localeCompare(b.title, "nl"));
+    } else {
+      Object.assign(editingFixedBr, values);
+    }
     editingFixedBr = null;
     fixedBrForm.classList.add("hidden");
+    showFixedBrSuccess(isNew
+      ? `"${title}" is toegevoegd (nr. ${saved.id}). De app toont de brouwerij bij de volgende keer opstarten.`
+      : `"${title}" is opgeslagen. De app toont de wijziging bij de volgende keer opstarten.`);
     renderFixedBreweries();
   });
 
@@ -3240,6 +3549,14 @@
   const locNewForm = document.getElementById("loc-new-form");
   const locNewError = document.getElementById("loc-new-error");
   const locListEl = document.getElementById("loc-list");
+  const locSuccessEl = document.getElementById("loc-success");
+  // Zelfde buckets als de aanmeldformulieren in de app (brewery_/horeca_submission_service.dart).
+  const LOC_BUCKETS = { brewery: "brewery-photos", horeca: "horeca-photos" };
+  const locImageUpload = createImageUpload(
+    document.getElementById("loc-new-photo"),
+    () => LOC_BUCKETS[document.getElementById("loc-new-type").value]
+  );
+  let locSuccessTimer = null;
   // "www.x.nl" of "x.nl" -> "https://www.x.nl"; leeg -> null.
   function normalizeWebsite(raw) {
     const v = (raw || "").trim();
@@ -3257,6 +3574,7 @@
     document.getElementById("loc-form-title").textContent = "Nieuwe locatie";
     locNewError.classList.add("hidden");
     editingLoc = null;
+    locImageUpload.reset();
   }
   async function editLocation(row) {
     const { data, error } = await client.from(LOC_TABLES[row.type]).select("*").eq("id", row.id).single();
@@ -3280,6 +3598,8 @@
     document.getElementById("loc-new-desc").value = data.beschrijving || "";
     document.getElementById("loc-new-photo").value = data.photo_url || "";
     document.getElementById("loc-new-website").value = data.website || "";
+    locImageUpload.reset();
+    locSuccessEl.classList.add("hidden");
     locNewForm.classList.remove("hidden");
     locNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3303,6 +3623,7 @@
     const postal = document.getElementById("loc-new-postal").value.trim();
     const city = document.getElementById("loc-new-city").value.trim();
     const photo = document.getElementById("loc-new-photo").value.trim() || null;
+    if (locImageUpload.busy) return showFormError(locNewError, "Wacht tot de afbeelding klaar is met uploaden.");
     if (!naam || !street || !number || !postal || !city) return showFormError(locNewError, "Naam, straat, huisnummer, postcode en plaats zijn verplicht.");
 
     btn.disabled = true;
@@ -3359,8 +3680,13 @@
     resetBtn();
     if (error) return showFormError(locNewError, `Opslaan mislukt: ${error.message}`);
 
+    await locImageUpload.commit();
     clearLocForm();
     locNewForm.classList.add("hidden");
+    locSuccessEl.textContent = `"${naam}" is opgeslagen.`;
+    locSuccessEl.classList.remove("hidden");
+    clearTimeout(locSuccessTimer);
+    locSuccessTimer = setTimeout(() => locSuccessEl.classList.add("hidden"), 6000);
     loadLocationsAdmin();
   });
 
@@ -3405,11 +3731,17 @@
       item.querySelector(".edit-btn").addEventListener("click", () => editLocation(row));
       item.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${row.naam}" verwijderen? Dit haalt de locatie van de kaart.`)) return;
-        const { error } = await client.from(LOC_TABLES[row.type]).delete().eq("id", row.id);
+        // .select() geeft de werkelijk verwijderde rij terug, met de foto die erbij hoorde.
+        const { data: deleted, error } = await client.from(LOC_TABLES[row.type]).delete().eq("id", row.id).select("id, photo_url");
         if (error) {
           alert(`Verwijderen mislukt: ${error.message}`);
           return;
         }
+        if (!deleted || !deleted.length) {
+          alert("Verwijderen mislukt: je hebt geen rechten om deze locatie te verwijderen, of hij bestaat niet meer.");
+          return;
+        }
+        await removeStoredImages(deleted.map((r) => r.photo_url));
         loadLocationsAdmin();
       });
       locListEl.appendChild(item);
@@ -3420,13 +3752,96 @@
   const eventNewForm = document.getElementById("event-new-form");
   const eventNewError = document.getElementById("event-new-error");
   const eventsPublishedListEl = document.getElementById("events-published-list");
+  // Zelfde bucket als het aanmeldformulier in de app (event_create.dart).
+  const eventImageUpload = createImageUpload(document.getElementById("event-new-photo"), "event-images");
+
+  const eventsSuccessEl = document.getElementById("events-success");
+  const eventTypeSelect = document.getElementById("event-new-type");
+  const EVENT_TYPES = Array.from(eventTypeSelect.options).map((o) => o.value);
+  // Het evenement dat bewerkt wordt (volledige rij uit de database), of null bij een nieuw evenement.
+  let editingEvent = null;
+  let eventsSuccessTimer = null;
+
+  function eventSaveLabelText() {
+    return editingEvent ? "Wijzigingen opslaan" : "Opslaan en publiceren";
+  }
+
+  function showEventsSuccess(message) {
+    eventsSuccessEl.textContent = message;
+    eventsSuccessEl.classList.remove("hidden");
+    clearTimeout(eventsSuccessTimer);
+    eventsSuccessTimer = setTimeout(() => eventsSuccessEl.classList.add("hidden"), 6000);
+  }
+
+  // Zet een tijdstip om naar de lokale waarde die een datetime-local-veld verwacht.
+  function toDatetimeLocal(value) {
+    const d = value ? new Date(value) : null;
+    if (!d || isNaN(d)) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function setEventType(type) {
+    // Soorten die niet in de vaste lijst staan (bijv. uit een import) blijven kiesbaar.
+    Array.from(eventTypeSelect.options).forEach((o) => { if (!EVENT_TYPES.includes(o.value)) o.remove(); });
+    if (type && !EVENT_TYPES.includes(type)) eventTypeSelect.add(new Option(type, type));
+    eventTypeSelect.value = type || EVENT_TYPES[0];
+  }
 
   function clearEventForm() {
-    ["name", "start", "end", "location", "street", "number", "postal", "city", "desc", "photo"].forEach((f) => (document.getElementById(`event-new-${f}`).value = ""));
+    ["name", "start", "end", "location", "street", "number", "postal", "city", "province", "desc", "photo"].forEach((f) => (document.getElementById(`event-new-${f}`).value = ""));
     ["t-regular", "t-beer", "t-vip"].forEach((f) => (document.getElementById(`event-new-${f}`).checked = false));
     eventNewError.classList.add("hidden");
+    editingEvent = null;
+    setEventType(null);
+    document.getElementById("event-form-title").textContent = "Nieuw evenement";
+    document.getElementById("event-form-subtitle").textContent = "Wordt direct gepubliceerd in de agenda.";
+    document.getElementById("event-new-save-label").textContent = eventSaveLabelText();
+    eventImageUpload.reset();
   }
-  document.getElementById("event-new-toggle").addEventListener("click", () => eventNewForm.classList.toggle("hidden"));
+
+  async function editEvent(eventId) {
+    eventsSuccessEl.classList.add("hidden");
+    const { data: event, error } = await client.from("events").select("*").eq("id", eventId).maybeSingle();
+    if (error || !event) {
+      alert(`Kon het evenement niet openen: ${error ? error.message : "niet gevonden"}`);
+      return;
+    }
+    clearEventForm();
+    editingEvent = event;
+    const set = (id, value) => (document.getElementById(`event-new-${id}`).value = value ?? "");
+    set("name", event.name);
+    set("start", toDatetimeLocal(event.start_date));
+    set("end", toDatetimeLocal(event.end_date));
+    set("location", event.location_name);
+    set("street", event.street);
+    set("number", event.house_number);
+    set("postal", event.postal_code);
+    set("city", event.city);
+    set("province", event.province);
+    set("desc", event.description);
+    set("photo", event.image_asset);
+    setEventType(event.event_type);
+    document.getElementById("event-new-t-regular").checked = !!event.ticket_regular;
+    document.getElementById("event-new-t-beer").checked = !!event.ticket_beer;
+    document.getElementById("event-new-t-vip").checked = !!event.ticket_vip;
+    document.getElementById("event-form-title").textContent = "Evenement bewerken";
+    document.getElementById("event-form-subtitle").textContent = "Status en organisator blijven ongewijzigd.";
+    document.getElementById("event-new-save-label").textContent = eventSaveLabelText();
+    eventImageUpload.reset();
+    eventNewForm.classList.remove("hidden");
+    eventNewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  document.getElementById("event-new-toggle").addEventListener("click", () => {
+    if (editingEvent) {
+      // Van bewerken naar een nieuw evenement: leeg formulier tonen.
+      clearEventForm();
+      eventNewForm.classList.remove("hidden");
+      return;
+    }
+    eventNewForm.classList.toggle("hidden");
+  });
   document.getElementById("event-new-cancel").addEventListener("click", () => {
     eventNewForm.classList.add("hidden");
     clearEventForm();
@@ -3437,6 +3852,7 @@
     const label = document.getElementById("event-new-save-label");
     const val = (id) => document.getElementById(`event-new-${id}`).value.trim();
     const required = ["name", "start", "end", "location", "street", "number", "postal", "city", "desc"];
+    if (eventImageUpload.busy) return showFormError(eventNewError, "Wacht tot de afbeelding klaar is met uploaden.");
     if (required.some((f) => !val(f))) return showFormError(eventNewError, "Alle velden met een * zijn verplicht.");
 
     const start = new Date(val("start"));
@@ -3448,7 +3864,7 @@
     label.innerHTML = '<span class="spinner"></span> Foto controleren...';
     const resetBtn = () => {
       btn.disabled = false;
-      label.textContent = "Opslaan en publiceren";
+      label.textContent = eventSaveLabelText();
     };
 
     const photo = val("photo") || null;
@@ -3463,6 +3879,57 @@
     }
 
     const pad = (n) => String(n).padStart(2, "0");
+
+    if (editingEvent) {
+      // Alleen de bewerkbare velden; status, organisator, prijs en
+      // goedkeuringsgegevens blijven zoals ze waren.
+      const values = {
+        name: val("name"),
+        event_type: eventTypeSelect.value,
+        start_date: start.toISOString(),
+        end_date: end.toISOString(),
+        opening_hours: `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(end.getHours())}:${pad(end.getMinutes())}`,
+        street: val("street"),
+        house_number: val("number"),
+        postal_code: val("postal"),
+        city: val("city"),
+        province: val("province") || null,
+        location_name: val("location"),
+        description: val("desc"),
+        image_asset: photo,
+        ticket_regular: document.getElementById("event-new-t-regular").checked,
+        ticket_beer: document.getElementById("event-new-t-beer").checked,
+        ticket_vip: document.getElementById("event-new-t-vip").checked,
+      };
+      // Adres gewijzigd: nieuwe positie voor de kaart opzoeken. Niet gevonden
+      // → leeg laten, dan zoekt de app het adres zelf op (een oude pin op de
+      // verkeerde plek is erger dan geen opgeslagen positie).
+      const norm = (v) => String(v ?? "").trim().toLowerCase();
+      const addressChanged = ["street", "house_number", "postal_code", "city"].some((k) => norm(editingEvent[k]) !== norm(values[k]));
+      if (addressChanged) {
+        label.innerHTML = '<span class="spinner"></span> Adres opzoeken...';
+        const coords = await geocodeAddress(values.street, values.house_number, values.postal_code, values.city);
+        values.latitude = coords ? coords.lat : null;
+        values.longitude = coords ? coords.lng : null;
+      }
+      label.innerHTML = '<span class="spinner"></span> Opslaan...';
+      // .select() geeft de bijgewerkte rij terug; RLS laat een verboden update
+      // stilletjes niets doen, en dat mag niet als "opgeslagen" gemeld worden.
+      const { data: updated, error: updateError } = await client.from("events").update(values).eq("id", editingEvent.id).select("id");
+      resetBtn();
+      if (updateError) return showFormError(eventNewError, `Opslaan mislukt: ${updateError.message}`);
+      if (!updated || !updated.length) return showFormError(eventNewError, "Opslaan mislukt: je hebt geen rechten om dit evenement te wijzigen, of het bestaat niet meer.");
+
+      const savedName = values.name;
+      await eventImageUpload.commit();
+      clearEventForm();
+      eventNewForm.classList.add("hidden");
+      showEventsSuccess(`Wijzigingen in "${savedName}" opgeslagen.`);
+      loadPublishedEvents();
+      loadEvents();
+      return;
+    }
+
     const { error } = await client.from("events").insert({
       user_id: adminId,
       name: val("name"),
@@ -3474,6 +3941,7 @@
       house_number: val("number"),
       postal_code: val("postal"),
       city: val("city"),
+      province: val("province") || null,
       location_name: val("location"),
       description: val("desc"),
       image_asset: photo,
@@ -3490,8 +3958,11 @@
     resetBtn();
     if (error) return showFormError(eventNewError, `Opslaan mislukt: ${error.message}`);
 
+    const savedName = val("name");
+    await eventImageUpload.commit();
     clearEventForm();
     eventNewForm.classList.add("hidden");
+    showEventsSuccess(`"${savedName}" is opgeslagen en gepubliceerd.`);
     loadPublishedEvents();
   });
 
@@ -3519,16 +3990,26 @@
           <p class="text-on-surface text-sm truncate">${escapeHtml(event.name)}</p>
           <p class="text-on-surface-variant text-xs truncate">${formatDate(event.start_date)} &middot; ${escapeHtml(event.city || "")}</p>
         </div>
+        <button class="edit-btn flex items-center gap-1 px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors text-xs shrink-0" title="Bewerken">
+          <span class="material-symbols-outlined text-[16px]">edit</span> Bewerken
+        </button>
         <button class="delete-btn px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-colors text-xs shrink-0">
           <span class="material-symbols-outlined text-[16px]">delete</span>
         </button>`;
+      item.querySelector(".edit-btn").addEventListener("click", () => editEvent(event.id));
       item.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${event.name}" verwijderen? Dit haalt het evenement uit de agenda.`)) return;
-        const { error: deleteError } = await client.from("events").delete().eq("id", event.id);
+        // .select() geeft de werkelijk verwijderde rij terug, met de foto die erbij hoorde.
+        const { data: deleted, error: deleteError } = await client.from("events").delete().eq("id", event.id).select("id, image_asset");
         if (deleteError) {
           alert(`Verwijderen mislukt: ${deleteError.message}`);
           return;
         }
+        if (!deleted || !deleted.length) {
+          alert("Verwijderen mislukt: je hebt geen rechten om dit evenement te verwijderen, of het bestaat niet meer.");
+          return;
+        }
+        await removeStoredImages(deleted.map((r) => r.image_asset));
         loadPublishedEvents();
       });
       eventsPublishedListEl.appendChild(item);
