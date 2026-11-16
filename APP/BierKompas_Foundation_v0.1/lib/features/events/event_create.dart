@@ -11,8 +11,15 @@ import '../../shared/postal_code_utils.dart';
 import '../../shared/postcode_lookup.dart';
 import '../../shared/supabase_insert.dart';
 
+/// Formulier om een evenement aan te melden. Met [existingEvent] wordt
+/// hetzelfde formulier gebruikt om een bestaand evenement te bewerken (alleen
+/// voor beheerders: de database staat bijwerken alleen voor hen toe). Status,
+/// organisator en overige velden blijven dan ongewijzigd. Bij opslaan sluit
+/// de pagina met `true`.
 class EventCreatePage extends StatefulWidget {
-  const EventCreatePage({super.key});
+  const EventCreatePage({super.key, this.existingEvent});
+
+  final Map<String, dynamic>? existingEvent;
 
   @override
   State<EventCreatePage> createState() => _EventCreatePageState();
@@ -47,6 +54,12 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
   Uint8List? _imageBytes;
 
+  /// Bij bewerken: de huidige foto van het evenement (blijft staan zolang er
+  /// geen nieuwe gekozen wordt).
+  String? _existingImageUrl;
+
+  bool get _isEditing => widget.existingEvent != null;
+
   static const Color backgroundColor = Color(0xFF1E1712);
   static const Color cardColor = Color(0xFF2C221C);
   static const Color inputColor = Color(0xFF17110D);
@@ -63,6 +76,65 @@ class _EventCreatePageState extends State<EventCreatePage> {
     'Bokbiertocht',
     'Bierwandeltocht',
   ];
+
+  /// Soorten in de keuzelijst. Een bewerkt evenement met een soort die niet
+  /// in de vaste lijst staat (bijv. uit een import) houdt die soort.
+  List<String> get _typeOptions => _eventTypeOptions.contains(_selectedEventType)
+      ? _eventTypeOptions
+      : [..._eventTypeOptions, _selectedEventType];
+
+  @override
+  void initState() {
+    super.initState();
+    final event = widget.existingEvent;
+    if (event != null) _fillFromEvent(event);
+  }
+
+  void _fillFromEvent(Map<String, dynamic> event) {
+    String text(String key) {
+      final value = event[key]?.toString().trim() ?? '';
+      return value == 'null' ? '' : value;
+    }
+
+    _nameController.text = text('name');
+    _streetController.text = text('street');
+    _houseNumberController.text = text('house_number');
+    _postalCodeController.text = text('postal_code');
+    _cityController.text = text('city');
+    _provinceController.text = text('province');
+    _locationNameController.text = text('location_name');
+    _descriptionController.text = text('description');
+    if (text('event_type').isNotEmpty) _selectedEventType = text('event_type');
+
+    final start = DateTime.tryParse(text('start_date'))?.toLocal();
+    final end = DateTime.tryParse(text('end_date'))?.toLocal();
+    if (start != null) {
+      _selectedDate = DateTime(start.year, start.month, start.day);
+      _selectedStartTime = TimeOfDay.fromDateTime(start);
+    }
+    if (end != null) _selectedEndTime = TimeOfDay.fromDateTime(end);
+
+    _isRegularChecked = event['ticket_regular'] == true;
+    _isBierTicketChecked = event['ticket_beer'] == true;
+    _isVipChecked = event['ticket_vip'] == true;
+
+    final image = text('image_asset');
+    _existingImageUrl = image.isEmpty ? null : image;
+  }
+
+  /// Is het adres gewijzigd ten opzichte van het bewerkte evenement? Alleen
+  /// dan hoeft het opnieuw opgezocht te worden.
+  bool get _addressChanged {
+    final event = widget.existingEvent;
+    if (event == null) return true;
+    String norm(Object? v) => (v?.toString() ?? '').trim().toLowerCase();
+    return norm(event['street']) != norm(_streetController.text) ||
+        norm(event['house_number']) != norm(_houseNumberController.text) ||
+        norm(event['postal_code']) != norm(_postalCodeController.text) ||
+        norm(event['city']) != norm(_cityController.text) ||
+        event['latitude'] == null ||
+        event['longitude'] == null;
+  }
 
   @override
   void dispose() {
@@ -165,16 +237,17 @@ class _EventCreatePageState extends State<EventCreatePage> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime today = DateTime.now();
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    // Een bewerkt evenement kan al voorbij zijn; die datum moet kiesbaar blijven.
+    final DateTime firstDate = _selectedDate != null && _selectedDate!.isBefore(today)
+        ? _selectedDate!
+        : today;
 
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? today,
-      firstDate: DateTime(
-        today.year,
-        today.month,
-        today.day,
-      ),
+      firstDate: firstDate,
       lastDate: DateTime(2100),
       builder: (context, child) {
         return Theme(
@@ -292,15 +365,19 @@ class _EventCreatePageState extends State<EventCreatePage> {
     });
 
     // Adres moet écht bestaan, anders verschijnt het evenement straks nooit
-    // als pin op de kaart -- controleer dit vóórdat we iets opslaan.
-    final geocode = await geocodeAddress(
-      street: _streetController.text.trim(),
-      houseNumber: _houseNumberController.text.trim(),
-      postalCode: _postalCodeController.text.trim(),
-      city: _cityController.text.trim(),
-    );
+    // als pin op de kaart -- controleer dit vóórdat we iets opslaan. Bij
+    // bewerken alleen als het adres veranderd is; anders blijft de bekende
+    // positie staan.
+    final GeocodeResult? geocode = _addressChanged
+        ? await geocodeAddress(
+            street: _streetController.text.trim(),
+            houseNumber: _houseNumberController.text.trim(),
+            postalCode: _postalCodeController.text.trim(),
+            city: _cityController.text.trim(),
+          )
+        : null;
 
-    if (geocode.outcome == GeocodeOutcome.notFound) {
+    if (geocode?.outcome == GeocodeOutcome.notFound) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showMessage(
@@ -310,7 +387,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
       return;
     }
 
-    if (geocode.outcome == GeocodeOutcome.serviceUnavailable) {
+    if (geocode?.outcome == GeocodeOutcome.serviceUnavailable) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showMessage(
@@ -381,6 +458,41 @@ class _EventCreatePageState extends State<EventCreatePage> {
           '${_selectedEndTime!.hour.toString().padLeft(2, '0')}:'
           '${_selectedEndTime!.minute.toString().padLeft(2, '0')}';
 
+      if (_isEditing) {
+        // Alleen de bewerkbare velden; status, organisator, prijs en
+        // goedkeuringsgegevens blijven zoals ze waren.
+        await updateWithOptionalColumns(
+          'events',
+          widget.existingEvent!['id'],
+          {
+            'name': _nameController.text.trim(),
+            'event_type': _selectedEventType,
+            'start_date': startDateTime.toUtc().toIso8601String(),
+            'end_date': endDateTime.toUtc().toIso8601String(),
+            'opening_hours': '$formattedStartTime - $formattedEndTime',
+            'street': _streetController.text.trim(),
+            'house_number': _houseNumberController.text.trim(),
+            'postal_code': _postalCodeController.text.trim(),
+            if (geocode != null) 'latitude': geocode.latitude,
+            if (geocode != null) 'longitude': geocode.longitude,
+            'city': _cityController.text.trim(),
+            'province': _provinceController.text.trim().isEmpty ? null : _provinceController.text.trim(),
+            'location_name': _locationNameController.text.trim(),
+            'description': _descriptionController.text.trim(),
+            if (imageUrl != null) 'image_asset': imageUrl,
+            'ticket_regular': _isRegularChecked,
+            'ticket_beer': _isBierTicketChecked,
+            'ticket_vip': _isVipChecked,
+          },
+          optionalColumns: const ['province'],
+        );
+
+        if (!mounted) return;
+        _showMessage('Wijzigingen opgeslagen.');
+        Navigator.pop(context, true);
+        return;
+      }
+
       await insertWithOptionalColumns('events', {
         'user_id': user.id,
         'name': _nameController.text.trim(),
@@ -395,7 +507,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'postal_code': _postalCodeController.text.trim(),
         // Opgezochte positie bewaren, zodat de kaart het adres niet telkens
         // opnieuw hoeft op te zoeken.
-        'latitude': geocode.latitude,
+        'latitude': geocode!.latitude,
         'longitude': geocode.longitude,
         'city': _cityController.text.trim(),
         'province': _provinceController.text.trim().isEmpty ? null : _provinceController.text.trim(),
@@ -459,7 +571,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
     );
   }
 
-  bool get _hasImage => _imageBytes != null;
+  bool get _hasImage => _imageBytes != null || _existingImageUrl != null;
 
   String get _selectedDateText {
     if (_selectedDate == null) {
@@ -767,25 +879,49 @@ class _EventCreatePageState extends State<EventCreatePage> {
 
                 const SizedBox(height: 20),
 
-                _buildApprovalNotice(),
-
-                const SizedBox(height: 18),
+                if (!_isEditing) ...[
+                  _buildApprovalNotice(),
+                  const SizedBox(height: 18),
+                ],
 
                 _buildPublishButton(),
 
                 const SizedBox(height: 12),
 
-                Center(
-                  child: Text(
-                    'Je evenement wordt eerst gecontroleerd door een beheerder.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: secondaryTextColor,
-                      fontSize: 11,
-                      height: 1.4,
+                if (_isEditing)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: textColor,
+                        side: const BorderSide(color: borderColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Annuleren',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Center(
+                    child: Text(
+                      'Je evenement wordt eerst gecontroleerd door een beheerder.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: secondaryTextColor,
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -832,7 +968,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
                 ),
                 Expanded(
                   child: Text(
-                    'Evenement toevoegen',
+                    _isEditing ? 'Evenement bewerken' : 'Evenement toevoegen',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.playfairDisplay(
                       color: textColor,
@@ -890,7 +1026,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Organiseer je evenement',
+                  _isEditing ? 'Gegevens aanpassen' : 'Organiseer je evenement',
                   style: GoogleFonts.playfairDisplay(
                     color: textColor,
                     fontSize: 20,
@@ -899,7 +1035,9 @@ class _EventCreatePageState extends State<EventCreatePage> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Voeg een bierfestival, proeverij of ander evenement toe aan BierKompas.',
+                  _isEditing
+                      ? 'Pas het evenement aan. Status en organisator blijven ongewijzigd.'
+                      : 'Voeg een bierfestival, proeverij of ander evenement toe aan BierKompas.',
                   style: GoogleFonts.inter(
                     color: secondaryTextColor,
                     fontSize: 12,
@@ -1099,7 +1237,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
             color: textColor,
             fontSize: 13.5,
           ),
-          items: _eventTypeOptions.map(
+          items: _typeOptions.map(
             (value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -1214,10 +1352,22 @@ class _EventCreatePageState extends State<EventCreatePage> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.memory(
-                      _imageBytes!,
-                      fit: BoxFit.cover,
-                    ),
+                    child: _imageBytes != null
+                        ? Image.memory(
+                            _imageBytes!,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.network(
+                            _existingImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                color: secondaryTextColor,
+                                size: 32,
+                              ),
+                            ),
+                          ),
                   ),
                   Positioned.fill(
                     child: DecoratedBox(
@@ -1255,7 +1405,9 @@ class _EventCreatePageState extends State<EventCreatePage> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Afbeelding geselecteerd',
+                            _imageBytes != null
+                                ? 'Afbeelding geselecteerd'
+                                : 'Huidige afbeelding, tik om te vervangen',
                             style: GoogleFonts.inter(
                               color: textColor,
                               fontSize: 10,
@@ -1552,13 +1704,13 @@ class _EventCreatePageState extends State<EventCreatePage> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.send_rounded,
+                  Icon(
+                    _isEditing ? Icons.save_outlined : Icons.send_rounded,
                     size: 19,
                   ),
                   const SizedBox(width: 9),
                   Text(
-                    'Evenement indienen',
+                    _isEditing ? 'Wijzigingen opslaan' : 'Evenement indienen',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
