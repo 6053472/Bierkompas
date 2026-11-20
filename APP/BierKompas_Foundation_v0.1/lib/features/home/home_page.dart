@@ -1478,58 +1478,82 @@ class _DiscoveryContentPageState
                   child: cornerAction,
                 ),
 
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color:
-                            _primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        icon,
-                        color: _primary,
-                        size: 30,
-                      ),
-                    ),
+              // Op smalle schermen is een tegel klein (bijv. 90x90 px binnenruimte
+              // op 320 px breed): marge en icoon schalen mee, en de titel krijgt
+              // de hoogte die overblijft, zodat er nooit iets over de rand loopt.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final side = constraints.maxWidth;
+                  final padding = side < 170 ? 14.0 : 20.0;
+                  final inner = side - 2 * padding;
+                  final iconBox = (inner * 0.36).clamp(32.0, 48.0);
+                  final subtitleStyle = GoogleFonts.openSans(
+                    color: _onSurfaceVariant,
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                  );
+                  final subtitlePainter = TextPainter(
+                    text: TextSpan(text: subtitle, style: DefaultTextStyle.of(context).style.merge(subtitleStyle)),
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                    maxLines: 1,
+                  )..layout();
+                  final subtitleHeight = subtitlePainter.height;
+                  subtitlePainter.dispose();
+                  final titleMaxHeight = inner - iconBox - 4 - subtitleHeight - 4;
 
-                    Column(
+                  return Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
                       crossAxisAlignment:
                           CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          title,
-                          style:
-                              GoogleFonts.playfairDisplay(
-                            color: _onSurface,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            height: 1.25,
+                        Container(
+                          width: iconBox,
+                          height: iconBox,
+                          decoration: BoxDecoration(
+                            color:
+                                _primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            icon,
+                            color: _primary,
+                            size: iconBox * 0.625,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style:
-                              GoogleFonts.openSans(
-                            color: _onSurfaceVariant,
-                            fontSize: 10,
-                            letterSpacing: 0.5,
-                          ),
+
+                        Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _TileTitle(
+                              title,
+                              maxHeight: titleMaxHeight,
+                              style:
+                                  GoogleFonts.playfairDisplay(
+                                color: _onSurface,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                height: 1.25,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: subtitleStyle,
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -1748,3 +1772,90 @@ class _BottomNavItem extends StatelessWidget {
   }
 }
 
+
+/// Titel van een tegel op het Ontdek-scherm. Breekt alleen tussen woorden af,
+/// nooit midden in een woord ("Gezelligheid", "SchuimKraag"): is het langste
+/// woord te breed voor de tegel, dan wordt de letter kleiner tot het past. Ook
+/// blijft de titel op hoogstens twee regels en binnen [maxHeight] (de ruimte
+/// die in de tegel overblijft). Rekent opnieuw zodra het lettertype geladen
+/// is (andere breedtes dan het tijdelijke lettertype).
+class _TileTitle extends StatelessWidget {
+  const _TileTitle(this.text, {required this.style, this.maxHeight = double.infinity});
+
+  final String text;
+  final TextStyle style;
+  final double maxHeight;
+
+  // Laag genoeg dat ook het langste woord altijd past: heel blijven gaat
+  // voor. Met het echte lettertype wordt dit in de praktijk niet bereikt.
+  static const _minFontSize = 8.0;
+  static const _maxLines = 2;
+
+  double _fittingFontSize(TextStyle style, double maxWidth, TextScaler scaler, TextDirection direction) {
+    final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    var size = style.fontSize ?? 20;
+
+    double widest(double fontSize) {
+      var max = 0.0;
+      for (final word in words) {
+        final painter = TextPainter(
+          text: TextSpan(text: word, style: style.copyWith(fontSize: fontSize)),
+          textDirection: direction,
+          textScaler: scaler,
+          maxLines: 1,
+        )..layout();
+        if (painter.width > max) max = painter.width;
+        painter.dispose();
+      }
+      return max;
+    }
+
+    // Past de hele titel op hoogstens twee regels en binnen de hoogte?
+    bool fitsBlock(double fontSize) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style.copyWith(fontSize: fontSize)),
+        textDirection: direction,
+        textScaler: scaler,
+      )..layout(maxWidth: maxWidth);
+      final ok = painter.computeLineMetrics().length <= _maxLines && painter.height <= maxHeight;
+      painter.dispose();
+      return ok;
+    }
+
+    // Kleine marge: afronding en het laden van het echte lettertype.
+    final available = maxWidth * 0.97;
+    final longest = widest(size);
+    if (longest > available) size = size * available / longest;
+    while (size > _minFontSize && (widest(size) > available || !fitsBlock(size))) {
+      size -= 0.5;
+    }
+    return size < _minFontSize ? _minFontSize : size;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: PaintingBinding.instance.systemFonts,
+      builder: (context, _) => LayoutBuilder(
+        builder: (context, constraints) {
+          // Zelfde stijl als de Text hieronder: inclusief de standaardstijl van
+          // het thema (o.a. letterafstand), anders meet je te smal.
+          final effective = DefaultTextStyle.of(context).style.merge(style);
+          final fontSize = _fittingFontSize(
+            effective,
+            constraints.maxWidth,
+            MediaQuery.textScalerOf(context),
+            Directionality.of(context),
+          );
+          return Text(
+            text,
+            style: style.copyWith(fontSize: fontSize),
+            maxLines: _maxLines,
+            softWrap: true,
+            overflow: TextOverflow.ellipsis,
+          );
+        },
+      ),
+    );
+  }
+}

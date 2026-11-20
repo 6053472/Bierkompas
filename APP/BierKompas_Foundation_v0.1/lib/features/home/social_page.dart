@@ -4,7 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../profile/add_friend_page.dart';
 import '../profile/chat_page.dart';
+import '../profile/cheers_service.dart';
+import '../profile/friend_qr.dart';
 import '../profile/friends_service.dart';
+import '../profile/friends_widgets.dart';
 
 const _background = Color(0xFF1E1712);
 const _cardColor = Color(0xFF2C221C);
@@ -13,9 +16,13 @@ const _onPrimary = Color(0xFF1E1712);
 const _onSurface = Color(0xFFEFE6DD);
 const _onSurfaceVariant = Color(0xFF9E8A7D);
 const _outlineVariant = Color(0xFF3E312A);
+const _divider = Color(0xFF3C3028);
 
-/// "Gezelligheid & Social": mijn Bier-vrienden en suggesties voor nieuwe
-/// vrienden (Snapchat-achtige "Snel toevoegen"), op één plek.
+/// "Gezelligheid & Social": de vaste plek voor alles rond Bier-vrienden.
+/// Vriend toevoegen en de eigen QR-code, binnengekomen vriendschapsverzoeken
+/// (accepteren/weigeren), de vriendenlijst (chatten en "Proost!") en
+/// suggesties voor nieuwe vrienden (Snapchat-achtige "Snel toevoegen").
+/// Het profiel toont alleen een samenvatting die hiernaartoe linkt.
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key});
 
@@ -25,10 +32,15 @@ class SocialPage extends StatefulWidget {
 
 class _SocialPageState extends State<SocialPage> {
   final _friendsService = FriendsService();
+  final _cheersService = CheersService();
 
   List<Friend> _friends = [];
+  List<FriendRequest> _requests = [];
   bool _friendsLoading = true;
   String? _friendsError;
+  final Set<String> _pendingRequestActions = {};
+  final Set<String> _sendingCheerIds = {};
+  RealtimeChannel? _friendsChannel;
 
   List<FriendSuggestion> _suggestions = [];
   bool _suggestionsLoading = true;
@@ -40,6 +52,13 @@ class _SocialPageState extends State<SocialPage> {
     super.initState();
     _loadFriends();
     _loadSuggestions();
+    _subscribeToFriendUpdates();
+  }
+
+  @override
+  void dispose() {
+    _friendsChannel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadFriends() async {
@@ -49,14 +68,18 @@ class _SocialPageState extends State<SocialPage> {
       return;
     }
     setState(() {
-      _friendsLoading = true;
+      _friendsLoading = _friends.isEmpty && _requests.isEmpty;
       _friendsError = null;
     });
     try {
-      final friends = await _friendsService.listFriends(user.id);
+      final results = await Future.wait([
+        _friendsService.listFriends(user.id),
+        _friendsService.listIncomingRequests(user.id),
+      ]);
       if (!mounted) return;
       setState(() {
-        _friends = friends;
+        _friends = results[0] as List<Friend>;
+        _requests = results[1] as List<FriendRequest>;
         _friendsLoading = false;
       });
     } on FriendsException catch (e) {
@@ -66,6 +89,30 @@ class _SocialPageState extends State<SocialPage> {
         _friendsLoading = false;
       });
     }
+  }
+
+  // Live bijwerken: een nieuw, geaccepteerd of geweigerd verzoek komt via
+  // Supabase Realtime meteen binnen (zelfde aanpak als eerder op het profiel).
+  void _subscribeToFriendUpdates() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    _friendsChannel = Supabase.instance.client
+        .channel('social_friend_requests_${user.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'friend_requests',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'addressee_id', value: user.id),
+          callback: (_) => _loadFriends(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'friend_requests',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'requester_id', value: user.id),
+          callback: (_) => _loadFriends(),
+        )
+        .subscribe();
   }
 
   Future<void> _loadSuggestions() async {
@@ -100,6 +147,54 @@ class _SocialPageState extends State<SocialPage> {
         SnackBar(content: Text('Verzoek versturen mislukt: $e')),
       );
     }
+  }
+
+  Future<void> _respondToRequest(FriendRequest request, bool accept) async {
+    setState(() => _pendingRequestActions.add(request.requesterId));
+    try {
+      await _friendsService.respondToRequest(requesterId: request.requesterId, accept: accept);
+      if (!mounted) return;
+      setState(() {
+        _pendingRequestActions.remove(request.requesterId);
+        _requests.removeWhere((r) => r.requesterId == request.requesterId);
+        if (accept && !_friends.any((f) => f.id == request.requesterId)) {
+          _friends = [
+            ..._friends,
+            Friend(id: request.requesterId, name: request.name, avatarUrl: request.avatarUrl),
+          ];
+        }
+      });
+    } on FriendsException catch (e) {
+      if (!mounted) return;
+      setState(() => _pendingRequestActions.remove(request.requesterId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reageren mislukt: $e')),
+      );
+    }
+  }
+
+  Future<void> _sendCheer(Friend friend) async {
+    setState(() => _sendingCheerIds.add(friend.id));
+    try {
+      await _cheersService.sendCheer(friend.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Proost verstuurd naar ${friend.name}!')),
+      );
+    } on CheersException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Proost versturen mislukt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sendingCheerIds.remove(friend.id));
+    }
+  }
+
+  void _openChat(Friend friend) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => ChatPage(friend: friend)),
+    );
   }
 
   Future<void> _openAddFriend() async {
@@ -141,7 +236,46 @@ class _SocialPageState extends State<SocialPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
             children: [
-              _sectionLabel('Mijn Bier-vrienden'),
+              Row(
+                children: [
+                  Expanded(
+                    child: FriendsActionButton(
+                      icon: Icons.person_add_alt_1,
+                      label: 'Vriend toevoegen',
+                      filled: true,
+                      onTap: _openAddFriend,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FriendsActionButton(
+                      icon: Icons.qr_code_2,
+                      label: 'Mijn QR-code',
+                      onTap: () => showMyFriendQr(context),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              if (_requests.isNotEmpty) ...[
+                _sectionLabel('Vriendschapsverzoeken (${_requests.length})'),
+                const SizedBox(height: 12),
+                _card(
+                  [
+                    for (final request in _requests)
+                      FriendRequestRow(
+                        name: request.name,
+                        avatarUrl: request.avatarUrl,
+                        busy: _pendingRequestActions.contains(request.requesterId),
+                        onAccept: () => _respondToRequest(request, true),
+                        onDecline: () => _respondToRequest(request, false),
+                      ),
+                  ],
+                  highlight: true,
+                ),
+                const SizedBox(height: 28),
+              ],
+              _sectionLabel(_friendsHeader()),
               const SizedBox(height: 12),
               _buildFriendsSection(),
               const SizedBox(height: 36),
@@ -155,10 +289,35 @@ class _SocialPageState extends State<SocialPage> {
     );
   }
 
+  String _friendsHeader() {
+    if (_friends.isEmpty) return 'Mijn Bier-vrienden';
+    final online = _friends.where((f) => f.online).length;
+    return 'Mijn Bier-vrienden (${_friends.length}${online > 0 ? ' · $online online' : ''})';
+  }
+
   Widget _sectionLabel(String label) {
     return Text(
       label.toUpperCase(),
       style: GoogleFonts.openSans(color: _primary, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 2),
+    );
+  }
+
+  Widget _card(List<Widget> rows, {bool highlight = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: highlight ? _primary.withOpacity(0.45) : _divider),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) const Divider(height: 1, thickness: 1, color: _divider, indent: 70),
+            rows[i],
+          ],
+        ],
+      ),
     );
   }
 
@@ -174,63 +333,25 @@ class _SocialPageState extends State<SocialPage> {
     }
     if (_friends.isEmpty) {
       return Text(
-        'Je hebt nog geen Bier-vrienden. Gebruik de zoekknop rechtsboven om iemand toe te voegen.',
+        'Je hebt nog geen Bier-vrienden. Voeg iemand toe op naam of laat je QR-code scannen.',
         style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 14),
       );
     }
-    return Column(
-      children: _friends.map((friend) => _buildFriendTile(friend)).toList(),
-    );
-  }
-
-  Widget _buildFriendTile(Friend friend) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => ChatPage(friend: friend)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Stack(
-                  children: [
-                    _avatar(friend.name, friend.avatarUrl),
-                    if (friend.online)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.greenAccent.shade400,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _cardColor, width: 2),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    friend.name,
-                    style: GoogleFonts.openSans(color: _onSurface, fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const Icon(Icons.chat_bubble_outline, color: _onSurfaceVariant, size: 20),
-              ],
-            ),
-          ),
+    final friends = [..._friends]..sort((a, b) {
+        if (a.online != b.online) return a.online ? -1 : 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    return _card([
+      for (final friend in friends)
+        FriendRow(
+          name: friend.name,
+          avatarUrl: friend.avatarUrl,
+          online: friend.online,
+          sending: _sendingCheerIds.contains(friend.id),
+          onProost: () => _sendCheer(friend),
+          onTap: () => _openChat(friend),
         ),
-      ),
-    );
+    ]);
   }
 
   Widget _buildSuggestionsSection() {

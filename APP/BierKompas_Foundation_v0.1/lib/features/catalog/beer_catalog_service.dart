@@ -141,6 +141,61 @@ class BeerCatalogService {
   List<CatalogBeer> _toBeers(List<dynamic> rows) =>
       rows.map((e) => CatalogBeer.fromJson(e as Map<String, dynamic>)).toList();
 
+  static const erfgoedBron = 'Stichting Erfgoed Nederlandse Biercultuur';
+
+  /// Specifieke bronpagina voor [beer]. Heeft het bier zelf een bronlink
+  /// (Stichting Erfgoed Nederlandse Biercultuur), dan die. Bieren uit de
+  /// winkellijsten (Belgian Beer Factory, Mitra) hebben geen eigen link; dan
+  /// wordt hetzelfde bier bij de Stichting gezocht: precies één bier met
+  /// dezelfde naam én een overeenkomende brouwerij. Twijfel -> null (geen
+  /// knop), zodat nooit een algemene of verkeerde pagina opent.
+  Future<({Uri uri, String bron})?> sourceFor(CatalogBeer beer) async {
+    final own = _httpUri(beer.bronUrl);
+    if (own != null) return (uri: own, bron: beer.bron);
+    try {
+      // % en _ zijn jokertekens in ilike: escapen voor een exacte (hoofdletter-
+      // ongevoelige) naamvergelijking.
+      final exactName = beer.naam.trim().replaceAllMapped(RegExp(r'[%_\\]'), (m) => '\\${m[0]}');
+      final rows = await _client
+          .from('beer_catalog')
+          .select('naam, brouwerij, bron_url')
+          .eq('bron', erfgoedBron)
+          .ilike('naam', exactName)
+          .limit(2);
+      if (rows.length != 1) return null;
+      final match = rows.single;
+      if ((match['naam'] as String).trim().toLowerCase() != beer.naam.trim().toLowerCase()) return null;
+      if (!sameBrewery(beer.brouwerij, match['brouwerij'] as String?)) return null;
+      final uri = _httpUri(match['bron_url'] as String?);
+      return uri == null ? null : (uri: uri, bron: erfgoedBron);
+    } on PostgrestException {
+      return null;
+    }
+  }
+
+  static Uri? _httpUri(String? raw) {
+    final uri = Uri.tryParse((raw ?? '').trim());
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https') || uri.host.isEmpty) return null;
+    return uri;
+  }
+
+  /// Horen twee brouwerijnamen bij dezelfde brouwerij? "Koningshoeven" en
+  /// "Bierbrouwerij De Koningshoeven" wel; algemene woorden tellen niet mee.
+  /// Zonder brouwerij bij het winkelbier geldt alleen de naam.
+  static bool sameBrewery(String? a, String? b) {
+    if (a == null || a.trim().isEmpty) return true;
+    if (b == null || b.trim().isEmpty) return false;
+    const generic = {'brouwerij', 'bierbrouwerij', 'brewery', 'brewing', 'company', 'brasserie', 'stadsbrouwerij', 'brouwers', 'bieren'};
+    Set<String> words(String s) => s
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9à-ÿ]+'))
+        .where((w) => w.length >= 4 && !generic.contains(w))
+        .toSet();
+    final wa = words(a), wb = words(b);
+    if (wa.isEmpty || wb.isEmpty) return false;
+    return wa.any((x) => wb.any((y) => x.contains(y) || y.contains(x)));
+  }
+
   Future<List<StyleCount>> fetchStyles() async {
     try {
       final rows = await _client.rpc('beer_catalog_styles');

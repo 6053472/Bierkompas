@@ -5292,3 +5292,30 @@ NOTIFY pgrst, 'reload schema';
 alter table public.events add column if not exists website text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- aanmeldingen_alleen_wachtend
+-- ============================================================
+-- Gewone gebruikers mochten een brouwerij- of horeca-aanmelding met elke
+-- status toevoegen, dus via de API ook meteen als 'approved' (zonder
+-- controle door een beheerder). Nu, net als bij evenementen: alleen
+-- 'pending', behalve voor beheerders (beheerpaneel en horeca-import).
+-- De app stuurt geen status mee (standaard 'pending') en blijft werken.
+-- Bestaande gegevens veranderen niet.
+drop policy if exists "Brewery submissions: insert own" on public.brewery_submissions;
+create policy "Brewery submissions: insert own" on public.brewery_submissions
+    for insert to authenticated
+    with check (
+        user_id = auth.uid()
+        and (status = 'pending' or public.is_admin())
+    );
+
+drop policy if exists "Horeca submissions: insert own" on public.horeca_submissions;
+create policy "Horeca submissions: insert own" on public.horeca_submissions
+    for insert to authenticated
+    with check (
+        user_id = auth.uid()
+        and (status = 'pending' or public.is_admin())
+    );
+
+NOTIFY pgrst, 'reload schema';
