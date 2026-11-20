@@ -2276,6 +2276,8 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
 
     final isCancelled = event['status']?.toString() == 'cancelled';
 
+    final websiteUri = _websiteUri(event['website']);
+
     final hasImage =
         imageUrl != null &&
         imageUrl.isNotEmpty &&
@@ -2531,6 +2533,13 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                               color: beigeColor,
                             ),
                           ),
+                        if (websiteUri != null)
+                          _detailRow(
+                            Icons.link,
+                            'Website',
+                            _websiteLabel(websiteUri),
+                            onTap: () => _openWebsite(websiteUri),
+                          ),
                         if (description
                             .isNotEmpty) ...[
                           const SizedBox(
@@ -2757,12 +2766,48 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
     );
   }
 
+  /// Website van een evenement als klikbare link, of null wanneer het veld
+  /// leeg/NULL is of geen bruikbare http(s)-URL bevat (dan geen websiteregel).
+  Uri? _websiteUri(dynamic raw) {
+    var value = raw?.toString().trim() ?? '';
+    if (value.isEmpty || value == 'null') return null;
+    if (!RegExp(r'^https?://', caseSensitive: false).hasMatch(value)) {
+      value = 'https://$value';
+    }
+    final uri = Uri.tryParse(value);
+    if (uri == null || !uri.host.contains('.')) return null;
+    return uri;
+  }
+
+  /// Leesbare vorm zonder "https://" en afsluitende "/": www.bierfestival.nl
+  String _websiteLabel(Uri uri) {
+    final label = uri.toString().replaceFirst(RegExp(r'^https?://', caseSensitive: false), '');
+    return label.endsWith('/') ? label.substring(0, label.length - 1) : label;
+  }
+
+  Future<void> _openWebsite(Uri uri) async {
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kon de website niet openen.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Website openen mislukt: $e')),
+      );
+    }
+  }
+
   Widget _detailRow(
     IconData icon,
     String title,
-    String value,
-  ) {
-    return Padding(
+    String value, {
+    VoidCallback? onTap,
+  }) {
+    final row = Padding(
       padding:
           const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -2801,17 +2846,30 @@ class _EventsPageState extends State<EventsPage> with WidgetsBindingObserver {
                 Text(
                   value,
                   style: GoogleFonts.inter(
-                    color: textColor,
+                    color: onTap != null ? beigeColor : textColor,
                     fontSize: 14,
                     fontWeight:
                         FontWeight.w500,
+                    decoration: onTap != null ? TextDecoration.underline : null,
+                    decorationColor: beigeColor,
                   ),
                 ),
               ],
             ),
           ),
+          if (onTap != null)
+            const Padding(
+              padding: EdgeInsets.only(left: 8, top: 10),
+              child: Icon(Icons.open_in_new, color: beigeColor, size: 18),
+            ),
         ],
       ),
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: row,
     );
   }
 

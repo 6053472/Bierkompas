@@ -5282,3 +5282,13 @@ create policy "Afbeeldingen: beheerders mogen verwijderen" on storage.objects
     );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- evenementen_website
+-- ============================================================
+-- Optionele website bij een evenement. Alleen een nieuwe, lege kolom:
+-- bestaande evenementen krijgen NULL en blijven ongewijzigd werken.
+-- Lezen en bijwerken volgen de bestaande RLS-regels van public.events.
+alter table public.events add column if not exists website text;
+
+NOTIFY pgrst, 'reload schema';

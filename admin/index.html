@@ -319,6 +319,7 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Postcode*</span><input id="event-new-postal" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Plaats*</span><input id="event-new-city" type="text" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Provincie (optioneel)</span><input id="event-new-province" type="text" placeholder="Bijv. Utrecht of Antwerpen" class="fi"/></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Website (optioneel)</span><input id="event-new-website" type="text" inputmode="url" autocomplete="url" placeholder="https://www.bierfestival.nl" class="fi"/></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Omschrijving*</span><textarea id="event-new-desc" rows="3" class="fi"></textarea></label>
             <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="event-new-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
             <div class="md:col-span-2 flex items-center gap-6 flex-wrap text-sm text-on-surface">
@@ -3789,7 +3790,7 @@
   }
 
   function clearEventForm() {
-    ["name", "start", "end", "location", "street", "number", "postal", "city", "province", "desc", "photo"].forEach((f) => (document.getElementById(`event-new-${f}`).value = ""));
+    ["name", "start", "end", "location", "street", "number", "postal", "city", "province", "website", "desc", "photo"].forEach((f) => (document.getElementById(`event-new-${f}`).value = ""));
     ["t-regular", "t-beer", "t-vip"].forEach((f) => (document.getElementById(`event-new-${f}`).checked = false));
     eventNewError.classList.add("hidden");
     editingEvent = null;
@@ -3798,6 +3799,35 @@
     document.getElementById("event-form-subtitle").textContent = "Wordt direct gepubliceerd in de agenda.";
     document.getElementById("event-new-save-label").textContent = eventSaveLabelText();
     eventImageUpload.reset();
+  }
+
+  // Website van een evenement: leeg -> null, "www.x.nl" -> "https://www.x.nl",
+  // ongeldig -> undefined. Alleen http(s) met een echte domeinnaam.
+  function eventWebsite(raw) {
+    const v = normalizeWebsite(raw);
+    if (!v) return null;
+    try {
+      const url = new URL(v);
+      if (!/^https?:$/.test(url.protocol) || !/^[^.\s]+(\.[^.\s]+)+$/.test(url.hostname) || /\s/.test(v)) return undefined;
+      return v;
+    } catch (_e) {
+      return undefined;
+    }
+  }
+
+  // Voert een insert/update op events uit. Bestaat de kolom website nog niet
+  // (SQL-blok evenementen_website niet uitgevoerd), dan wordt een lege website
+  // weggelaten zodat opslaan blijft werken; een ingevulde website wordt nooit
+  // stilletjes weggegooid maar geeft een duidelijke foutmelding.
+  async function withEventWebsite(values, run) {
+    const result = await run(values);
+    const missing = result.error && result.error.code === "PGRST204" && /'website'/.test(result.error.message);
+    if (!missing) return result;
+    if (values.website) {
+      return { data: null, error: { message: "de kolom 'website' bestaat nog niet in de database. Voer eerst het SQL-blok evenementen_website uit in Supabase, of laat de website leeg." } };
+    }
+    const { website: _w, ...rest } = values;
+    return run(rest);
   }
 
   async function editEvent(eventId) {
@@ -3819,6 +3849,7 @@
     set("postal", event.postal_code);
     set("city", event.city);
     set("province", event.province);
+    set("website", event.website);
     set("desc", event.description);
     set("photo", event.image_asset);
     setEventType(event.event_type);
@@ -3858,6 +3889,8 @@
     const start = new Date(val("start"));
     const end = new Date(val("end"));
     if (!(end > start)) return showFormError(eventNewError, "Het einde moet na het begin liggen.");
+    const website = eventWebsite(val("website"));
+    if (website === undefined) return showFormError(eventNewError, "De website is geen geldige URL. Vul een volledig adres in, bijv. https://www.bierfestival.nl");
 
     btn.disabled = true;
     eventNewError.classList.add("hidden");
@@ -3894,6 +3927,7 @@
         postal_code: val("postal"),
         city: val("city"),
         province: val("province") || null,
+        website,
         location_name: val("location"),
         description: val("desc"),
         image_asset: photo,
@@ -3915,7 +3949,7 @@
       label.innerHTML = '<span class="spinner"></span> Opslaan...';
       // .select() geeft de bijgewerkte rij terug; RLS laat een verboden update
       // stilletjes niets doen, en dat mag niet als "opgeslagen" gemeld worden.
-      const { data: updated, error: updateError } = await client.from("events").update(values).eq("id", editingEvent.id).select("id");
+      const { data: updated, error: updateError } = await withEventWebsite(values, (v) => client.from("events").update(v).eq("id", editingEvent.id).select("id"));
       resetBtn();
       if (updateError) return showFormError(eventNewError, `Opslaan mislukt: ${updateError.message}`);
       if (!updated || !updated.length) return showFormError(eventNewError, "Opslaan mislukt: je hebt geen rechten om dit evenement te wijzigen, of het bestaat niet meer.");
@@ -3930,7 +3964,7 @@
       return;
     }
 
-    const { error } = await client.from("events").insert({
+    const { error } = await withEventWebsite({
       user_id: adminId,
       name: val("name"),
       event_type: document.getElementById("event-new-type").value,
@@ -3942,6 +3976,7 @@
       postal_code: val("postal"),
       city: val("city"),
       province: val("province") || null,
+      website,
       location_name: val("location"),
       description: val("desc"),
       image_asset: photo,
@@ -3954,7 +3989,7 @@
       status: "approved",
       approved_at: new Date().toISOString(),
       approved_by: adminId,
-    });
+    }, (v) => client.from("events").insert(v));
     resetBtn();
     if (error) return showFormError(eventNewError, `Opslaan mislukt: ${error.message}`);
 
