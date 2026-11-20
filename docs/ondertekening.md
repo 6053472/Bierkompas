@@ -15,7 +15,8 @@ ons komt.
 | Alias | `upload` |
 | Geldig | 10.000 dagen (tot 2054) |
 | Eigenaar | `CN=Bierkompas, O=Bierkompas, C=NL` |
-| SHA-256 | `55:5A:B9:71:70:11:89:30:C3:26:8B:D3:6F:EC:3A:F8:9B:B1:1B:7A:6A:93:42:F4:5A:75:78:64:E2:9E:A4:F6` |
+| SHA-256 | `82:9E:E7:DC:2B:B7:D4:6A:06:3F:76:BF:BC:02:33:AA:DF:01:F8:3F:DA:CD:C7:AB:49:14:09:29:71:71:9D:EC` |
+| Aangemaakt | 20 november 2026. Vervangt de eerdere sleutel `55:5A:B9:71:…` (niet op deze ontwikkelcomputer). Staat die eerdere sleutel nog als upload-sleutel in Play Console, vraag dan eerst een upload-sleutel-reset aan. |
 
 ## Waar staat wat
 
@@ -46,7 +47,7 @@ valt de build terug op de debug-sleutel; zo'n bestand weigert Google Play.
 
 ## Een nieuwe versie bouwen
 
-1. Verhoog het versienummer in `pubspec.yaml` (nu `version: 1.0.0+12`; het getal na
+1. Verhoog het versienummer in `pubspec.yaml` (nu `version: 1.0.0+13`; het getal na
    de `+` moet bij elke upload hoger zijn).
 2. Bouw het bestand:
 

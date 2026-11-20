@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../shared/website_url.dart';
 import 'pairing_service.dart';
 
 const _background = Color(0xFF1E1712);
@@ -234,11 +235,30 @@ class _PairingCard extends StatelessWidget {
 
   const _PairingCard({required this.pairing});
 
-  Future<void> _openWebsite() async {
-    final url = pairing.linkWebsite;
-    if (url == null || url.isEmpty) return;
-    final uri = Uri.tryParse(url);
-    if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  /// De website van precies deze combinatie (kolom link_website). Zonder
+  /// "https://" werd een adres als "www.x.nl" eerder als relatief pad gezien:
+  /// op het web opende dan "eigen-site/www.x.nl", op Android niets.
+  Uri? get _websiteUri {
+    final normalized = normalizeEventWebsite(pairing.linkWebsite ?? '');
+    return normalized == null ? null : Uri.parse(normalized);
+  }
+
+  Future<void> _openWebsite(BuildContext context) async {
+    final uri = _websiteUri;
+    final messenger = ScaffoldMessenger.of(context);
+    var opened = false;
+    if (uri != null) {
+      try {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        opened = false;
+      }
+    }
+    if (!opened) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Kon de website van ${pairing.brouwerij} niet openen.')),
+      );
+    }
   }
 
   @override
@@ -279,12 +299,12 @@ class _PairingCard extends StatelessWidget {
               ],
             ),
           ],
-          if (pairing.linkWebsite != null && pairing.linkWebsite!.isNotEmpty) ...[
+          if (_websiteUri != null) ...[
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
-                onPressed: _openWebsite,
+                onPressed: () => _openWebsite(context),
                 icon: const Icon(Icons.open_in_new, color: _primary, size: 16),
                 label: Text('Website brouwerij', style: GoogleFonts.openSans(color: _primary, fontSize: 12)),
               ),

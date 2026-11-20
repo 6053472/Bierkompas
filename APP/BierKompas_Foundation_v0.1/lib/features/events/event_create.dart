@@ -10,6 +10,7 @@ import '../../shared/geocoding_service.dart';
 import '../../shared/postal_code_utils.dart';
 import '../../shared/postcode_lookup.dart';
 import '../../shared/supabase_insert.dart';
+import '../../shared/website_url.dart';
 
 /// Formulier om een evenement aan te melden. Met [existingEvent] wordt
 /// hetzelfde formulier gebruikt om een bestaand evenement te bewerken (alleen
@@ -36,6 +37,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
       TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _provinceController = TextEditingController();
+  final TextEditingController _websiteController = TextEditingController();
   final TextEditingController _locationNameController =
       TextEditingController();
   final TextEditingController _descriptionController =
@@ -102,6 +104,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
     _postalCodeController.text = text('postal_code');
     _cityController.text = text('city');
     _provinceController.text = text('province');
+    _websiteController.text = text('website');
     _locationNameController.text = text('location_name');
     _descriptionController.text = text('description');
     if (text('event_type').isNotEmpty) _selectedEventType = text('event_type');
@@ -144,6 +147,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
     _postalCodeController.dispose();
     _cityController.dispose();
     _provinceController.dispose();
+    _websiteController.dispose();
     _locationNameController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -477,6 +481,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
             if (geocode != null) 'longitude': geocode.longitude,
             'city': _cityController.text.trim(),
             'province': _provinceController.text.trim().isEmpty ? null : _provinceController.text.trim(),
+            'website': normalizeEventWebsite(_websiteController.text),
             'location_name': _locationNameController.text.trim(),
             'description': _descriptionController.text.trim(),
             if (imageUrl != null) 'image_asset': imageUrl,
@@ -484,7 +489,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
             'ticket_beer': _isBierTicketChecked,
             'ticket_vip': _isVipChecked,
           },
-          optionalColumns: const ['province'],
+          optionalColumns: const ['province', 'website'],
         );
 
         if (!mounted) return;
@@ -511,6 +516,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'longitude': geocode.longitude,
         'city': _cityController.text.trim(),
         'province': _provinceController.text.trim().isEmpty ? null : _provinceController.text.trim(),
+        'website': normalizeEventWebsite(_websiteController.text),
         'location_name': _locationNameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'image_asset': imageUrl,
@@ -521,7 +527,7 @@ class _EventCreatePageState extends State<EventCreatePage> {
         'price_incl_btw': true,
         'price_excl_btw': false,
         'status': 'pending',
-      }, optionalColumns: const ['province']);
+      }, optionalColumns: const ['province', 'website']);
 
       if (!mounted) return;
 
@@ -814,6 +820,18 @@ class _EventCreatePageState extends State<EventCreatePage> {
                         hintText: 'Wordt ingevuld via de postcode',
                         icon: Icons.map_outlined,
                         required: false,
+                      ),
+                      const SizedBox(height: 18),
+                      _buildLabel('Website (optioneel)'),
+                      const SizedBox(height: 7),
+                      _buildTextField(
+                        controller: _websiteController,
+                        hintText: 'https://www.bierfestival.nl',
+                        icon: Icons.link,
+                        required: false,
+                        validator: (value) => normalizeEventWebsite(value ?? '') == null
+                            ? 'Geen geldige website, bijv. https://www.bierfestival.nl'
+                            : null,
                       ),
                     ],
                   ),
@@ -1145,7 +1163,11 @@ class _EventCreatePageState extends State<EventCreatePage> {
       onChanged: onChanged,
       inputFormatters: inputFormatters,
       validator: (value) {
-        if (!required) return null;
+        if (!required) {
+          // Optioneel veld: leeg mag, ingevuld wordt wel gecontroleerd.
+          if (value == null || value.trim().isEmpty) return null;
+          return validator?.call(value);
+        }
         if (value == null || value.trim().isEmpty) {
           return 'Dit veld is verplicht';
         }

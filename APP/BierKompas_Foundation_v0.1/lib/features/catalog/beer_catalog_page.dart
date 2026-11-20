@@ -329,6 +329,54 @@ class _BeerCard extends StatelessWidget {
       );
 }
 
+/// "Bekijk bij de bron": opent de specifieke pagina van dit bier bij de bron
+/// (zie BeerCatalogService.sourceFor). Zonder betrouwbare specifieke pagina
+/// geen knop, in plaats van een algemene of verkeerde link.
+class _SourceButton extends StatefulWidget {
+  const _SourceButton({required this.beer});
+
+  final CatalogBeer beer;
+
+  @override
+  State<_SourceButton> createState() => _SourceButtonState();
+}
+
+class _SourceButtonState extends State<_SourceButton> {
+  late final Future<({Uri uri, String bron})?> _source = BeerCatalogService().sourceFor(widget.beer);
+
+  Future<void> _open(Uri uri) async {
+    final messenger = ScaffoldMessenger.of(context);
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened) {
+      messenger.showSnackBar(const SnackBar(content: Text('Kon de bronpagina niet openen.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<({Uri uri, String bron})?>(
+      future: _source,
+      builder: (context, snapshot) {
+        final source = snapshot.data;
+        if (source == null) return const SizedBox.shrink();
+        // Eigen bron: "Bekijk bij de bron". Hetzelfde bier bij een andere
+        // bron: die bron bij naam noemen, zodat duidelijk is waar je heen gaat.
+        final label = source.bron == widget.beer.bron ? 'Bekijk bij de bron' : 'Bekijk bij ${source.bron}';
+        return TextButton.icon(
+          onPressed: () => _open(source.uri),
+          icon: const Icon(Icons.open_in_new, color: _primary, size: 16),
+          label: Text(label, style: GoogleFonts.openSans(color: _primary, fontSize: 13)),
+        );
+      },
+    );
+  }
+}
+
 class _BeerDetailSheet extends StatelessWidget {
   final CatalogBeer beer;
 
@@ -431,12 +479,7 @@ class _BeerDetailSheet extends StatelessWidget {
               ),
             const SizedBox(height: 16),
             Text('Bron: ${beer.bron}', style: GoogleFonts.openSans(color: _onSurfaceVariant, fontSize: 11)),
-            if (beer.bronUrl != null)
-              TextButton.icon(
-                onPressed: () => launchUrl(Uri.parse(beer.bronUrl!), mode: LaunchMode.externalApplication),
-                icon: const Icon(Icons.open_in_new, color: _primary, size: 16),
-                label: Text('Bekijk bij de bron', style: GoogleFonts.openSans(color: _primary, fontSize: 13)),
-              ),
+            _SourceButton(beer: beer),
           ],
         ),
       ),

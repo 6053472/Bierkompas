@@ -5,16 +5,14 @@ import '../auth/auth_gate.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_storage.dart';
 import '../favorites/favorites_service.dart';
+import '../home/social_page.dart';
 import '../map/breweries.dart';
 import '../support/faq_page.dart';
-import 'add_friend_page.dart';
 import 'all_badges_page.dart';
 import 'all_tasting_notes_page.dart';
-import 'chat_page.dart';
-import 'cheers_service.dart';
 import 'create_tasting_note_page.dart';
 import 'friends_service.dart';
-import 'friend_qr.dart';
+import 'friends_widgets.dart';
 import 'notifications_page.dart';
 import 'notifications_service.dart';
 import 'profile_edit_page.dart';
@@ -32,7 +30,6 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _statsService = StatsService();
   final _friendsService = FriendsService();
-  final _cheersService = CheersService();
   final _favoritesService = FavoritesService();
   final _tastingNotesService = TastingNotesService();
   final _notificationsService = NotificationsService();
@@ -43,8 +40,6 @@ class _ProfilePageState extends State<ProfilePage> {
   List<TastingNote>? _tastingNotes;
   List<Friend>? _friends;
   List<FriendRequest>? _incomingRequests;
-  final Set<String> _pendingRequestActions = {};
-  final Set<String> _sendingCheerIds = {};
   RealtimeChannel? _friendsChannel;
 
   @override
@@ -212,61 +207,13 @@ class _ProfilePageState extends State<ProfilePage> {
         .subscribe();
   }
 
-  Future<void> _openAddFriend() async {
-    final sent = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AddFriendPage()),
+  /// Vrienden (verzoeken, proosten, chatten, toevoegen) staan op
+  /// "Gezelligheid & Social"; na terugkomen de telling hier bijwerken.
+  Future<void> _openSocial() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SocialPage()),
     );
-    if (sent == true) {
-      _loadFriends();
-    }
-  }
-
-  Future<void> _respondToRequest(FriendRequest request, bool accept) async {
-    setState(() => _pendingRequestActions.add(request.requesterId));
-    try {
-      await _friendsService.respondToRequest(requesterId: request.requesterId, accept: accept);
-      if (!mounted) return;
-      setState(() {
-        _pendingRequestActions.remove(request.requesterId);
-        _incomingRequests?.removeWhere((r) => r.requesterId == request.requesterId);
-        if (accept) {
-          _friends = [
-            ...?_friends,
-            Friend(id: request.requesterId, name: request.name, avatarUrl: request.avatarUrl),
-          ];
-        }
-      });
-    } on FriendsException catch (e) {
-      if (!mounted) return;
-      setState(() => _pendingRequestActions.remove(request.requesterId));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reageren mislukt: $e')),
-      );
-    }
-  }
-
-  Future<void> _sendCheer(Friend friend) async {
-    setState(() => _sendingCheerIds.add(friend.id));
-    try {
-      await _cheersService.sendCheer(friend.id);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Proost verstuurd naar ${friend.name}!')),
-      );
-    } on CheersException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Proost versturen mislukt: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _sendingCheerIds.remove(friend.id));
-    }
-  }
-
-  void _openChat(Friend friend) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ChatPage(friend: friend)),
-    );
+    if (mounted) _loadFriends();
   }
 
   Future<void> _logout() async {
@@ -1055,146 +1002,99 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// Compacte kaart: de vriendenlijst zelf staat op "Gezelligheid & Social".
   Widget _buildFriendsSection() {
-    final friends = _friends == null
-        ? null
-        : ([..._friends!]..sort((a, b) {
-            if (a.online != b.online) return a.online ? -1 : 1;
-            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-          }));
+    final friends = _friends;
     final requests = _incomingRequests;
     final onlineCount = friends?.where((f) => f.online).length ?? 0;
+    final shown = [...?friends]..sort((a, b) {
+        if (a.online != b.online) return a.online ? -1 : 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
 
-    Widget card(List<Widget> rows, {bool highlight = false}) => Container(
-          decoration: BoxDecoration(
-            color: _friendsCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: highlight ? _friendsPrimary.withOpacity(0.45) : _friendsDivider),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0) const Divider(height: 1, thickness: 1, color: _friendsDivider, indent: 70),
-                rows[i],
-              ],
-            ],
-          ),
-        );
-
-    Widget label(String text) => Padding(
-          padding: const EdgeInsets.only(bottom: 8, left: 2),
-          child: Text(text, style: GoogleFonts.inter(color: _friendsPrimary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-        );
+    final String summary;
+    if (friends == null) {
+      summary = 'Laden...';
+    } else if (friends.isEmpty) {
+      summary = 'Nog geen Bier-vrienden';
+    } else {
+      summary = '${friends.length} ${friends.length == 1 ? 'vriend' : 'vrienden'}'
+          '${onlineCount > 0 ? ' · $onlineCount online' : ''}';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Text(
-                'Mijn Bier-vrienden',
-                style: GoogleFonts.playfairDisplay(color: _friendsOnSurface, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            if (friends != null && friends.isNotEmpty)
-              Text(
-                '${friends.length} ${friends.length == 1 ? 'vriend' : 'vrienden'}'
-                '${onlineCount > 0 ? ' · $onlineCount online' : ''}',
-                style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12),
-              ),
-          ],
+        Text(
+          'Mijn Bier-vrienden',
+          style: GoogleFonts.playfairDisplay(color: _friendsOnSurface, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _FriendsActionButton(
-                icon: Icons.person_add_alt_1,
-                label: 'Vriend toevoegen',
-                filled: true,
-                onTap: _openAddFriend,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _FriendsActionButton(
-                icon: Icons.qr_code_2,
-                label: 'Mijn QR-code',
-                onTap: () => showMyFriendQr(context),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (friends == null || requests == null)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(child: CircularProgressIndicator(color: _friendsPrimary)),
-          )
-        else ...[
-          if (requests.isNotEmpty) ...[
-            label('VRIENDSCHAPSVERZOEKEN (${requests.length})'),
-            card(
-              [
-                for (final request in requests)
-                  _FriendRequestRow(
-                    name: request.name,
-                    avatarUrl: request.avatarUrl,
-                    busy: _pendingRequestActions.contains(request.requesterId),
-                    onAccept: () => _respondToRequest(request, true),
-                    onDecline: () => _respondToRequest(request, false),
-                  ),
-              ],
-              highlight: true,
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (friends.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        Material(
+          color: _friendsCard,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: _openSocial,
+            child: Container(
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _friendsCard,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _friendsDivider),
+                border: Border.all(
+                  color: (requests?.isNotEmpty ?? false) ? _friendsPrimary.withOpacity(0.45) : _friendsDivider,
+                ),
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(color: _friendsPrimary.withOpacity(0.12), shape: BoxShape.circle),
-                    child: const Icon(Icons.group_outlined, color: _friendsPrimary, size: 26),
+                  SizedBox(
+                    width: 44.0 + 22.0 * ((shown.length.clamp(1, 3)) - 1),
+                    height: 44,
+                    child: shown.isEmpty
+                        ? Container(
+                            decoration: BoxDecoration(color: _friendsPrimary.withOpacity(0.12), shape: BoxShape.circle),
+                            child: const Icon(Icons.group_outlined, color: _friendsPrimary, size: 22),
+                          )
+                        : Stack(
+                            children: [
+                              for (var i = 0; i < shown.length && i < 3; i++)
+                                Positioned(
+                                  left: 22.0 * i,
+                                  child: FriendAvatar(avatarUrl: shown[i].avatarUrl, online: shown[i].online),
+                                ),
+                            ],
+                          ),
                   ),
-                  const SizedBox(height: 12),
-                  Text('Nog geen Bier-vrienden', style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Zoek vrienden op naam of laat ze je QR-code scannen.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12, height: 1.4),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(summary, style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Bekijk en beheer je vrienden in Gezelligheid & Social',
+                          style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
+                  if (requests != null && requests.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: _friendsPrimary, borderRadius: BorderRadius.circular(999)),
+                      child: Text(
+                        '${requests.length} ${requests.length == 1 ? 'verzoek' : 'verzoeken'}',
+                        style: GoogleFonts.inter(color: const Color(0xFF1E1712), fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right, color: _friendsMuted),
                 ],
               ),
-            )
-          else ...[
-            label('VRIENDEN'),
-            card([
-              for (final friend in friends)
-                _FriendRow(
-                  name: friend.name,
-                  avatarUrl: friend.avatarUrl,
-                  online: friend.online,
-                  sending: _sendingCheerIds.contains(friend.id),
-                  onProost: () => _sendCheer(friend),
-                  onTap: () => _openChat(friend),
-                ),
-            ]),
-          ],
-        ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1207,231 +1107,3 @@ const _friendsDivider = Color(0xFF3C3028);
 const _friendsPrimary = Color(0xFFD4B28C);
 const _friendsOnSurface = Color(0xFFEFE6DD);
 const _friendsMuted = Color(0xFF9E8A7D);
-const _friendsOnline = Color(0xFF4CAF50);
-
-/// Ronde profielfoto met (optioneel) een groen online-bolletje.
-class _FriendAvatar extends StatelessWidget {
-  const _FriendAvatar({this.avatarUrl, this.online = false, this.size = 44});
-
-  final String? avatarUrl;
-  final bool online;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _friendsDivider,
-            image: avatarUrl != null ? DecorationImage(image: NetworkImage(avatarUrl!), fit: BoxFit.cover) : null,
-          ),
-          child: avatarUrl == null ? Icon(Icons.person, color: _friendsMuted, size: size * 0.5) : null,
-        ),
-        if (online)
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Container(
-              width: 13,
-              height: 13,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _friendsOnline,
-                border: Border.all(color: _friendsCard, width: 2),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Knop over de halve breedte boven de vriendenlijst ("Vriend toevoegen",
-/// "Mijn QR-code").
-class _FriendsActionButton extends StatelessWidget {
-  const _FriendsActionButton({required this.icon, required this.label, required this.onTap, this.filled = false});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    final foreground = filled ? const Color(0xFF1E1712) : _friendsPrimary;
-    return Material(
-      color: filled ? _friendsPrimary : _friendsCard,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: filled ? null : Border.all(color: _friendsPrimary.withOpacity(0.5)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: foreground, size: 18),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(color: foreground, fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Binnengekomen vriendschapsverzoek met Accepteren/Weigeren.
-class _FriendRequestRow extends StatelessWidget {
-  const _FriendRequestRow({
-    required this.name,
-    this.avatarUrl,
-    required this.onAccept,
-    required this.onDecline,
-    this.busy = false,
-  });
-
-  final String name;
-  final String? avatarUrl;
-  final VoidCallback onAccept;
-  final VoidCallback onDecline;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          _FriendAvatar(avatarUrl: avatarUrl, size: 42),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text('Wil Bier-vrienden worden', style: GoogleFonts.inter(color: _friendsMuted, fontSize: 12)),
-              ],
-            ),
-          ),
-          if (busy)
-            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _friendsPrimary))
-          else ...[
-            IconButton(
-              onPressed: onDecline,
-              tooltip: 'Weigeren',
-              visualDensity: VisualDensity.compact,
-              style: IconButton.styleFrom(backgroundColor: _friendsDivider),
-              icon: const Icon(Icons.close, size: 18, color: _friendsMuted),
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              height: 34,
-              child: ElevatedButton(
-                onPressed: onAccept,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _friendsPrimary,
-                  foregroundColor: const Color(0xFF1E1712),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text('Accepteren', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Eén Bier-vriend: tik om te chatten, "Proost!" om te proosten.
-class _FriendRow extends StatelessWidget {
-  const _FriendRow({
-    required this.name,
-    this.avatarUrl,
-    this.online = false,
-    this.onTap,
-    this.onProost,
-    this.sending = false,
-  });
-
-  final String name;
-  final String? avatarUrl;
-  final bool online;
-  final VoidCallback? onTap;
-  final VoidCallback? onProost;
-  final bool sending;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            _FriendAvatar(avatarUrl: avatarUrl, online: online),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(color: _friendsOnSurface, fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(
-                    online ? 'Online' : 'Offline',
-                    style: GoogleFonts.inter(color: online ? _friendsOnline : _friendsMuted, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: onTap,
-              tooltip: 'Chatten',
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.chat_bubble_outline, size: 20, color: _friendsMuted),
-            ),
-            const SizedBox(width: 4),
-            SizedBox(
-              height: 34,
-              child: ElevatedButton.icon(
-                onPressed: sending ? null : onProost,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _friendsPrimary,
-                  foregroundColor: const Color(0xFF1E1712),
-                  disabledBackgroundColor: _friendsDivider,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                icon: sending
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _friendsPrimary))
-                    : const Icon(Icons.sports_bar, size: 16),
-                label: Text('Proost!', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

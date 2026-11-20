@@ -2,7 +2,35 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-final _urlPattern = RegExp(r'(https?://[^\s]+|www\.[^\s]+)', caseSensitive: false);
+// Aanhalingstekens en punthaken horen nooit bij een link ("<https://x.nl>").
+final _urlPattern = RegExp(r'''(https?://[^\s<>"']+|www\.[^\s<>"']+)''', caseSensitive: false);
+
+/// Het adres dat bij een tik echt geopend wordt, of null als het geen
+/// bruikbare link is.
+/// - Afgekapte links ("https://site.nl/.../abc.../info", vaak uit gekopieerde
+///   Facebook-teksten) leiden naar een verkeerde pagina: niet klikbaar.
+/// - Een Facebook-doorverwijzing (l.facebook.com/l.php?u=...) opent direct de
+///   echte site, zonder Facebook-tussenpagina en volgcode (fbclid).
+@visibleForTesting
+Uri? linkTarget(String url) {
+  if (url.contains('...') || url.contains('…')) return null;
+  var uri = Uri.tryParse(url.contains('://') ? url : 'https://$url');
+  if (uri == null || !uri.host.contains('.')) return null;
+  final isFacebookRedirect = RegExp(r'^(l|lm)\.facebook\.com$').hasMatch(uri.host) && uri.path == '/l.php';
+  final target = isFacebookRedirect ? Uri.tryParse(uri.queryParameters['u'] ?? '') : null;
+  if (target != null && (target.scheme == 'http' || target.scheme == 'https') && target.host.isNotEmpty) {
+    final params = Map.of(target.queryParameters)..remove('fbclid');
+    uri = Uri(
+      scheme: target.scheme,
+      host: target.host,
+      port: target.hasPort ? target.port : null,
+      path: target.path,
+      queryParameters: params.isEmpty ? null : params,
+      fragment: target.hasFragment ? target.fragment : null,
+    );
+  }
+  return uri;
+}
 
 /// Tekst waarin websites (http(s)://... of www....) aanklikbaar zijn en in de
 /// browser openen. Voor vrije beschrijvingen van evenementen en horeca.
@@ -46,7 +74,14 @@ class _LinkifiedTextState extends State<LinkifiedText> {
       url = url.substring(0, url.length - trailing.length);
 
       if (match.start > start) spans.add(TextSpan(text: widget.text.substring(start, match.start)));
-      final recognizer = TapGestureRecognizer()..onTap = () => _open(url);
+      final target = linkTarget(url);
+      if (target == null) {
+        // Geen bruikbare link: gewoon als tekst tonen.
+        spans.add(TextSpan(text: url));
+        start = match.start + url.length;
+        continue;
+      }
+      final recognizer = TapGestureRecognizer()..onTap = () => _open(target);
       _recognizers.add(recognizer);
       spans.add(TextSpan(
         text: url,
@@ -64,9 +99,7 @@ class _LinkifiedTextState extends State<LinkifiedText> {
     );
   }
 
-  Future<void> _open(String url) async {
-    final uri = Uri.tryParse(url.contains('://') ? url : 'https://$url');
-    if (uri == null) return;
+  Future<void> _open(Uri uri) async {
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kon de website niet openen.')));
