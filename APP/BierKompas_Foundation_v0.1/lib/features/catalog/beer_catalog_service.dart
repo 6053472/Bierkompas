@@ -66,6 +66,23 @@ class StyleCount {
   const StyleCount(this.stijl, this.aantal);
 }
 
+/// Alfabetische volgorde (A-Z) voor de keuzelijst "Alle bierstijlen":
+/// hoofdletterongevoelig en zonder accenten ("Bière" bij "Biere"), bij
+/// gelijke naam op de oorspronkelijke schrijfwijze.
+int compareStyleNames(StyleCount a, StyleCount b) {
+  String key(String s) => s
+      .toLowerCase()
+      .replaceAll(RegExp('[àáâãäå]'), 'a')
+      .replaceAll(RegExp('[èéêë]'), 'e')
+      .replaceAll(RegExp('[ìíîï]'), 'i')
+      .replaceAll(RegExp('[òóôõö]'), 'o')
+      .replaceAll(RegExp('[ùúûü]'), 'u')
+      .replaceAll('ç', 'c')
+      .replaceAll('ñ', 'n');
+  final byKey = key(a.stijl).compareTo(key(b.stijl));
+  return byKey != 0 ? byKey : a.stijl.compareTo(b.stijl);
+}
+
 class BeerCatalogException implements Exception {
   final String message;
   BeerCatalogException(this.message);
@@ -199,9 +216,12 @@ class BeerCatalogService {
   Future<List<StyleCount>> fetchStyles() async {
     try {
       final rows = await _client.rpc('beer_catalog_styles');
+      // De database levert de stijlen op aantal bieren; de keuzelijst
+      // "Alle bierstijlen" toont ze alfabetisch (A-Z, hoofdletterongevoelig).
       return (rows as List)
           .map((e) => StyleCount(e['stijl'] as String, (e['aantal'] as num).toInt()))
-          .toList();
+          .toList()
+        ..sort(compareStyleNames);
     } on PostgrestException {
       return [];
     }

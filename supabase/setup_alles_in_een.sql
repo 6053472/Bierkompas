@@ -5319,3 +5319,146 @@ create policy "Horeca submissions: insert own" on public.horeca_submissions
     );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- rls_aanscherpen_gebruikers  (beveiligingspunten 1 t/m 7)
+-- ============================================================
+-- Uit de RLS-controle van november 2026. Gewone gebruikers konden via de
+-- API meer wijzigen dan de app ooit doet.
+--
+-- Live bleken er policies te bestaan met andere namen dan in dit bestand
+-- (bijv. op event_registrations drie INSERT-policies: "Registrations: insert
+-- own", "Registrations: own insert" en "Users can create own registrations",
+-- allemaal zonder status-controle). Omdat policies elkaar aanvullen, werkt
+-- een strengere policy niet zolang er een ruimere naast staat. Daarom:
+--   1. eerst ALLE INSERT- en UPDATE-policies van deze vier tabellen
+--      verwijderen, ongeacht hun naam (de verwijderde namen worden gemeld);
+--   2. daarna precies de bedoelde, veilige set opnieuw aanmaken;
+--   3. UPDATE-rechten beperken tot de kolommen die de app nodig heeft.
+-- SELECT- en DELETE-policies blijven onaangeroerd. Er worden geen tabellen
+-- of gegevens verwijderd. De app gebruikt voor vrienden, berichten en proosts
+-- security-definer-functies (send_friend_request, respond_friend_request,
+-- send_message, mark_messages_read, send_cheer, mark_cheer_seen); die werken
+-- ongewijzigd door. Rechtstreeks schrijft de app alleen bij aanmeldingen:
+-- insert met status 'pending' en update van alleen 'status'.
+--
+-- Alles in één transactie: mislukt één regel, dan wordt niets toegepast.
+-- Veilig om opnieuw uit te voeren.
+begin;
+
+-- Stap 1: alle bestaande INSERT- en UPDATE-policies (ook dubbele of onder
+-- een andere naam) van deze vier tabellen verwijderen.
+do $opruimen$
+declare
+    pol record;
+begin
+    for pol in
+        select tablename, policyname, cmd
+        from pg_policies
+        where schemaname = 'public'
+          and (
+                (tablename = 'friend_requests'     and cmd in ('INSERT', 'UPDATE'))
+             or (tablename = 'messages'            and cmd = 'UPDATE')
+             or (tablename = 'cheers'              and cmd = 'UPDATE')
+             or (tablename = 'event_registrations' and cmd in ('INSERT', 'UPDATE'))
+          )
+    loop
+        raise notice 'Policy verwijderd: %.% (%)', pol.tablename, pol.policyname, pol.cmd;
+        execute format('drop policy %I on public.%I', pol.policyname, pol.tablename);
+    end loop;
+end
+$opruimen$;
+
+-- Stap 2: de bedoelde, veilige policies opnieuw aanmaken.
+
+-- Punt 1. Vriendschapsverzoek: alleen als 'pending' aanmaken (eerder kon
+-- iemand meteen een 'accepted' verzoek invoegen en zonder toestemming vriend
+-- worden, en dan locatie en telefoonnummer zien).
+create policy "Friend requests: insert own" on public.friend_requests
+    for insert to authenticated
+    with check (auth.uid() = requester_id and status = 'pending');
+
+-- Punt 2. Alleen de ontvanger mag een verzoek bijwerken, en alleen naar
+-- 'pending' of 'accepted' (de kolommen staan in stap 3).
+create policy "Friend requests: addressee can update" on public.friend_requests
+    for update to authenticated
+    using (auth.uid() = addressee_id)
+    with check (auth.uid() = addressee_id and status in ('pending', 'accepted'));
+
+-- Punt 3. Berichten: alleen de ontvanger mag bijwerken (kolommen in stap 3).
+create policy "Messages: receiver can update" on public.messages
+    for update to authenticated
+    using (auth.uid() = receiver_id)
+    with check (auth.uid() = receiver_id);
+
+-- Punt 4. Proosts: alleen de ontvanger mag bijwerken (kolommen in stap 3).
+create policy "Cheers: receiver can update" on public.cheers
+    for update to authenticated
+    using (auth.uid() = receiver_id)
+    with check (auth.uid() = receiver_id);
+
+-- Punt 5. Aanmelden voor een evenement: alleen voor jezelf en alleen als
+-- 'pending'. Vervangt alle drie de live INSERT-policies, die geen status
+-- controleerden (zelf 'approved' aanmelden omzeilde de organisator).
+create policy "Registrations: insert own" on public.event_registrations
+    for insert to authenticated
+    with check (auth.uid() = user_id and status = 'pending');
+
+-- Punt 6. Aanmeldingen bijwerken: alleen de organisator van het evenement of
+-- een beheerder (een deelnemer kan zichzelf dus niet goedkeuren); de
+-- kolommen staan in stap 3.
+create policy "Registrations: owner can update" on public.event_registrations
+    for update to authenticated
+    using (exists (select 1 from public.events e where e.id = event_registrations.event_id and e.user_id = auth.uid()))
+    with check (exists (select 1 from public.events e where e.id = event_registrations.event_id and e.user_id = auth.uid()));
+
+create policy "Registrations: admins can update" on public.event_registrations
+    for update to authenticated
+    using (public.is_admin())
+    with check (public.is_admin());
+
+-- Stap 3: UPDATE-rechten beperken tot de kolommen die nodig zijn (punten 2,
+-- 3, 4 en 6). Eerst het recht op de hele tabel intrekken (ook via PUBLIC),
+-- daarna alleen de nodige kolommen teruggeven aan ingelogde gebruikers.
+revoke update on public.friend_requests     from public, anon, authenticated;
+revoke update on public.messages            from public, anon, authenticated;
+revoke update on public.cheers              from public, anon, authenticated;
+revoke update on public.event_registrations from public, anon, authenticated;
+
+grant update (status, responded_at) on public.friend_requests     to authenticated;
+grant update (read_at)              on public.messages            to authenticated;
+grant update (seen)                 on public.cheers              to authenticated;
+grant update (status)               on public.event_registrations to authenticated;
+
+-- Punt 7. check_meta_badges is een interne hulpfunctie (alleen aangeroepen
+-- vanuit andere security-definer-functies); niet meer rechtstreeks via de API.
+revoke execute on function public.check_meta_badges(uuid) from public, anon, authenticated;
+
+commit;
+
+NOTIFY pgrst, 'reload schema';
+-- ============================================================
+-- oud_vriendensysteem_afsluiten  (beveiligingspunt 8)
+-- ============================================================
+-- Uit de RLS-controle van november 2026. De functie add_friend(uuid) en de
+-- tabel friendships horen bij het eerste vriendensysteem (supabase/
+-- add_friends.sql, 14-09-2026). Dat is 11 minuten later vervangen door
+-- vriendschapsverzoeken (friend_requests), maar functie en tabel zijn live
+-- blijven bestaan. add_friend is security definer en maakte twee gebruikers
+-- direct wederzijds "vriend" in friendships, zonder toestemming.
+-- Niets gebruikt add_friend nog: niet de app, niet het beheerpaneel en geen
+-- andere databasefunctie. Het nieuwe vriendensysteem (friend_requests,
+-- send_friend_request, respond_friend_request, list_friends) wordt niet
+-- geraakt. De functie en de tabel friendships blijven bestaan, met al hun
+-- gegevens; alleen het recht om add_friend aan te roepen wordt ingetrokken.
+-- Live gecontroleerd op 24-11-2026 (alleen lezen): de functie maakt alleen
+-- wederzijdse rijen in friendships aan, en geen enkele andere live functie
+-- roept add_friend aan (0 rijen). Definitief goedgekeurd om uit te voeren.
+-- Veilig om opnieuw uit te voeren.
+begin;
+
+revoke execute on function public.add_friend(uuid) from public, anon, authenticated;
+
+commit;
+
+NOTIFY pgrst, 'reload schema';
