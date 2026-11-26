@@ -1000,6 +1000,7 @@
             <label class="flex flex-col gap-1"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Lengtegraad</span><input id="stays-lng" type="number" step="any" class="fi"/></label>
             <p class="md:col-span-2 -mt-2 text-xs text-on-surface-variant/70">Laat breedte- en lengtegraad leeg om de positie automatisch via het adres op te zoeken.</p>
             <label class="flex items-center gap-2 md:col-span-2"><input id="stays-bevestigd" type="checkbox"/><span class="text-sm text-on-surface">Overnachten bevestigd (staat op de eigen website van de brouwerij)</span></label>
+            <label class="flex flex-col gap-1 md:col-span-2"><span class="text-xs text-on-surface-variant uppercase tracking-wide font-label">Foto-URL (optioneel)</span><input id="stays-photo" type="text" placeholder="https://.../foto.jpg" class="fi"/></label>
           </div>
           <p id="stays-error" class="hidden text-error text-sm bg-error-container/20 border border-error/30 rounded-lg px-3 py-2 mt-4"></p>
           <div class="flex gap-3 mt-4">
@@ -1621,6 +1622,7 @@
     ["brewery_submissions", "photo_url"],
     ["horeca_submissions", "photo_url"],
     ["breweries", "image_url"],
+    ["brewery_stays", "image_url"],
     ["news_articles", "foto_url"],
     ["feed_items", "image_url"],
   ];
@@ -4030,6 +4032,8 @@
   const STAYS_FIELDS = ["naam", "plaats", "straat", "postcode", "provincie", "website", "beschrijving", "lat", "lng"];
   let editingStay = null;
   let staysSuccessTimer = null;
+  // Zelfde bucket als de andere brouwerijfoto's; de app toont image_url in de kaarttab "Overnachten".
+  const staysImageUpload = createImageUpload(document.getElementById("stays-photo"), "brewery-photos");
 
   function showStaysSuccess(message) {
     staysSuccessEl.textContent = message;
@@ -4051,6 +4055,12 @@
       document.getElementById("stays-land").value = stay.land === "BE" ? "BE" : "NL";
       document.getElementById("stays-bevestigd").checked = !!stay.verblijf_bevestigd;
     }
+    // Eerst leegmaken: ruimt een niet-opgeslagen upload van een vorige bewerking op.
+    const photoInput = document.getElementById("stays-photo");
+    photoInput.value = "";
+    staysImageUpload.reset();
+    photoInput.value = stay?.image_url ?? "";
+    staysImageUpload.reset();
     document.getElementById("stays-form-title").textContent = stay ? "Overnachting bewerken" : "Nieuwe overnachting";
     document.getElementById("stays-id").textContent = stay ? `#${stay.id}` : "";
     document.getElementById("stays-save-label").textContent = stay ? "Wijzigingen opslaan" : "Opslaan";
@@ -4064,7 +4074,11 @@
     editingStay = null;
   }
   document.getElementById("stays-new").addEventListener("click", () => openStayForm(null));
-  document.getElementById("stays-cancel").addEventListener("click", closeStayForm);
+  document.getElementById("stays-cancel").addEventListener("click", () => {
+    closeStayForm();
+    document.getElementById("stays-photo").value = "";
+    staysImageUpload.reset(); // niet-opgeslagen upload opruimen
+  });
 
   document.getElementById("stays-save").addEventListener("click", async (e) => {
     const btn = e.currentTarget;
@@ -4072,6 +4086,7 @@
     const val = (id) => document.getElementById(`stays-${id}`).value.trim();
     const naam = val("naam");
     const plaats = val("plaats");
+    if (staysImageUpload.busy) return showFormError(staysError, "Wacht tot de afbeelding klaar is met uploaden.");
     if (!naam || !plaats) return showFormError(staysError, "Naam en plaats zijn verplicht.");
     const latRaw = val("lat");
     const lngRaw = val("lng");
@@ -4112,7 +4127,12 @@
       latitude,
       longitude,
       verblijf_bevestigd: document.getElementById("stays-bevestigd").checked,
+      image_url: val("photo") || null,
     };
+    if (!(await checkImageUrl(values.image_url))) {
+      resetBtn();
+      return showFormError(staysError, "De foto-URL laadt niet als afbeelding. Controleer of dit een directe link naar een afbeeldingsbestand is.");
+    }
 
     let error = null;
     if (editingStay) {
@@ -4131,7 +4151,11 @@
       }
     }
     resetBtn();
+    if (error && /image_url/.test(error.message || "")) {
+      return showFormError(staysError, "Opslaan mislukt: de kolom voor foto's ontbreekt nog. Voer eerst het blok brouwerij_overnachtingen_foto uit supabase/setup_alles_in_een.sql uit.");
+    }
     if (error) return showFormError(staysError, `Opslaan mislukt: ${error.message}`);
+    await staysImageUpload.commit();
     const wasEditing = Boolean(editingStay);
     closeStayForm();
     showStaysSuccess(wasEditing ? `Wijzigingen in "${naam}" opgeslagen.` : `"${naam}" is toegevoegd.`);
@@ -4169,9 +4193,11 @@
       item.querySelector(".edit-btn").addEventListener("click", () => openStayForm(stay));
       item.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm(`"${stay.naam}" verwijderen uit Overnachten?`)) return;
-        const { data: deleted, error: deleteError } = await client.from("brewery_stays").delete().eq("id", stay.id).select("id");
+        const { data: deleted, error: deleteError } = await client.from("brewery_stays").delete().eq("id", stay.id).select("*");
         if (deleteError) return alert(`Verwijderen mislukt: ${deleteError.message}`);
         if (!deleted || !deleted.length) return alert("Verwijderen mislukt: je hebt geen rechten om dit te verwijderen, of het bestaat niet meer.");
+        // De foto die erbij hoorde opruimen (alleen eigen bucket en als niets anders hem gebruikt).
+        await removeStoredImages(deleted.map((r) => r.image_url));
         if (editingStay && editingStay.id === stay.id) closeStayForm();
         showStaysSuccess(`"${stay.naam}" is verwijderd.`);
         loadStays();

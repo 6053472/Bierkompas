@@ -5462,3 +5462,19 @@ revoke execute on function public.add_friend(uuid) from public, anon, authentica
 commit;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- brouwerij_overnachtingen_foto
+-- ============================================================
+-- BierKompas: foto bij een brouwerij met overnachting (kaarttab
+-- "Overnachten"). Beheerders vullen de foto in het beheerpaneel in, via een
+-- URL of door een afbeelding te uploaden. Uploads komen in de bestaande
+-- bucket brewery-photos (map admin/), met de bestaande Storage-policies voor
+-- beheerders: er is geen nieuwe bucket of policy nodig.
+-- Eén nieuwe kolom, leeg voor alle bestaande rijen; er wordt niets
+-- verwijderd of overschreven. Lezen en wijzigen vallen onder de bestaande
+-- policies van brewery_stays (iedereen lezen, alleen beheerders wijzigen).
+-- Veilig om opnieuw uit te voeren.
+alter table public.brewery_stays add column if not exists image_url text;
+
+NOTIFY pgrst, 'reload schema';

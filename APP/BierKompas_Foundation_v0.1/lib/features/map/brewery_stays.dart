@@ -16,6 +16,10 @@ class BreweryStay {
   final double longitude;
   final String? description;
 
+  /// Foto die een beheerder in het beheerpaneel heeft ingesteld (kolom
+  /// image_url). Zonder foto toont de app het logo van de website.
+  final String? imageUrl;
+
   /// De website van de brouwerij noemt zelf een overnachtingsmogelijkheid.
   final bool stayConfirmed;
 
@@ -32,6 +36,7 @@ class BreweryStay {
     this.postalCode,
     this.website,
     this.description,
+    this.imageUrl,
   });
 
   String get countryName => country == 'BE' ? 'België' : 'Nederland';
@@ -62,7 +67,13 @@ class BreweryStay {
         longitude: (row['longitude'] as num).toDouble(),
         description: row['beschrijving'] as String?,
         stayConfirmed: row['verblijf_bevestigd'] as bool? ?? false,
+        imageUrl: _nonEmpty(row['image_url'] as String?),
       );
+
+  static String? _nonEmpty(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 }
 
 class BreweryStaysService {

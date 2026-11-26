@@ -1452,9 +1452,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               height: 44,
               decoration: BoxDecoration(color: const Color(0xFF1E1712), borderRadius: BorderRadius.circular(10)),
               clipBehavior: Clip.antiAlias,
-              child: stay.logoUrl != null
-                  ? _BreweryLogo(url: stay.logoUrl!, emojiSize: 20)
-                  : const Center(child: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 20))),
+              child: stay.imageUrl != null
+                  ? Image.network(
+                      stay.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Center(child: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 20))),
+                    )
+                  : stay.logoUrl != null
+                      ? _BreweryLogo(url: stay.logoUrl!, emojiSize: 20)
+                      : const Center(child: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 20))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -2293,20 +2299,29 @@ class _StayDetailSheet extends StatelessWidget {
                   child: SizedBox(
                     height: 160,
                     width: double.infinity,
-                    child: ColoredBox(
-                      color: const Color(0xFF3E312A),
-                      child: Center(
-                        child: stay.logoUrl != null
-                            ? Container(
-                                width: 96,
-                                height: 96,
-                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-                                clipBehavior: Clip.antiAlias,
-                                child: _BreweryLogo(url: stay.logoUrl!, emojiSize: 44),
-                              )
-                            : const Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 44)),
-                      ),
-                    ),
+                    child: stay.imageUrl != null
+                        ? Image.network(
+                            stay.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const ColoredBox(
+                              color: Color(0xFF3E312A),
+                              child: Center(child: Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 44))),
+                            ),
+                          )
+                        : ColoredBox(
+                            color: const Color(0xFF3E312A),
+                            child: Center(
+                              child: stay.logoUrl != null
+                                  ? Container(
+                                      width: 96,
+                                      height: 96,
+                                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: _BreweryLogo(url: stay.logoUrl!, emojiSize: 44),
+                                    )
+                                  : const Text('\u{1F6CF}\u{FE0F}', style: TextStyle(fontSize: 44)),
+                            ),
+                          ),
                   ),
                 ),
                 Positioned(
