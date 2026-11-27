@@ -28,8 +28,8 @@ Future<void> loadCustomBooks() async {
     final rows = (await Supabase.instance.client
             .from('library_books')
             .select()
-            .order('sort_order')
-            .order('id')) as List;
+            .order('sort_order', ascending: true)
+            .order('id', ascending: true)) as List;
     final dbBooks = rows.map((row) => Book(
           id: (row['builtin_key'] as String?) ?? 'db_${row['id']}',
           title: row['title'] as String,

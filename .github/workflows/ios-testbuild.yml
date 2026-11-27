@@ -1,0 +1,161 @@
+# iOS-testbuild van BierKompas, zonder ondertekening (unsigned).
+#
+# Controleert of de iOS-versie bouwt op een Mac van GitHub. Er wordt GEEN
+# IPA gemaakt en niets naar TestFlight geüpload: daarvoor zijn Apple-
+# certificaten nodig (volgende stap). Er worden geen geheimen gebruikt.
+#
+# Starten: GitHub -> tabblad Actions -> "iOS-testbuild" -> Run workflow.
+
+name: iOS-testbuild
+
+on:
+  workflow_dispatch:
+
+# Alleen lezen van de repository; deze workflow schrijft nergens naar.
+permissions:
+  contents: read
+
+# Een nieuwe run op dezelfde branch stopt een nog lopende run (bespaart
+# macOS-minuten).
+concurrency:
+  group: ios-testbuild-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Zelfde Flutter-versie als waarmee de Android-versie gebouwd wordt;
+  # pubspec.lock vereist minimaal 3.47.0.
+  FLUTTER_VERSION: "3.47.1"
+  APP_DIR: APP/BierKompas_Foundation_v0.1
+
+jobs:
+  ios-build:
+    name: iOS bouwen (unsigned)
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        # Gelijk aan APP_DIR hierboven.
+        working-directory: APP/BierKompas_Foundation_v0.1
+
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4
+
+      - name: Flutter ${{ env.FLUTTER_VERSION }} installeren
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Versies tonen
+        run: |
+          flutter --version
+          xcodebuild -version
+          echo "macOS: $(sw_vers -productVersion)"
+          echo "CocoaPods: $(pod --version 2>/dev/null || echo 'niet geïnstalleerd')"
+
+      - name: Controleren of het iOS-project compleet is
+        run: |
+          missing=0
+          for f in pubspec.yaml pubspec.lock ios/Runner/Info.plist ios/Runner.xcodeproj/project.pbxproj ios/Podfile; do
+            if [ ! -f "$f" ]; then
+              echo "::error file=${APP_DIR}/$f::Bestand ontbreekt in de repository: $f. Commit en push de iOS-bestanden eerst."
+              missing=1
+            fi
+          done
+          if ! plutil -lint ios/Runner/Info.plist; then
+            echo "::error file=${APP_DIR}/ios/Runner/Info.plist::Info.plist is geen geldige plist."
+            missing=1
+          fi
+          if ! plutil -extract CFBundleURLTypes.0.CFBundleURLSchemes.0 raw ios/Runner/Info.plist | grep -qx bierkompas; then
+            echo "::error file=${APP_DIR}/ios/Runner/Info.plist::Het URL-schema 'bierkompas' (nodig voor Google-/Microsoft-login) ontbreekt in Info.plist."
+            missing=1
+          fi
+          exit $missing
+
+      - name: Dart-pakketten ophalen
+        run: |
+          if ! flutter pub get; then
+            echo "::error::'flutter pub get' mislukt. Controleer pubspec.yaml/pubspec.lock en of FLUTTER_VERSION in deze workflow klopt."
+            exit 1
+          fi
+
+      - name: iOS bouwen (release, zonder ondertekening)
+        run: |
+          set -o pipefail
+          if ! flutter build ios --release --no-codesign 2>&1 | tee "$RUNNER_TEMP/ios-build.log"; then
+            echo "::error::De iOS-build is mislukt. Zie de log van deze stap (of het artifact ios-build-log) voor de eerste foutmelding van Xcode, CocoaPods of Swift Package Manager."
+            exit 1
+          fi
+
+      - name: Buildresultaat controleren
+        run: |
+          APP=build/ios/iphoneos/Runner.app
+          if [ ! -d "$APP" ]; then
+            echo "::error::Build meldde succes, maar $APP bestaat niet."
+            exit 1
+          fi
+          if [ ! -f "$APP/Runner" ]; then
+            echo "::error::Het uitvoerbare bestand $APP/Runner ontbreekt."
+            exit 1
+          fi
+          BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$APP/Info.plist")
+          VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP/Info.plist")
+          BUILD=$(plutil -extract CFBundleVersion raw "$APP/Info.plist")
+          SCHEME=$(plutil -extract CFBundleURLTypes.0.CFBundleURLSchemes.0 raw "$APP/Info.plist")
+          if [ "$BUNDLE_ID" != "com.bierkompas.bierkompas" ]; then
+            echo "::error::Onverwachte bundle-ID: $BUNDLE_ID (verwacht com.bierkompas.bierkompas)."
+            exit 1
+          fi
+          SIZE=$(du -sh "$APP" | cut -f1)
+          {
+            echo "## iOS-testbuild geslaagd"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Bundle-ID | \`$BUNDLE_ID\` |"
+            echo "| Versie | $VERSION ($BUILD) |"
+            echo "| URL-schema | \`$SCHEME\` |"
+            echo "| Grootte Runner.app | $SIZE |"
+            echo ""
+            echo "Unsigned build: niet installeerbaar op een iPhone en niet geschikt voor TestFlight."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "OK: $BUNDLE_ID $VERSION ($BUILD), $SIZE"
+
+      - name: Runner.app inpakken
+        run: |
+          # ditto behoudt de symbolische links in de app-bundle (zip doet dat niet altijd).
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app "$RUNNER_TEMP/BierKompas-ios-unsigned.zip"
+
+      - name: Buildbestanden bewaren als artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BierKompas-ios-unsigned-${{ github.run_number }}
+          path: ${{ runner.temp }}/BierKompas-ios-unsigned.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Buildlog bewaren bij een fout
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log-${{ github.run_number }}
+          path: ${{ runner.temp }}/ios-build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Uitleg bij een mislukte build
+        if: failure()
+        run: |
+          {
+            echo "## iOS-testbuild mislukt"
+            echo ""
+            echo "Open de rood gemarkeerde stap hierboven voor de foutmelding. Veelvoorkomende oorzaken:"
+            echo ""
+            echo "- **Code ophalen / iOS-project compleet**: iOS-bestanden (bijv. \`ios/Podfile\`) zijn nog niet gecommit en gepusht."
+            echo "- **Dart-pakketten ophalen**: Flutter-versie in de workflow past niet bij \`pubspec.lock\`."
+            echo "- **iOS bouwen**: fout van Xcode, CocoaPods of Swift Package Manager; de volledige log staat in het artifact \`ios-build-log\`."
+            echo "- **Buildresultaat controleren**: de build gaf geen geldige Runner.app."
+          } >> "$GITHUB_STEP_SUMMARY"

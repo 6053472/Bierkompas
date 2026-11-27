@@ -94,9 +94,9 @@ class VideoService {
       final rows = await _client
           .from('videos')
           .select()
-          .order('sort_order')
+          .order('sort_order', ascending: true)
           .order('created_at', ascending: false)
-          .order('id')
+          .order('id', ascending: true)
           .range(offset, offset + pageSize - 1);
       return (rows as List).map((e) => BierVideo.fromJson(e as Map<String, dynamic>)).toList();
     } on PostgrestException catch (e) {

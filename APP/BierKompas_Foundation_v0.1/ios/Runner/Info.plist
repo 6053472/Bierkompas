@@ -24,6 +24,27 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Google- en Microsoft-login keren terug via bierkompas://login-callback
+	     (lib/features/auth/auth_service.dart); zelfde schema als in
+	     android/app/src/main/AndroidManifest.xml. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.bierkompas.bierkompas</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>bierkompas</string>
+			</array>
+		</dict>
+	</array>
+	<!-- De loginlink wordt door supabase_flutter (app_links) afgehandeld, niet
+	     door de Flutter-navigator; zonder deze sleutel probeert Flutter
+	     /login-callback als scherm te openen. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

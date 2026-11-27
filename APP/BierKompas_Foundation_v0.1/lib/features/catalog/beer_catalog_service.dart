@@ -110,8 +110,10 @@ class BeerCatalogService {
       // een zoekterm met een komma of haakje de aanvraag niet breekt.
       final term = query.trim().replaceAll(RegExp(r'[,()%*\\]'), ' ').trim();
       if (term.isEmpty) {
+        // ascending expliciet: .order() van supabase_flutter sorteert
+        // standaard aflopend (Z-A).
         final rows = await _withStyle(_client.from('beer_catalog').select(), stijl)
-            .order('naam')
+            .order('naam', ascending: true)
             .range(offset, offset + pageSize - 1);
         return _toBeers(rows);
       }
@@ -138,7 +140,7 @@ class BeerCatalogService {
           skip -= total;
           continue;
         }
-        final rows = await tier().order('naam').range(skip, skip + needed - 1);
+        final rows = await tier().order('naam', ascending: true).range(skip, skip + needed - 1);
         result.addAll(_toBeers(rows));
         skip = 0;
       }

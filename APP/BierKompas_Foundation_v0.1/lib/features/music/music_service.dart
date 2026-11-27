@@ -19,8 +19,8 @@ Future<void> loadCustomSongs() async {
     final rows = (await Supabase.instance.client
             .from('music_tracks')
             .select()
-            .order('sort_order')
-            .order('id')) as List;
+            .order('sort_order', ascending: true)
+            .order('id', ascending: true)) as List;
     final dbSongs = rows.map((row) => Song(
           id: (row['builtin_key'] as String?) ?? 'db_${row['id']}',
           title: row['title'] as String,

@@ -86,7 +86,7 @@ class BreweryStaysService {
         .from('brewery_stays')
         .select()
         .order('verblijf_bevestigd', ascending: false)
-        .order('naam');
+        .order('naam', ascending: true);
     return (rows as List).map((row) => BreweryStay.fromRow(row as Map<String, dynamic>)).toList();
   }
 }

@@ -46,7 +46,7 @@ class FaqService {
 
   Future<List<FaqItem>> fetchAll() async {
     try {
-      final rows = await _client.from('faq_items').select().order('sort_order').order('id');
+      final rows = await _client.from('faq_items').select().order('sort_order', ascending: true).order('id', ascending: true);
       return (rows as List).map((e) => FaqItem.fromJson(e as Map<String, dynamic>)).toList();
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST205' || e.code == '42P01') return [];

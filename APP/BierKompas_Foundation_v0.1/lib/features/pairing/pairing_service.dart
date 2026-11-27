@@ -51,7 +51,7 @@ class PairingService {
 
   Future<List<BeerPairing>> fetchAll() async {
     try {
-      final rows = await _client.from('beer_pairings').select().order('brouwerij');
+      final rows = await _client.from('beer_pairings').select().order('brouwerij', ascending: true);
       return (rows as List).map((e) => BeerPairing.fromJson(e as Map<String, dynamic>)).toList();
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST205' || e.code == '42P01') return [];
